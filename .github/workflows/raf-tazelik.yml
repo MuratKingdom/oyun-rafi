@@ -12,6 +12,11 @@ name: Raf tazelik
 on:
   push:
     branches: [main]
+  # Rafı değiştiren PR'ın kendisi de denetlensin — aksi halde bu kapı ancak
+  # merge'den SONRA konuşur. Çift koşum riski yok: push yalnız main'e bağlı,
+  # bir PR dalına yapılan push bu workflow'u tetiklemiyor.
+  pull_request:
+    branches: [main]
   schedule:
     - cron: '37 9 2,16 * *'
   workflow_dispatch:
