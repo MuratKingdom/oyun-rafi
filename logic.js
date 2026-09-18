@@ -100,11 +100,11 @@ function step(state, input, dt) {
   if (state.y - BALL_R <= WALL_T) {
     state.y = WALL_T + BALL_R;
     state.status = 'over';
-    state.overReason = 'Tunelin tavanina carptin';
+    state.overReason = 'Tünelin tavanına çarptın';
   } else if (state.y + BALL_R >= VIEW_H - WALL_T) {
     state.y = VIEW_H - WALL_T - BALL_R;
     state.status = 'over';
-    state.overReason = 'Tunelin tabanina carptin';
+    state.overReason = 'Tünelin tabanına çarptın';
   }
 
   if (state.status === 'playing') {
@@ -116,7 +116,7 @@ function step(state, input, dt) {
         var bottom = o.gapY + o.gapH / 2;
         if (state.y - BALL_R < top || state.y + BALL_R > bottom) {
           state.status = 'over';
-          state.overReason = 'Engele carptin';
+          state.overReason = 'Engele çarptın';
           break;
         }
       }
