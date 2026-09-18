@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yerçekimi Tüneli</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #05070c;
+    color: #e8ecf1;
+    font-family: system-ui, sans-serif;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  canvas {
+    background: #0b1220;
+    border: 2px solid #223;
+    max-width: 96vw;
+    height: auto;
+    touch-action: manipulation;
+  }
+  #hint {
+    font-size: 12px;
+    color: #7c8aa5;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="960" height="540"></canvas>
+  <div id="hint">Boşluk / dokunuş: yerçekimini ters çevir · R: yeniden başla · M: sesi kapat</div>
+</div>
+<script>
+// Yercekimi Tuneli - saf oyun mantigi (DOM yok, canvas yok, window yok)
+
+var VIEW_W = 480;
+var VIEW_H = 270;
+var WALL_T = 10;
+var BALL_R = 8;
+var BALL_X = 90;
+var GRAVITY = 950;
+var MAX_FALL_SPEED = 420;
+var BASE_SPEED = 130;
+var MAX_SPEED = 300;
+var OBSTACLE_W = 22;
+var MIN_GAP = 72;
+var MAX_GAP = 150;
+var MIN_SPACING = 150;
+var MAX_SPACING = 260;
+
+function nextRandom(state) {
+  state.rngState = (state.rngState + 0x6D2B79F5) >>> 0;
+  var t = state.rngState;
+  var r = Math.imul(t ^ (t >>> 15), 1 | t);
+  r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+  return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+}
+
+function randRange(state, lo, hi) {
+  return lo + nextRandom(state) * (hi - lo);
+}
+
+function currentSpeed(worldX) {
+  var s = BASE_SPEED + worldX * 0.045;
+  return s > MAX_SPEED ? MAX_SPEED : s;
+}
+
+function currentGapH(worldX) {
+  var g = MAX_GAP - worldX * 0.018;
+  return g < MIN_GAP ? MIN_GAP : g;
+}
+
+function spawnObstacle(state) {
+  var gapH = currentGapH(state.nextObstacleWorldX);
+  var margin = WALL_T + gapH / 2 + 12;
+  var gapY = randRange(state, margin, VIEW_H - margin);
+  state.obstacles.push({
+    x: state.nextObstacleWorldX,
+    gapY: gapY,
+    gapH: gapH,
+    passed: false
+  });
+  var spacing = randRange(state, MIN_SPACING, MAX_SPACING);
+  state.nextObstacleWorldX += spacing;
+}
+
+function createState(seed) {
+  var state = {
+    status: 'playing',
+    overReason: '',
+    rngState: (seed >>> 0) || 1,
+    worldX: 0,
+    y: VIEW_H / 2,
+    vy: 0,
+    gravityDir: 1,
+    prevActionHeld: false,
+    obstacles: [],
+    nextObstacleWorldX: 220,
+    score: 0,
+    best: 0
+  };
+  while (state.nextObstacleWorldX < 1800) {
+    spawnObstacle(state);
+  }
+  return state;
+}
+
+function step(state, input, dt) {
+  if (state.status !== 'playing') {
+    if (input && input.restart) {
+      var seed = (state.rngState + 12345) >>> 0;
+      var fresh = createState(seed);
+      for (var k in fresh) { state[k] = fresh[k]; }
+    }
+    return state;
+  }
+
+  var actionHeld = !!(input && input.action);
+  if (actionHeld && !state.prevActionHeld) {
+    state.gravityDir = -state.gravityDir;
+  }
+  state.prevActionHeld = actionHeld;
+
+  state.vy += GRAVITY * state.gravityDir * dt;
+  if (state.vy > MAX_FALL_SPEED) state.vy = MAX_FALL_SPEED;
+  if (state.vy < -MAX_FALL_SPEED) state.vy = -MAX_FALL_SPEED;
+  state.y += state.vy * dt;
+
+  var speed = currentSpeed(state.worldX);
+  state.worldX += speed * dt;
+  state.score = Math.floor(state.worldX / 10);
+
+  if (state.y - BALL_R <= WALL_T) {
+    state.y = WALL_T + BALL_R;
+    state.status = 'over';
+    state.overReason = 'Tünelin tavanına çarptın';
+  } else if (state.y + BALL_R >= VIEW_H - WALL_T) {
+    state.y = VIEW_H - WALL_T - BALL_R;
+    state.status = 'over';
+    state.overReason = 'Tünelin tabanına çarptın';
+  }
+
+  if (state.status === 'playing') {
+    for (var i = 0; i < state.obstacles.length; i++) {
+      var o = state.obstacles[i];
+      var screenX = o.x - state.worldX + BALL_X;
+      if (screenX + OBSTACLE_W / 2 >= BALL_X - BALL_R && screenX - OBSTACLE_W / 2 <= BALL_X + BALL_R) {
+        var top = o.gapY - o.gapH / 2;
+        var bottom = o.gapY + o.gapH / 2;
+        if (state.y - BALL_R < top || state.y + BALL_R > bottom) {
+          state.status = 'over';
+          state.overReason = 'Engele çarptın';
+          break;
+        }
+      }
+    }
+  }
+
+  while (state.nextObstacleWorldX < state.worldX + VIEW_W * 2) {
+    spawnObstacle(state);
+  }
+  while (state.obstacles.length && state.obstacles[0].x < state.worldX - VIEW_W) {
+    state.obstacles.shift();
+  }
+
+  if (state.status === 'over' && state.score > state.best) {
+    state.best = state.score;
+  }
+
+  return state;
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { createState: createState, step: step };
+}
+if (typeof window !== 'undefined') {
+  window.GameLogic = { createState: createState, step: step };
+}
+
+</script>
+<script>
+// Yercekimi Tuneli - sadece cizim, state degistirmez
+
+(function () {
+  var VIEW_W = 480;
+  var VIEW_H = 270;
+  var WALL_T = 10;
+  var BALL_R = 8;
+  var BALL_X = 90;
+  var OBSTACLE_W = 22;
+
+  function draw(ctx, state, view) {
+    var scale = view && view.scale ? view.scale : 1;
+    ctx.save();
+    ctx.scale(scale, scale);
+
+    ctx.fillStyle = '#0b1220';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+    ctx.fillStyle = state.gravityDir > 0 ? '#1a2b4a' : '#3a1a2b';
+    ctx.fillRect(0, 0, VIEW_W, WALL_T);
+    ctx.fillRect(0, VIEW_H - WALL_T, VIEW_W, WALL_T);
+
+    ctx.fillStyle = '#f0a500';
+    for (var i = 0; i < state.obstacles.length; i++) {
+      var o = state.obstacles[i];
+      var sx = o.x - state.worldX + BALL_X;
+      if (sx < -OBSTACLE_W || sx > VIEW_W + OBSTACLE_W) continue;
+      var top = o.gapY - o.gapH / 2;
+      var bottom = o.gapY + o.gapH / 2;
+      ctx.fillRect(sx - OBSTACLE_W / 2, WALL_T, OBSTACLE_W, top - WALL_T);
+      ctx.fillRect(sx - OBSTACLE_W / 2, bottom, OBSTACLE_W, VIEW_H - WALL_T - bottom);
+    }
+
+    ctx.beginPath();
+    ctx.fillStyle = state.gravityDir > 0 ? '#4fc3f7' : '#f76d8e';
+    ctx.arc(BALL_X, state.y, BALL_R, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#e8ecf1';
+    ctx.font = '14px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Mesafe: ' + state.score, 10, 24);
+    ctx.textAlign = 'right';
+    ctx.fillText('Rekor: ' + state.best, VIEW_W - 10, 24);
+
+    if (state.status === 'playing' && state.score < 3) {
+      ctx.textAlign = 'center';
+      ctx.font = '13px system-ui, sans-serif';
+      ctx.fillStyle = '#9fb0c9';
+      ctx.fillText('Tuşa bas / dokun: yerçekimini ters çevir', VIEW_W / 2, VIEW_H - 20);
+    }
+
+    if (state.status === 'over') {
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 20px system-ui, sans-serif';
+      ctx.fillText('Kaybettin', VIEW_W / 2, VIEW_H / 2 - 26);
+      ctx.font = '14px system-ui, sans-serif';
+      ctx.fillText(state.overReason, VIEW_W / 2, VIEW_H / 2 - 4);
+      ctx.fillText('Mesafe: ' + state.score + '  Rekor: ' + state.best, VIEW_W / 2, VIEW_H / 2 + 18);
+      ctx.font = '13px system-ui, sans-serif';
+      ctx.fillStyle = '#9fb0c9';
+      ctx.fillText('Yeniden başlamak için R veya tıkla', VIEW_W / 2, VIEW_H / 2 + 42);
+    }
+
+    ctx.restore();
+  }
+
+  if (typeof module !== 'undefined') {
+    module.exports = { draw: draw };
+  }
+  if (typeof window !== 'undefined') {
+    window.GameRender = { draw: draw };
+  }
+})();
+
+</script>
+<script>
+// Yercekimi Tuneli - dongu, girdi, ses; logic + render'i baglar
+
+(function () {
+  var DT = 1 / 60;
+  var MAX_STEPS_PER_FRAME = 5;
+  var VIEW_W = 480;
+  var VIEW_H = 270;
+  var STORAGE_KEY = 'gravtunel-best';
+
+  function bootstrap() {
+    var canvas = document.getElementById('game');
+    var ctx = canvas.getContext('2d');
+
+    var GameLogic = window.GameLogic;
+    var GameRender = window.GameRender;
+
+    var seed = Math.floor((typeof performance !== 'undefined' && performance.now ? performance.now() : 0) * 1000) ^ 0x9e3779b9;
+    var state = GameLogic.createState(seed >>> 0);
+
+    var storedBest = readBest();
+    if (storedBest > state.best) state.best = storedBest;
+
+    var input = { action: false, restart: false };
+    var muted = false;
+    var audioCtx = null;
+
+    function ensureAudio() {
+      if (audioCtx || muted) return;
+      try {
+        var Ctor = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new Ctor();
+      } catch (e) {
+        audioCtx = null;
+      }
+    }
+
+    function playTone(freq, dur) {
+      if (muted || !audioCtx) return;
+      try {
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = freq;
+        gain.gain.value = 0.06;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        var now = audioCtx.currentTime;
+        gain.gain.setValueAtTime(0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        osc.start(now);
+        osc.stop(now + dur);
+      } catch (e) {
+        // sessiz calismaya devam
+      }
+    }
+
+    function readBest() {
+      try {
+        var v = window.localStorage.getItem(STORAGE_KEY);
+        return v ? parseInt(v, 10) || 0 : 0;
+      } catch (e) {
+        return 0;
+      }
+    }
+
+    function writeBest(v) {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, String(v));
+      } catch (e) {
+        // localStorage yoksa sessizce gec
+      }
+    }
+
+    function triggerFlip() {
+      ensureAudio();
+      input.action = true;
+      playTone(state.gravityDir > 0 ? 520 : 340, 0.08);
+    }
+
+    function triggerRestart() {
+      input.restart = true;
+    }
+
+    window.addEventListener('keydown', function (e) {
+      if (e.code === 'Space' || e.code === 'ArrowUp') {
+        e.preventDefault();
+        triggerFlip();
+      } else if (e.key === 'r' || e.key === 'R' || e.code === 'KeyR') {
+        triggerRestart();
+      } else if (e.key === 'm' || e.key === 'M') {
+        muted = !muted;
+      }
+    });
+    window.addEventListener('keyup', function (e) {
+      if (e.code === 'Space' || e.code === 'ArrowUp') {
+        input.action = false;
+      }
+    });
+
+    canvas.addEventListener('pointerdown', function () {
+      if (state.status === 'over') {
+        triggerRestart();
+      } else {
+        triggerFlip();
+      }
+    });
+
+    var wasOver = false;
+
+    function frame(now) {
+      requestAnimationFrame(frame);
+      if (!frame.last) frame.last = now;
+      var frameDt = (now - frame.last) / 1000;
+      frame.last = now;
+      if (frameDt > 0.25) frameDt = 0.25;
+      frame.acc = (frame.acc || 0) + frameDt;
+
+      var steps = 0;
+      while (frame.acc >= DT && steps < MAX_STEPS_PER_FRAME) {
+        GameLogic.step(state, input, DT);
+        input.action = false;
+        input.restart = false;
+        frame.acc -= DT;
+        steps++;
+      }
+
+      if (state.status === 'over' && !wasOver) {
+        wasOver = true;
+        if (state.score > readBest()) writeBest(state.score);
+        playTone(160, 0.2);
+      }
+      if (state.status === 'playing' && wasOver) {
+        wasOver = false;
+      }
+
+      GameRender.draw(ctx, state, { scale: canvas.width / VIEW_W });
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.GameMain = { bootstrap: bootstrap };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  }
+  if (typeof module !== 'undefined') {
+    module.exports = { bootstrap: bootstrap };
+  }
+})();
+
+</script>
+
+</body>
+</html>
