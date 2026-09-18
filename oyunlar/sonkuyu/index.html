@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Son Kuyu</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #05070c;
+    color: #e8ecf1;
+    font-family: system-ui, sans-serif;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  canvas {
+    background: #0b1220;
+    border: 2px solid #223;
+    max-width: 96vw;
+    height: auto;
+    touch-action: manipulation;
+  }
+  #hint {
+    font-size: 12px;
+    color: #7c8aa5;
+    text-align: center;
+    max-width: 500px;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="500" height="560"></canvas>
+  <div id="hint">Ok tuşları: hareket · Boşluk: kaynak topla / kuyu yap · R: yeniden başla · M: sesi kapat · Dokunuş: kareye dokun</div>
+</div>
+<script>
+(function () {
+  'use strict';
+
+  var GRID_W = 5;
+  var GRID_H = 5;
+  var MOVE_INTERVAL = 0.15;
+  var WOOD_RATE = 0.4;
+  var STONE_RATE = 0.4;
+  var WELL_RATE = 0.9;
+  var WELL_COST_WOOD = 3;
+  var WELL_COST_STONE = 3;
+  var BASE_DRAIN = 0.6;
+  var DRAIN_RAMP = 0.3;
+  var DRAIN_RAMP_INTERVAL = 25;
+  var START_WOOD = 3;
+  var START_STONE = 3;
+  var START_WATER = 15;
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0;
+      a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function buildGrid(seed) {
+    var rand = mulberry32(seed >>> 0);
+    var indices = [];
+    var i;
+    for (i = 0; i < GRID_W * GRID_H; i++) indices.push(i);
+    for (i = indices.length - 1; i > 0; i--) {
+      var j = Math.floor(rand() * (i + 1));
+      var tmp = indices[i];
+      indices[i] = indices[j];
+      indices[j] = tmp;
+    }
+    var grid = [];
+    for (i = 0; i < GRID_W * GRID_H; i++) {
+      grid.push({ type: 'empty', building: null });
+    }
+    for (i = 0; i < 4; i++) grid[indices[i]].type = 'wood-source';
+    for (i = 4; i < 8; i++) grid[indices[i]].type = 'stone-source';
+    return grid;
+  }
+
+  function createState(seed) {
+    var s = seed === undefined || seed === null ? 1 : seed;
+    return {
+      seed: s,
+      grid: buildGrid(s),
+      cx: 0,
+      cy: 0,
+      moveCD: 0,
+      wood: START_WOOD,
+      stone: START_STONE,
+      water: START_WATER,
+      score: 0,
+      elapsed: 0,
+      status: 'playing',
+      overReason: ''
+    };
+  }
+
+  function countBuildings(grid) {
+    var wood = 0, stone = 0, wells = 0;
+    for (var i = 0; i < grid.length; i++) {
+      var b = grid[i].building;
+      if (b === 'collector-wood') wood++;
+      else if (b === 'collector-stone') stone++;
+      else if (b === 'well') wells++;
+    }
+    return { wood: wood, stone: stone, wells: wells };
+  }
+
+  function step(state, input, dt) {
+    if (state.status !== 'playing') return state;
+
+    state.elapsed += dt;
+
+    state.moveCD -= dt;
+    if (state.moveCD <= 0) {
+      var moved = false;
+      if (input.left && state.cx > 0) { state.cx--; moved = true; }
+      else if (input.right && state.cx < GRID_W - 1) { state.cx++; moved = true; }
+      if (input.up && state.cy > 0) { state.cy--; moved = true; }
+      else if (input.down && state.cy < GRID_H - 1) { state.cy++; moved = true; }
+      if (moved) state.moveCD = MOVE_INTERVAL;
+    }
+
+    if (input.action) {
+      var idx = state.cy * GRID_W + state.cx;
+      var cell = state.grid[idx];
+      if (!cell.building) {
+        if (cell.type === 'wood-source') {
+          cell.building = 'collector-wood';
+        } else if (cell.type === 'stone-source') {
+          cell.building = 'collector-stone';
+        } else if (cell.type === 'empty' && state.wood >= WELL_COST_WOOD && state.stone >= WELL_COST_STONE) {
+          state.wood -= WELL_COST_WOOD;
+          state.stone -= WELL_COST_STONE;
+          cell.building = 'well';
+        }
+      }
+    }
+
+    var counts = countBuildings(state.grid);
+    var producedWood = counts.wood * WOOD_RATE * dt;
+    var producedStone = counts.stone * STONE_RATE * dt;
+    var producedWater = counts.wells * WELL_RATE * dt;
+    var drain = BASE_DRAIN + Math.floor(state.elapsed / DRAIN_RAMP_INTERVAL) * DRAIN_RAMP;
+
+    state.wood += producedWood;
+    state.stone += producedStone;
+    state.water += producedWater - drain * dt;
+    state.score += producedWood + producedStone + producedWater;
+
+    if (state.water <= 0) {
+      state.water = 0;
+      state.status = 'over';
+      state.overReason = 'Su tükendi';
+    }
+
+    return state;
+  }
+
+  var api = {
+    createState: createState,
+    step: step,
+    GRID_W: GRID_W,
+    GRID_H: GRID_H
+  };
+
+  if (typeof module !== 'undefined') module.exports = { createState: createState, step: step, GRID_W: GRID_W, GRID_H: GRID_H };
+  if (typeof window !== 'undefined') window.GameLogic = api;
+})();
+
+</script>
+<script>
+(function () {
+  'use strict';
+
+  var COLORS = {
+    bg: '#0b1220',
+    grid: '#1b2740',
+    woodSource: '#5b3a1e',
+    stoneSource: '#4a4f57',
+    collectorWood: '#c98a3a',
+    collectorStone: '#9aa1ab',
+    well: '#2f8fd1',
+    cursor: '#f2d24b',
+    text: '#e8ecf1',
+    dim: '#7c8aa5',
+    danger: '#e85b5b'
+  };
+
+  function draw(ctx, state, view) {
+    var w = view && view.width ? view.width : ctx.canvas.width;
+    var h = view && view.height ? view.height : ctx.canvas.height;
+    var gridLen = state.grid ? state.grid.length : 25;
+    var GRID_W = Math.round(Math.sqrt(gridLen)) || 5;
+    var topH = 70;
+    var gridSize = Math.min(w, h - topH);
+    var cell = gridSize / GRID_W;
+    var offX = (w - gridSize) / 2;
+    var offY = topH;
+
+    ctx.fillStyle = COLORS.bg;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.fillStyle = COLORS.text;
+    ctx.font = '16px system-ui, sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Odun: ' + Math.floor(state.wood), 12, 12);
+    ctx.fillText('Taş: ' + Math.floor(state.stone), 130, 12);
+    ctx.fillStyle = state.water < 4 ? COLORS.danger : COLORS.text;
+    ctx.fillText('Su: ' + Math.floor(state.water), 248, 12);
+    ctx.fillStyle = COLORS.text;
+    ctx.fillText('Üretim: ' + Math.floor(state.score), 360, 12);
+
+    var best = state.best || 0;
+    ctx.fillStyle = COLORS.dim;
+    ctx.fillText('Rekor: ' + Math.floor(best), 12, 34);
+
+    for (var gy = 0; gy < GRID_W; gy++) {
+      for (var gx = 0; gx < GRID_W; gx++) {
+        var idx = gy * GRID_W + gx;
+        var c = state.grid[idx];
+        var x = offX + gx * cell;
+        var y = offY + gy * cell;
+        var fill = COLORS.grid;
+        if (c.building === 'collector-wood') fill = COLORS.collectorWood;
+        else if (c.building === 'collector-stone') fill = COLORS.collectorStone;
+        else if (c.building === 'well') fill = COLORS.well;
+        else if (c.type === 'wood-source') fill = COLORS.woodSource;
+        else if (c.type === 'stone-source') fill = COLORS.stoneSource;
+
+        ctx.fillStyle = fill;
+        ctx.fillRect(x + 2, y + 2, cell - 4, cell - 4);
+
+        if (c.building) {
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
+        }
+      }
+    }
+
+    ctx.strokeStyle = COLORS.cursor;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(offX + state.cx * cell + 2, offY + state.cy * cell + 2, cell - 4, cell - 4);
+
+    ctx.fillStyle = COLORS.dim;
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.fillText('Kaynak karesinde: topla (boşluk) · boş karede kuyu (3 odun + 3 taş)', 12, h - 20);
+
+    if (state.status === 'over') {
+      ctx.fillStyle = 'rgba(5,7,12,0.82)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = COLORS.text;
+      ctx.font = 'bold 26px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(state.overReason || 'Oyun bitti', w / 2, h / 2 - 30);
+      ctx.font = '16px system-ui, sans-serif';
+      ctx.fillText('Üretim: ' + Math.floor(state.score) + '  ·  Rekor: ' + Math.floor(best), w / 2, h / 2 + 4);
+      ctx.fillStyle = COLORS.dim;
+      ctx.fillText('R ile yeniden başla', w / 2, h / 2 + 32);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  var api = { draw: draw };
+  if (typeof module !== 'undefined') module.exports = { draw: draw };
+  if (typeof window !== 'undefined') window.GameRender = api;
+})();
+
+</script>
+<script>
+(function () {
+  'use strict';
+
+  var DT = 1 / 60;
+  var MAX_STEPS_PER_FRAME = 5;
+
+  function countBuilt(grid) {
+    var c = 0;
+    for (var i = 0; i < grid.length; i++) if (grid[i].building) c++;
+    return c;
+  }
+
+  function bootstrap() {
+    var canvas = document.getElementById('game');
+    var ctx = canvas.getContext('2d');
+
+    var input = { left: false, right: false, up: false, down: false, action: false };
+    var muted = false;
+    var audioCtx = null;
+
+    function ensureAudio() {
+      if (audioCtx || muted) return;
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) audioCtx = new AC();
+      } catch (e) {
+        audioCtx = null;
+      }
+    }
+
+    function tone(freq, dur, type) {
+      if (!audioCtx || muted) return;
+      try {
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+      } catch (e) {
+        /* ses üretilemedi, sessiz devam */
+      }
+    }
+
+    function loadBest() {
+      try {
+        var v = window.localStorage.getItem('sonkuyu-best');
+        return v ? (parseFloat(v) || 0) : 0;
+      } catch (e) {
+        return 0;
+      }
+    }
+
+    function saveBest(v) {
+      try {
+        window.localStorage.setItem('sonkuyu-best', String(v));
+      } catch (e) {
+        /* localStorage yok, yoksay */
+      }
+    }
+
+    var best = loadBest();
+    var seed = Math.floor(Date.now() % 1000000) || 1;
+    var state = window.GameLogic.createState(seed);
+    state.best = best;
+    var wasOver = false;
+
+    function resetGame() {
+      seed = Math.floor(Date.now() % 1000000) || 1;
+      state = window.GameLogic.createState(seed);
+      state.best = best;
+      wasOver = false;
+    }
+
+    window.addEventListener('keydown', function (e) {
+      ensureAudio();
+      switch (e.code) {
+        case 'ArrowLeft': case 'KeyA': input.left = true; e.preventDefault(); break;
+        case 'ArrowRight': case 'KeyD': input.right = true; e.preventDefault(); break;
+        case 'ArrowUp': case 'KeyW': input.up = true; e.preventDefault(); break;
+        case 'ArrowDown': case 'KeyS': input.down = true; e.preventDefault(); break;
+        case 'Space': case 'Enter': input.action = true; e.preventDefault(); break;
+        case 'KeyR':
+          if (state.status !== 'playing') resetGame();
+          e.preventDefault();
+          break;
+        case 'KeyM':
+          muted = !muted;
+          e.preventDefault();
+          break;
+      }
+    });
+
+    window.addEventListener('keyup', function (e) {
+      switch (e.code) {
+        case 'ArrowLeft': case 'KeyA': input.left = false; break;
+        case 'ArrowRight': case 'KeyD': input.right = false; break;
+        case 'ArrowUp': case 'KeyW': input.up = false; break;
+        case 'ArrowDown': case 'KeyS': input.down = false; break;
+        case 'Space': case 'Enter': input.action = false; break;
+      }
+    });
+
+    var touchTarget = null;
+    canvas.addEventListener('pointerdown', function (e) {
+      ensureAudio();
+      if (state.status !== 'playing') { resetGame(); return; }
+      var rect = canvas.getBoundingClientRect();
+      var scaleX = canvas.width / rect.width;
+      var scaleY = canvas.height / rect.height;
+      var px = (e.clientX - rect.left) * scaleX;
+      var py = (e.clientY - rect.top) * scaleY;
+      var topH = 70;
+      var GRID_W = window.GameLogic.GRID_W || 5;
+      var gridSize = Math.min(canvas.width, canvas.height - topH);
+      var cellSize = gridSize / GRID_W;
+      var offX = (canvas.width - gridSize) / 2;
+      var offY = topH;
+      var gx = Math.floor((px - offX) / cellSize);
+      var gy = Math.floor((py - offY) / cellSize);
+      if (gx >= 0 && gx < GRID_W && gy >= 0 && gy < GRID_W) {
+        touchTarget = { x: gx, y: gy };
+      }
+    });
+
+    var lastTime = null;
+    var accumulator = 0;
+
+    function frame(now) {
+      if (lastTime === null) lastTime = now;
+      var delta = (now - lastTime) / 1000;
+      lastTime = now;
+      if (delta > 0.25) delta = 0.25;
+      accumulator += delta;
+
+      var builtBefore = countBuilt(state.grid);
+      var steps = 0;
+      while (accumulator >= DT && steps < MAX_STEPS_PER_FRAME) {
+        if (touchTarget) {
+          state.cx = touchTarget.x;
+          state.cy = touchTarget.y;
+          var savedAction = input.action;
+          input.action = true;
+          window.GameLogic.step(state, input, DT);
+          input.action = savedAction;
+          touchTarget = null;
+        } else {
+          window.GameLogic.step(state, input, DT);
+        }
+        accumulator -= DT;
+        steps++;
+      }
+
+      if (countBuilt(state.grid) > builtBefore) tone(660, 0.12, 'sine');
+
+      if (state.status === 'over' && !wasOver) {
+        wasOver = true;
+        if (state.score > best) {
+          best = state.score;
+          saveBest(best);
+        }
+        tone(140, 0.4, 'sawtooth');
+      }
+      state.best = best;
+
+      window.GameRender.draw(ctx, state, { width: canvas.width, height: canvas.height });
+      window.requestAnimationFrame(frame);
+    }
+
+    window.requestAnimationFrame(frame);
+  }
+
+  var api = { bootstrap: bootstrap };
+  if (typeof module !== 'undefined') module.exports = { bootstrap: bootstrap };
+  if (typeof window !== 'undefined') {
+    window.GameMain = api;
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  }
+})();
+
+</script>
+</body>
+</html>

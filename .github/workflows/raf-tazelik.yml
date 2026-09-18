@@ -1,0 +1,51 @@
+# Rafın (main) oyun dallarıyla tutarlı kalıp kalmadığını denetler.
+#
+# Gamer rutini ayda iki kez yeni bir `oyun/<ad>` dalı açar ve katalog
+# issue'sunu günceller — ama main'i hiç bilmez. Bu iş, main'deki oynanabilir
+# kopyaların ve index.html'in sessizce eskimesini bir CI hatasına çevirir.
+#
+# Zamanlama: rutin ayın 1'i ve 15'i 09:07 UTC'de koşuyor. Bu denetim ertesi
+# gün 09:37'de koşar ki yeni oyun eklendiyse "raf güncellenmedi" hatası
+# Murat'ın önüne düşsün. main'e her push'ta da koşar.
+name: Raf tazelik
+
+on:
+  push:
+    branches: [main]
+  # Rafı değiştiren PR'ın kendisi de denetlensin — aksi halde bu kapı ancak
+  # merge'den SONRA konuşur. Çift koşum riski yok: push yalnız main'e bağlı,
+  # bir PR dalına yapılan push bu workflow'u tetiklemiyor.
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '37 9 2,16 * *'
+  workflow_dispatch:
+
+concurrency:
+  group: raf-tazelik-${{ github.ref }}
+  cancel-in-progress: true
+
+# Yalnızca okur.
+permissions:
+  contents: read
+
+jobs:
+  tazelik:
+    name: raf dallarla tutarlı mı
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Değişken sürüm tag'i yerine tam commit SHA'sına pinlendi (CWE-829).
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # Denetim oyun dallarını okuyor; sığ checkout'ta o dallar yoktur.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # checkout tüm dalları getirir ama remote-tracking ref'leri her zaman
+      # kurmaz; betik refs/remotes/origin/oyun/* üzerinden çalışıyor.
+      - name: Oyun dallarını getir
+        run: git fetch origin '+refs/heads/oyun/*:refs/remotes/origin/oyun/*'
+
+      - name: Tazelik denetimi
+        run: ./tools/raf-tazelik.sh
