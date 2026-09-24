@@ -1,109 +1,49 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Oyun Rafı</title>
-<meta name="description" content="Gamer rutininin ürettiği küçük ama bitmiş tarayıcı oyunları.">
+<title>Sekme Gücü</title>
 <style>
-  :root{
-    --bg:#0b0f1a; --panel:#141a2b; --line:#243049;
-    --ink:#e7ecf7; --ink-dim:#9aa7c2; --accent:#e0a33a; --accent-soft:#3a7ca5;
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #05070c;
+    color: #e8ecf1;
+    font-family: system-ui, sans-serif;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  *{box-sizing:border-box}
-  body{
-    margin:0; background:var(--bg); color:var(--ink);
-    font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    padding:32px 16px 64px;
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
   }
-  .wrap{max-width:860px;margin:0 auto}
-  h1{font-size:28px;margin:0 0 4px;letter-spacing:-.02em}
-  .tag{color:var(--ink-dim);margin:0 0 28px}
-  .card{
-    background:var(--panel); border:1px solid var(--line); border-radius:12px;
-    padding:20px; margin:0 0 16px;
+  canvas {
+    background: #0b1220;
+    border: 2px solid #223;
+    max-width: 96vw;
+    height: auto;
+    touch-action: manipulation;
   }
-  .card h2{font-size:20px;margin:0 0 2px}
-  .meta{color:var(--ink-dim);font-size:13px;margin:0 0 12px}
-  .kanat{
-    display:inline-block;background:#1d2740;border:1px solid var(--line);
-    color:var(--accent);border-radius:999px;padding:1px 10px;font-size:12px;
-  }
-  .ne{margin:0 0 14px}
-  .actions{display:flex;flex-wrap:wrap;gap:10px}
-  a.btn{
-    display:inline-block;text-decoration:none;border-radius:8px;
-    padding:9px 16px;font-weight:600;font-size:14px;
-    background:var(--accent);color:#1a1205;
-  }
-  a.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
-  a.btn:hover{filter:brightness(1.08)}
-  details{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
-  summary{cursor:pointer;color:var(--ink-dim);font-size:14px}
-  details ul{margin:10px 0 0;padding-left:20px;color:var(--ink-dim);font-size:14px}
-  footer{color:var(--ink-dim);font-size:13px;margin-top:32px;border-top:1px solid var(--line);padding-top:16px}
-  footer a{color:var(--accent-soft)}
-  .uyari{
-    background:#1b1508;border:1px solid #50400f;color:#e9d9a8;
-    border-radius:10px;padding:12px 16px;font-size:14px;margin:0 0 24px;
+  #hint {
+    font-size: 12px;
+    color: #7c8aa5;
+    text-align: center;
+    max-width: 500px;
   }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>🕹️ Oyun Rafı</h1>
-  <p class="tag">Gamer rutininin ürettiği küçük ama <strong>bitmiş</strong> tarayıcı oyunları. Ayda iki oyun; her biri kurulumsuz, sunucusuz, tek dosya.</p>
-
-  <div class="uyari">
-    <strong>Bu sayfa GitHub Pages ile yayınlanmadıysa</strong> aşağıdaki “Oyna” düğmeleri yalnız depoyu klonlayıp
-    <code>index.html</code>’i açtığında çalışır. Pages’i açmak için: depo → <em>Settings → Pages → Source: Deploy from a branch → <code>main</code> / <code>/ (root)</code></em>.
-  </div>
-
-  <div class="card">
-    <h2>Yerçekimi Tüneli</h2>
-    <p class="meta"><span class="kanat">arcade/fizik</span> · eklendi 2026-09-01</p>
-    <p class="ne">Tek tuşla yerçekimini ters çevirip dar bir tünelde engellerden kaçarak mesafe biriktiriyorsun.</p>
-    <div class="actions">
-      <a class="btn" href="oyunlar/gravtunel/index.html">Oyna</a>
-      <a class="btn ghost" href="https://github.com/MuratKingdom/oyun-rafi/tree/oyun/gravtunel">Kaynak</a>
-    </div>
-    <details>
-      <summary>Ne çalışıyor, ne eksik</summary>
-      <ul>
-        <li><strong>Çalışıyor:</strong> flip/çarpışma/kayıp sebebi · artan zorluk + mesafe skoru · tek tuşla temiz restart · canvas çizim, skor ve rekor</li>
-        <li><strong>Eksik:</strong> ayrı dokunmatik kontrol şeması yok (canvas dokunuşu flip görevi görüyor) · zorluk üst sınırda sabitleniyor · görsel/ses çeşitliliği minimal</li>
-        <li><strong>Geliştirmek için ilk adım:</strong> <code>logic.js</code> içindeki <code>currentGapH</code>/<code>currentSpeed</code> sabitlerini değiştir veya <code>spawnObstacle</code>’a yeni engel tipi ekle</li>
-      </ul>
-    </details>
-  </div>
-
-  <div class="card">
-    <h2>Son Kuyu</h2>
-    <p class="meta"><span class="kanat">sandbox/inşa</span> · eklendi 2026-09-15</p>
-    <p class="ne">5×5’lik kısıtlı bir karede odun/taş toplayan kolektörler kurup kuyu inşa ederek sürekli tükenen suyu dengelemeye çalışıyorsun.</p>
-    <div class="actions">
-      <a class="btn" href="oyunlar/sonkuyu/index.html">Oyna</a>
-      <a class="btn ghost" href="https://github.com/MuratKingdom/oyun-rafi/tree/oyun/sonkuyu">Kaynak</a>
-    </div>
-    <details>
-      <summary>Ne çalışıyor, ne eksik</summary>
-      <ul>
-        <li><strong>Çalışıyor:</strong> kolektör/kuyu inşası, üretim ve su tüketimi · kayıp koşulu ve sebep gösterimi · tek tuşla temiz restart · canvas çizim, skor ve rekor</li>
-        <li><strong>Eksik:</strong> kazanma koşulu yok (yalnızca dayanma skoru) · inşa geri alınamaz/taşınamaz · zorluk eğrisi basit basamak fonksiyonu</li>
-        <li><strong>Geliştirmek için ilk adım:</strong> <code>logic.js</code>’teki <code>WELL_RATE</code>/<code>BASE_DRAIN</code>/<code>DRAIN_RAMP</code> sabitlerini değiştir veya <code>step()</code>’e yeni bir bina tipi ekle</li>
-      </ul>
-    </details>
-  </div>
-
-  <footer>
-    Ayrıntılı katalog ve koşu geçmişi issue’larda tutulur:
-    <a href="https://github.com/MuratKingdom/oyun-rafi/issues/2">🕹️ Katalog</a> ·
-    <a href="https://github.com/MuratKingdom/oyun-rafi/issues/1">🎮 Koşu raporları</a><br>
-    Buradaki oynanabilir kopyalar oyun dallarındaki <code>oyun-tek-dosya.html</code> dosyalarından alınır;
-    <code>.github/workflows/raf-tazelik.yml</code> bunların dallarla aynı kalıp kalmadığını her koşuda denetler.<br>
-    Hiçbir oyunun oynanabilirliği bir insan tarafından uzun süre elle test edilmedi; doğrulama otomatik testler
-    ve headless tarayıcı kontrolleriyle yapıldı.
-  </footer>
+<div id="wrap">
+  <canvas id="game" width="520" height="540"></canvas>
+  <div id="hint">Boşluk / Yukarı ok / dokunuş (basılı tut): yükseklik kazan · R: yeniden başla · M: sesi kapat</div>
 </div>
+<script src="logic.js"></script>
+<script src="render.js"></script>
+<script src="main.js"></script>
 </body>
 </html>
