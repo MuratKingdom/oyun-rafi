@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sekme Gücü</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #05070c;
+    color: #e8ecf1;
+    font-family: system-ui, sans-serif;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  canvas {
+    background: #0b1220;
+    border: 2px solid #223;
+    max-width: 96vw;
+    height: auto;
+    touch-action: manipulation;
+  }
+  #hint {
+    font-size: 12px;
+    color: #7c8aa5;
+    text-align: center;
+    max-width: 500px;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="520" height="540"></canvas>
+  <div id="hint">Boşluk / Yukarı ok / dokunuş (basılı tut): yükseklik kazan · R: yeniden başla · M: sesi kapat</div>
+</div>
+<script>
+// Sekme Gücü — saf oyun mantığı (DOM/canvas/window kullanılmaz)
+
+var CANVAS_W = 520;
+var CANVAS_H = 540;
+var BALL_X = 160;
+var BALL_R = 12;
+var FLOOR_Y = 480;
+var CEIL_Y = 30;
+var GRAVITY = 900;
+var THRUST = -700;
+var BOUNCE_V = -480;
+var MAX_VY = 900;
+var SPEED0 = 200;
+var SPEED_RAMP = 3;
+var GAP_H0 = 170;
+var GAP_MIN = 100;
+var GAP_SHRINK = 0.8;
+var WALL_W = 28;
+var SPAWN_GRACE = 2.2;
+var SPAWN_INTERVAL_MIN = 1.15;
+var SPAWN_INTERVAL_MAX = 1.9;
+var SPAWN_RAMP = 0.01;
+
+function nextRand(state) {
+  state.rngA = (state.rngA + 0x6D2B79F5) | 0;
+  var t = state.rngA;
+  t = Math.imul(t ^ (t >>> 15), 1 | t);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+function createState(seed) {
+  return {
+    rngA: (seed || 1) >>> 0,
+    y: FLOOR_Y - BALL_R - 60,
+    vy: 0,
+    t: 0,
+    speed: SPEED0,
+    gapH: GAP_H0,
+    spawnTimer: SPAWN_GRACE,
+    obstacles: [],
+    bounces: 0,
+    score: 0,
+    distance: 0,
+    status: 'playing',
+    overReason: ''
+  };
+}
+
+function step(state, input, dt) {
+  if (state.status !== 'playing') return state;
+
+  var accel = GRAVITY;
+  if (input.action) accel += THRUST;
+  state.vy += accel * dt;
+  if (state.vy > MAX_VY) state.vy = MAX_VY;
+  if (state.vy < -MAX_VY) state.vy = -MAX_VY;
+  state.y += state.vy * dt;
+
+  if (state.y + BALL_R >= FLOOR_Y) {
+    state.y = FLOOR_Y - BALL_R;
+    state.vy = BOUNCE_V;
+    state.bounces++;
+  }
+
+  if (state.y - BALL_R <= CEIL_Y) {
+    state.status = 'over';
+    state.overReason = 'Tavana çarptın';
+    return state;
+  }
+
+  state.t += dt;
+  state.speed = SPEED0 + state.t * SPEED_RAMP;
+  state.gapH = Math.max(GAP_MIN, GAP_H0 - state.t * GAP_SHRINK);
+
+  state.spawnTimer -= dt;
+  if (state.spawnTimer <= 0) {
+    var maxTop = FLOOR_Y - 40 - state.gapH;
+    var minTop = CEIL_Y + 40;
+    var span = Math.max(10, maxTop - minTop);
+    var gapY = minTop + nextRand(state) * span;
+    state.obstacles.push({ x: CANVAS_W + WALL_W, gapY: gapY, gapH: state.gapH, passed: false });
+    var interval = SPAWN_INTERVAL_MAX - state.t * SPAWN_RAMP;
+    if (interval < SPAWN_INTERVAL_MIN) interval = SPAWN_INTERVAL_MIN;
+    state.spawnTimer = interval;
+  }
+
+  for (var i = 0; i < state.obstacles.length; i++) {
+    var o = state.obstacles[i];
+    o.x -= state.speed * dt;
+    if (!o.passed && o.x + WALL_W < BALL_X) {
+      o.passed = true;
+      state.score++;
+    }
+    if (o.x < BALL_X + BALL_R && o.x + WALL_W > BALL_X - BALL_R) {
+      if (state.y - BALL_R < o.gapY || state.y + BALL_R > o.gapY + o.gapH) {
+        state.status = 'over';
+        state.overReason = 'Duvara çarptın';
+        return state;
+      }
+    }
+  }
+  var kept = [];
+  for (var j = 0; j < state.obstacles.length; j++) {
+    if (state.obstacles[j].x + WALL_W > -10) kept.push(state.obstacles[j]);
+  }
+  state.obstacles = kept;
+
+  state.distance += state.speed * dt;
+  return state;
+}
+
+if (typeof module !== 'undefined') module.exports = { createState: createState, step: step };
+if (typeof window !== 'undefined') window.GameLogic = { createState: createState, step: step };
+
+</script>
+<script>
+// Sekme Gücü — yalnızca çizim, state değiştirmez
+
+function draw(ctx, state, view) {
+  var W = ctx.canvas.width;
+  var H = ctx.canvas.height;
+  var FLOOR_Y = 480;
+  var CEIL_Y = 30;
+  var BALL_X = 160;
+  var BALL_R = 12;
+  var WALL_W = 28;
+
+  ctx.fillStyle = '#0b1220';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = '#223';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, CEIL_Y);
+  ctx.lineTo(W, CEIL_Y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, FLOOR_Y);
+  ctx.lineTo(W, FLOOR_Y);
+  ctx.stroke();
+
+  ctx.fillStyle = '#1b2740';
+  for (var i = 0; i < state.obstacles.length; i++) {
+    var o = state.obstacles[i];
+    ctx.fillRect(o.x, CEIL_Y, WALL_W, o.gapY - CEIL_Y);
+    ctx.fillRect(o.x, o.gapY + o.gapH, WALL_W, FLOOR_Y - (o.gapY + o.gapH));
+  }
+
+  ctx.fillStyle = state.status === 'over' ? '#e05656' : '#5ac8fa';
+  ctx.beginPath();
+  ctx.arc(BALL_X, state.y, BALL_R, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#e8ecf1';
+  ctx.font = '20px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Kapı: ' + state.score, 14, 28);
+  ctx.textAlign = 'right';
+  var best = (view && view.best) || 0;
+  ctx.fillText('Rekor: ' + best, W - 14, 28);
+  ctx.textAlign = 'left';
+
+  if (view && view.muted) {
+    ctx.fillStyle = '#7c8aa5';
+    ctx.font = '14px system-ui, sans-serif';
+    ctx.fillText('sessiz', 14, 50);
+  }
+
+  if (state.status === 'over') {
+    ctx.fillStyle = 'rgba(5,7,12,0.72)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#e8ecf1';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 26px system-ui, sans-serif';
+    ctx.fillText('Oyun bitti', W / 2, H / 2 - 30);
+    ctx.font = '18px system-ui, sans-serif';
+    ctx.fillText(state.overReason, W / 2, H / 2);
+    ctx.fillText('Kapı: ' + state.score + '  Rekor: ' + best, W / 2, H / 2 + 30);
+    ctx.font = '14px system-ui, sans-serif';
+    ctx.fillStyle = '#7c8aa5';
+    ctx.fillText('R ile yeniden başla', W / 2, H / 2 + 60);
+    ctx.textAlign = 'left';
+  }
+}
+
+if (typeof module !== 'undefined') module.exports = { draw: draw };
+if (typeof window !== 'undefined') window.GameRender = { draw: draw };
+
+</script>
+<script>
+// Sekme Gücü — döngü, girdi, ses; logic + render'ı bağlar
+
+function bootstrap() {
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var DT = 1 / 60;
+
+  var input = { action: false, restart: false };
+  var muted = false;
+  var best = 0;
+  try {
+    var saved = window.localStorage.getItem('sekmeguc-best');
+    if (saved) best = parseInt(saved, 10) || 0;
+  } catch (e) {}
+
+  var audioCtx = null;
+  function ensureAudio() {
+    if (audioCtx) return audioCtx;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AC();
+    } catch (e) {
+      audioCtx = null;
+    }
+    return audioCtx;
+  }
+  function beep(freq, dur, type) {
+    if (muted) return;
+    var ac = ensureAudio();
+    if (!ac) return;
+    try {
+      var osc = ac.createOscillator();
+      var gain = ac.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.value = freq;
+      gain.gain.value = 0.08;
+      osc.connect(gain);
+      gain.connect(ac.destination);
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+      osc.stop(ac.currentTime + dur);
+    } catch (e) {}
+  }
+
+  function newGame() {
+    var seed = Date.now() % 2147483647;
+    return window.GameLogic.createState(seed);
+  }
+
+  var state = newGame();
+  var prevStatus = state.status;
+  var prevBounces = state.bounces;
+  var prevScore = state.score;
+
+  function restart() {
+    state = newGame();
+    prevStatus = state.status;
+    prevBounces = state.bounces;
+    prevScore = state.score;
+  }
+
+  function onKeyDown(e) {
+    if (e.code === 'Space' || e.code === 'ArrowUp') {
+      e.preventDefault();
+      if (state.status === 'over') { restart(); return; }
+      input.action = true;
+    } else if (e.code === 'KeyR') {
+      e.preventDefault();
+      restart();
+    } else if (e.code === 'KeyM') {
+      e.preventDefault();
+      muted = !muted;
+    }
+  }
+  function onKeyUp(e) {
+    if (e.code === 'Space' || e.code === 'ArrowUp') {
+      e.preventDefault();
+      input.action = false;
+    }
+  }
+  function onPointerDown(e) {
+    e.preventDefault();
+    if (state.status === 'over') { restart(); return; }
+    input.action = true;
+  }
+  function onPointerUp(e) {
+    e.preventDefault();
+    input.action = false;
+  }
+
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  canvas.addEventListener('pointerdown', onPointerDown);
+  canvas.addEventListener('pointerup', onPointerUp);
+  canvas.addEventListener('pointercancel', onPointerUp);
+
+  var acc = 0;
+  var last = null;
+
+  function frame(ts) {
+    if (last === null) last = ts;
+    var frameDt = (ts - last) / 1000;
+    last = ts;
+    if (frameDt > 0.25) frameDt = 0.25;
+    acc += frameDt;
+
+    var steps = 0;
+    while (acc >= DT && steps < 5) {
+      state = window.GameLogic.step(state, input, DT);
+      acc -= DT;
+      steps++;
+
+      if (state.bounces !== prevBounces) {
+        beep(220, 0.06, 'square');
+        prevBounces = state.bounces;
+      }
+      if (state.score !== prevScore) {
+        beep(660, 0.08, 'sine');
+        prevScore = state.score;
+      }
+      if (state.status !== prevStatus && state.status === 'over') {
+        beep(110, 0.25, 'sawtooth');
+        if (state.score > best) {
+          best = state.score;
+          try { window.localStorage.setItem('sekmeguc-best', String(best)); } catch (e) {}
+        }
+        prevStatus = state.status;
+      }
+    }
+
+    window.GameRender.draw(ctx, state, { best: best, muted: muted });
+    window.requestAnimationFrame(frame);
+  }
+
+  window.requestAnimationFrame(frame);
+}
+
+if (typeof window !== 'undefined') {
+  window.GameMain = { bootstrap: bootstrap };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap);
+  } else {
+    bootstrap();
+  }
+}
+if (typeof module !== 'undefined') module.exports = { bootstrap: bootstrap };
+
+</script>
+
+</body>
+</html>
