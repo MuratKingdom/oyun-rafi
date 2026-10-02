@@ -55,6 +55,48 @@
     max-width: 500px;
     padding: 0 8px;
   }
+  #magazaBtn {
+    font: 600 15px system-ui, sans-serif;
+    color: #05070c; background: #ffd166; border: 0; border-radius: 999px;
+    padding: 9px 18px; cursor: pointer;
+  }
+  #magaza {
+    position: fixed; inset: 0; z-index: 10;
+    background: rgba(5,7,12,0.92);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px; box-sizing: border-box;
+  }
+  #magaza[hidden], #magazaBtn[hidden] { display: none; }
+  #magaza .panel {
+    width: min(440px, 100%); max-height: 100%;
+    display: flex; flex-direction: column; gap: 10px;
+    background: #0f1828; border: 1px solid #263a5c; border-radius: 12px; padding: 14px;
+    box-sizing: border-box;
+  }
+  #magaza header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  #magaza h2 { margin: 0; font-size: 20px; }
+  #magaza .cuzdan { color: #ffd166; font-weight: 700; font-size: 18px; }
+  #magaza .kapat, #magaza [data-sekme] {
+    font: 600 14px system-ui, sans-serif; color: #e8ecf1;
+    background: #1c2a44; border: 1px solid #2c4369; border-radius: 8px; padding: 8px 12px; cursor: pointer;
+  }
+  #magaza .sekmeler { display: flex; gap: 6px; }
+  #magaza [data-sekme][aria-selected="true"] { background: #5ac8fa; color: #05070c; border-color: #5ac8fa; }
+  #magaza .liste { overflow-y: auto; touch-action: pan-y; display: flex; flex-direction: column; gap: 8px; }
+  #magaza .urun {
+    display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 12px;
+    background: #14203a; border-radius: 10px; padding: 8px;
+  }
+  #magaza .onizleme { width: 72px; height: 52px; border-radius: 6px; }
+  #magaza .ad { font-size: 16px; }
+  #magaza .urun button {
+    font: 700 14px system-ui, sans-serif; min-width: 92px; min-height: 40px;
+    border-radius: 8px; border: 0; cursor: pointer; background: #5ac8fa; color: #05070c;
+  }
+  #magaza .urun button.al { background: #ffd166; }
+  #magaza .urun button.kusanildi { background: transparent; color: #7c8aa5; border: 1px solid #2c4369; cursor: default; }
+  #magaza .urun button:disabled.al { opacity: 0.45; cursor: not-allowed; }
+  #magaza .not { font-size: 12px; color: #7c8aa5; margin: 0; }
   @media (pointer: coarse) {
     #hint .kb { display: none; }
   }
@@ -64,6 +106,18 @@
 <div id="wrap">
   <canvas id="game" width="520" height="540"></canvas>
   <div id="hint">Ekranın herhangi bir yerine basılı tut: yükseklik kazan<span class="kb"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
+  <button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button>
+</div>
+<div id="magaza" data-ui hidden role="dialog" aria-label="Mağaza">
+  <div class="panel">
+    <header><h2>Mağaza</h2><span class="cuzdan">★ 0</span><button class="kapat" type="button">Kapat</button></header>
+    <div class="sekmeler" role="tablist">
+      <button type="button" role="tab" data-sekme="ball" aria-selected="true">Top</button>
+      <button type="button" role="tab" data-sekme="map" aria-selected="false">Harita</button>
+    </div>
+    <div class="liste"></div>
+    <p class="not">Yıldız kazanmak için: oyunda yıldız topla, her geçtiğin bölüm +1, kazanırsan +10. Gerçek para yok.</p>
+  </div>
 </div>
 <script>
 // Sekme Gücü — saf oyun mantığı (DOM/canvas/window kullanılmaz)
@@ -297,8 +351,126 @@ if (typeof window !== 'undefined') window.GameLogic = API;
 
 </script>
 <script>
+// Sekme Gücü — mağaza: katalog, cüzdan, satın alma, kuşanma (saf mantık; DOM yok)
+//
+// Para birimi yıldızdır. Oyun sonunda kazanılan: o koşuda toplanan yıldızlar
+// + geçilen her bölüm için 1 + kazanınca 10. Gerçek para yok.
+// Profil tarayıcıda localStorage'da tutulur; bozuk/eksik veri sessizce varsayılana döner.
+
+var STORAGE_KEY = 'sekmeguc-profil';
+
+// Top görünümleri. shape: circle | square | diamond | star | ring
+var BALLS = [
+  { id: 'klasik', name: 'Klasik', price: 0, shape: 'circle', color: '#5ac8fa' },
+  { id: 'kor', name: 'Kor', price: 15, shape: 'circle', color: '#ff8a3d' },
+  { id: 'nane', name: 'Nane', price: 15, shape: 'circle', color: '#46d39a' },
+  { id: 'kup', name: 'Küp', price: 30, shape: 'square', color: '#f2f2f2' },
+  { id: 'elmas', name: 'Elmas', price: 45, shape: 'diamond', color: '#7fe3ff' },
+  { id: 'yildiz', name: 'Yıldız', price: 60, shape: 'star', color: '#ff8ee8' },
+  { id: 'gezegen', name: 'Gezegen', price: 90, shape: 'ring', color: '#c49bff' }
+];
+
+// Harita temaları. deco: arka plan süsü (dots | sun | trees | grid | flakes)
+var MAPS = [
+  { id: 'gece', name: 'Gece', price: 0, deco: 'dots',
+    c: { bg: '#0b1220', line: '#223352', wall: '#1f3150', wallPassed: '#16233b', wallMove: '#2b2650', edge: '#5ac8fa', edgeMove: '#b39dfa', deco: 'rgba(200,220,255,0.35)' } },
+  { id: 'gunbatimi', name: 'Gün Batımı', price: 40, deco: 'sun',
+    c: { bg: '#2a1530', line: '#5a2f4a', wall: '#4a2340', wallPassed: '#331a2e', wallMove: '#5a2a5e', edge: '#ffb36b', edgeMove: '#ff7fb0', deco: 'rgba(255,170,90,0.16)' } },
+  { id: 'orman', name: 'Orman', price: 40, deco: 'trees',
+    c: { bg: '#0e1f17', line: '#24443a', wall: '#1d3b2c', wallPassed: '#152a20', wallMove: '#2d3b1d', edge: '#8fe388', edgeMove: '#e3d488', deco: 'rgba(60,120,80,0.55)' } },
+  { id: 'neon', name: 'Neon', price: 70, deco: 'grid',
+    c: { bg: '#07050f', line: '#ff2bd6', wall: '#1a0f33', wallPassed: '#120a24', wallMove: '#2a0f3a', edge: '#2bf0ff', edgeMove: '#ff2bd6', deco: 'rgba(255,43,214,0.18)' } },
+  { id: 'buz', name: 'Buz', price: 70, deco: 'flakes',
+    c: { bg: '#e8f3fb', line: '#9ac0da', wall: '#b9d6ea', wallPassed: '#d3e5f2', wallMove: '#c9c2ec', edge: '#2a7fb8', edgeMove: '#6a4fc4', deco: 'rgba(120,170,210,0.6)', text: '#12324a', textDim: '#4f7591' } }
+];
+
+var CATALOG = { ball: BALLS, map: MAPS };
+
+function find(kind, id) {
+  var list = CATALOG[kind] || [];
+  for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+  return null;
+}
+
+function createProfile() {
+  return { coins: 0, owned: { ball: ['klasik'], map: ['gece'] }, equipped: { ball: 'klasik', map: 'gece' } };
+}
+
+// Dışarıdan gelen (localStorage) veriyi doğrular; tanınmayan her şeyi atar.
+function sanitize(raw) {
+  var p = createProfile();
+  if (!raw || typeof raw !== 'object') return p;
+  var coins = Math.floor(Number(raw.coins));
+  p.coins = isFinite(coins) && coins > 0 ? Math.min(coins, 999999) : 0;
+  ['ball', 'map'].forEach(function (kind) {
+    var owned = raw.owned && Array.isArray(raw.owned[kind]) ? raw.owned[kind] : [];
+    owned.forEach(function (id) {
+      if (find(kind, id) && p.owned[kind].indexOf(id) < 0) p.owned[kind].push(id);
+    });
+    var eq = raw.equipped && raw.equipped[kind];
+    if (eq && p.owned[kind].indexOf(eq) >= 0) p.equipped[kind] = eq;
+  });
+  return p;
+}
+
+function load(storage) {
+  try {
+    var txt = storage && storage.getItem(STORAGE_KEY);
+    return sanitize(txt ? JSON.parse(txt) : null);
+  } catch (e) {
+    return createProfile();
+  }
+}
+
+function save(storage, p) {
+  try { if (storage) storage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch (e) {}
+}
+
+function owns(p, kind, id) {
+  return p.owned[kind].indexOf(id) >= 0;
+}
+
+// { ok, reason } — reason: 'yok' | 'zaten-var' | 'yetersiz'
+function buy(p, kind, id) {
+  var item = find(kind, id);
+  if (!item) return { ok: false, reason: 'yok' };
+  if (owns(p, kind, id)) return { ok: false, reason: 'zaten-var' };
+  if (p.coins < item.price) return { ok: false, reason: 'yetersiz' };
+  p.coins -= item.price;
+  p.owned[kind].push(id);
+  p.equipped[kind] = id;
+  return { ok: true };
+}
+
+function equip(p, kind, id) {
+  if (!owns(p, kind, id)) return false;
+  p.equipped[kind] = id;
+  return true;
+}
+
+// Bir koşunun ödülü: toplanan yıldız + geçilen bölüm başına 1 + kazanma bonusu 10
+function reward(state) {
+  var levelsDone = Math.max(0, (state.level || 1) - 1);
+  return (state.stars || 0) + levelsDone + (state.status === 'won' ? 10 : 0);
+}
+
+function equippedBall(p) { return find('ball', p.equipped.ball) || BALLS[0]; }
+function equippedMap(p) { return find('map', p.equipped.map) || MAPS[0]; }
+
+var Shop = {
+  STORAGE_KEY: STORAGE_KEY, CATALOG: CATALOG, find: find,
+  createProfile: createProfile, sanitize: sanitize, load: load, save: save,
+  owns: owns, buy: buy, equip: equip, reward: reward,
+  equippedBall: equippedBall, equippedMap: equippedMap
+};
+if (typeof module !== 'undefined') module.exports = Shop;
+if (typeof window !== 'undefined') window.GameShop = Shop;
+
+</script>
+<script>
 // Sekme Gücü — yalnızca çizim, state değiştirmez
-// view: { best, muted, phase: 'ready'|'playing'|'paused'|'over', fx, touch, newBest, canRestart }
+// view: { best, muted, phase: 'ready'|'playing'|'paused'|'over'|'won', fx, touch, newBest, canRestart,
+//         theme: {deco, c:{...}}, skin: {shape, color}, coins, earned }  (theme/skin: shop.js kataloğu)
 //   fx: { particles: [{x,y,life,max,color}], shake: 0..1, squash: 0..1, trail: [{x,y}] }
 
 var W0 = 520;
@@ -337,6 +509,82 @@ function starShape(ctx, cx, cy, r, color) {
   ctx.fill();
 }
 
+var DEFAULT_THEME = { deco: 'dots', c: { bg: '#0b1220', line: '#223352', wall: '#1f3150', wallPassed: '#16233b', wallMove: '#2b2650', edge: '#5ac8fa', edgeMove: '#b39dfa', deco: 'rgba(200,220,255,0.35)' } };
+var DEFAULT_SKIN = { shape: 'circle', color: '#5ac8fa' };
+
+// Top şekli (0,0 merkezli). Mağaza önizlemesi de bunu kullanır.
+function drawBall(ctx, shape, r, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  if (shape === 'square') {
+    ctx.rect(-r * 0.9, -r * 0.9, r * 1.8, r * 1.8);
+  } else if (shape === 'diamond') {
+    ctx.moveTo(0, -r * 1.15); ctx.lineTo(r * 1.0, 0); ctx.lineTo(0, r * 1.15); ctx.lineTo(-r * 1.0, 0);
+    ctx.closePath();
+  } else if (shape === 'star') {
+    for (var i = 0; i < 10; i++) {
+      var ang = -Math.PI / 2 + i * Math.PI / 5;
+      var rr = i % 2 === 0 ? r * 1.25 : r * 0.6;
+      if (i === 0) ctx.moveTo(Math.cos(ang) * rr, Math.sin(ang) * rr); else ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr);
+    }
+    ctx.closePath();
+  } else {
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+  }
+  ctx.fill();
+  if (shape === 'ring') {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.save();
+    ctx.scale(1, 0.35);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// Arka plan süsü: kaymalı (paralaks) ama deterministik; dist = katedilen yol.
+function drawDeco(ctx, theme, dist) {
+  var col = theme.c.deco;
+  var d = dist || 0;
+  ctx.fillStyle = col;
+  ctx.strokeStyle = col;
+  var i, x;
+  if (theme.deco === 'sun') {
+    // Ufukta yarım güneş + soluk çizgiler; oyun alanında engel gibi görünmesin
+    ctx.beginPath();
+    ctx.arc(400, FLOOR_Y, 60, Math.PI, Math.PI * 2);
+    ctx.fill();
+    for (i = 0; i < 3; i++) ctx.fillRect(0, FLOOR_Y - 14 - i * 16, W0, 1);
+  } else if (theme.deco === 'trees') {
+    for (i = 0; i < 9; i++) {
+      x = ((i * 83 - d * 0.25) % (W0 + 80) + W0 + 80) % (W0 + 80) - 40;
+      var h = 60 + (i * 37) % 70;
+      ctx.beginPath();
+      ctx.moveTo(x, FLOOR_Y); ctx.lineTo(x + 26, FLOOR_Y - h); ctx.lineTo(x + 52, FLOOR_Y);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (theme.deco === 'grid') {
+    ctx.lineWidth = 1;
+    var off = (d * 0.5) % 40;
+    for (x = -off; x < W0; x += 40) { ctx.beginPath(); ctx.moveTo(x, CEIL_Y); ctx.lineTo(x, FLOOR_Y); ctx.stroke(); }
+    for (var y = CEIL_Y; y < FLOOR_Y; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W0, y); ctx.stroke(); }
+  } else if (theme.deco === 'flakes') {
+    for (i = 0; i < 26; i++) {
+      x = ((i * 61 - d * 0.15) % W0 + W0) % W0;
+      var fy = CEIL_Y + 10 + ((i * 97) % (FLOOR_Y - CEIL_Y - 20));
+      ctx.fillRect(x - 1.5, fy - 1.5, 3, 3);
+    }
+  } else {
+    for (i = 0; i < 30; i++) {
+      x = ((i * 53 - d * 0.1) % W0 + W0) % W0;
+      ctx.fillRect(x, CEIL_Y + 8 + ((i * 71) % (FLOOR_Y - CEIL_Y - 16)), 2, 2);
+    }
+  }
+}
+
 function draw(ctx, state, view) {
   view = view || {};
   var fx = view.fx || {};
@@ -346,8 +594,14 @@ function draw(ctx, state, view) {
   var scale = ctx.canvas.width / W0;
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
-  ctx.fillStyle = '#0b1220';
+  var theme = view.theme || DEFAULT_THEME;
+  var tc = theme.c;
+  var skin = view.skin || DEFAULT_SKIN;
+  var textCol = tc.text || '#e8ecf1';
+  var textDim = tc.textDim || '#9fb3d1';
+  ctx.fillStyle = tc.bg;
   ctx.fillRect(0, 0, W0, H0);
+  drawDeco(ctx, theme, state.distance);
 
   // Ekran sarsıntısı (≤ 200 ms, zamanlamayı main.js yapar)
   var shake = fx.shake || 0;
@@ -356,7 +610,7 @@ function draw(ctx, state, view) {
     ctx.translate((Math.random() * 2 - 1) * amp, (Math.random() * 2 - 1) * amp);
   }
 
-  ctx.strokeStyle = '#223352';
+  ctx.strokeStyle = tc.line;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(0, CEIL_Y);
@@ -370,13 +624,15 @@ function draw(ctx, state, view) {
   for (var i = 0; i < state.obstacles.length; i++) {
     var o = state.obstacles[i];
     // Hareketli kapı mor tonlu, delinen (kalkanla) duvar soluk
-    ctx.fillStyle = o.hit ? '#141c2c' : (o.passed ? '#16233b' : (o.move ? '#2b2650' : '#1f3150'));
+    ctx.fillStyle = o.hit ? tc.wallPassed : (o.passed ? tc.wallPassed : (o.move ? tc.wallMove : tc.wall));
+    ctx.globalAlpha = o.hit ? 0.5 : 1;
     ctx.fillRect(o.x, CEIL_Y, WALL_W, o.gapY - CEIL_Y);
     ctx.fillRect(o.x, o.gapY + o.gapH, WALL_W, FLOOR_Y - (o.gapY + o.gapH));
     // Kapı ağzını belirginleştiren ince kenar
-    ctx.fillStyle = o.passed ? '#2a3c5c' : (o.move ? '#b39dfa' : '#5ac8fa');
+    ctx.fillStyle = o.passed ? tc.line : (o.move ? tc.edgeMove : tc.edge);
     ctx.fillRect(o.x, o.gapY - 3, WALL_W, 3);
     ctx.fillRect(o.x, o.gapY + o.gapH, WALL_W, 3);
+    ctx.globalAlpha = 1;
   }
 
   // Yıldızlar (kapı ortasında; toplanınca kalkan)
@@ -390,23 +646,22 @@ function draw(ctx, state, view) {
   var trail = fx.trail || [];
   for (var t = 0; t < trail.length; t++) {
     var a = (t + 1) / (trail.length + 1);
-    ctx.fillStyle = 'rgba(90,200,250,' + (0.25 * a).toFixed(3) + ')';
+    ctx.globalAlpha = 0.25 * a;
+    ctx.fillStyle = skin.color;
     ctx.beginPath();
     ctx.arc(trail[t].x, trail[t].y, BALL_R * (0.4 + 0.5 * a), 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
   // Top — zemine çarpınca kısa basılma
   var sq = fx.squash || 0;
   var sx = 1 + 0.35 * sq;
   var sy = 1 - 0.3 * sq;
-  ctx.fillStyle = state.status === 'over' ? '#e05656' : '#5ac8fa';
   ctx.save();
   ctx.translate(BALL_X, state.y + BALL_R * (1 - sy));
   ctx.scale(sx, sy);
-  ctx.beginPath();
-  ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
-  ctx.fill();
+  drawBall(ctx, skin.shape, BALL_R, state.status === 'over' ? '#e05656' : skin.color);
   ctx.restore();
 
   // Kalkan halkası
@@ -430,18 +685,18 @@ function draw(ctx, state, view) {
 
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
-  ctx.fillStyle = '#e8ecf1';
+  ctx.fillStyle = textCol;
   ctx.font = 'bold 22px system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText('Kapı: ' + state.score, 14, 24);
   ctx.textAlign = 'center';
   ctx.font = '16px system-ui, sans-serif';
-  ctx.fillStyle = '#9fb3d1';
+  ctx.fillStyle = textDim;
   var lvCount = view.levelCount || 10;
   var per = view.gatesPerLevel || 8;
   ctx.fillText('Bölüm ' + state.level + '/' + lvCount + '  ·  ' + (state.score % per) + '/' + per, W0 / 2, 23);
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#e8ecf1';
+  ctx.fillStyle = textCol;
   ctx.font = '18px system-ui, sans-serif';
   ctx.fillText('Rekor: ' + best, W0 - 14, 24);
   ctx.textAlign = 'left';
@@ -451,7 +706,7 @@ function draw(ctx, state, view) {
   if (view.banner && view.banner.a > 0) {
     ctx.globalAlpha = Math.min(1, view.banner.a);
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#e8ecf1';
+    ctx.fillStyle = textCol;
     ctx.font = 'bold 34px system-ui, sans-serif';
     ctx.fillText(view.banner.title, W0 / 2, 150);
     if (view.banner.sub) {
@@ -470,13 +725,16 @@ function draw(ctx, state, view) {
   }
 
   var tapWord = view.touch ? 'Dokun' : 'Boşluk / dokun';
+  var wallet = typeof view.coins === 'number'
+    ? { text: '★ ' + view.coins + (view.earned ? '  (+' + view.earned + ')' : '') + '  ·  Mağaza: aşağıdaki düğme', font: '15px system-ui, sans-serif', color: '#ffd166' }
+    : null;
   if (phase === 'ready') {
     overlay(ctx, [
       { text: 'Sekme Gücü', font: 'bold 30px system-ui, sans-serif', gap: 40 },
       { text: 'Basılı tut: top yükselir · bırak: düşer' },
       { text: 'Kapıları ıskalama, tavana değme', gap: 44 },
-      { text: tapWord + ' ve başla', font: 'bold 20px system-ui, sans-serif', color: '#5ac8fa' }
-    ]);
+      { text: tapWord + ' ve başla', font: 'bold 20px system-ui, sans-serif', color: '#5ac8fa', gap: 40 }
+    ].concat(wallet ? [wallet] : []));
   } else if (phase === 'paused') {
     overlay(ctx, [
       { text: 'Duraklatıldı', font: 'bold 26px system-ui, sans-serif', gap: 40 },
@@ -490,7 +748,7 @@ function draw(ctx, state, view) {
       view.canRestart
         ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden oyna', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
         : { text: ' ', font: '16px system-ui, sans-serif' }
-    ]);
+    ].concat(wallet ? [wallet] : []));
   } else if (phase === 'over') {
     var lines = [
       { text: 'Oyun bitti', font: 'bold 28px system-ui, sans-serif', gap: 36 },
@@ -502,12 +760,14 @@ function draw(ctx, state, view) {
     lines.push(view.canRestart
       ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden başla', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
       : { text: ' ', font: '16px system-ui, sans-serif' });
+    if (wallet) lines.push(wallet);
     overlay(ctx, lines);
   }
 }
 
-if (typeof module !== 'undefined') module.exports = { draw: draw };
-if (typeof window !== 'undefined') window.GameRender = { draw: draw };
+var RenderAPI = { draw: draw, drawBall: drawBall, drawDeco: drawDeco };
+if (typeof module !== 'undefined') module.exports = RenderAPI;
+if (typeof window !== 'undefined') window.GameRender = RenderAPI;
 
 </script>
 <script>
@@ -537,6 +797,11 @@ function bootstrap() {
   var input = { action: false };
   var muted = false;
   var best = 0;
+  // Mağaza profili (cüzdan + sahip olunan/kuşanılan görünümler)
+  var Shop = window.GameShop || null;
+  var profile = Shop ? Shop.load(window.localStorage) : null;
+  var earned = 0;
+  var shopOpen = false;
   try {
     var saved = window.localStorage.getItem('sekmeguc-best');
     if (saved) best = parseInt(saved, 10) || 0;
@@ -632,6 +897,7 @@ function bootstrap() {
     ensureAudio();
   }
   function restart() {
+    earned = 0;
     state = newGame();
     prevBounces = state.bounces;
     prevScore = state.score;
@@ -652,6 +918,7 @@ function bootstrap() {
 
   // Ortak "bas" ve "bırak" — klavye ve dokunuş aynı yoldan geçer.
   function press() {
+    if (shopOpen) return;
     if (phase === 'ready' || phase === 'paused') { startPlaying(); input.action = true; return; }
     if (phase === 'over' || phase === 'won') { if (canRestart()) { restart(); input.action = true; } return; }
     input.action = true;
@@ -661,6 +928,10 @@ function bootstrap() {
   }
 
   function onKeyDown(e) {
+    if (shopOpen) {
+      if (e.code === 'Escape') { e.preventDefault(); closeShop(); }
+      return;
+    }
     if (e.code === 'Space' || e.code === 'ArrowUp') {
       e.preventDefault();
       if (e.repeat) return;
@@ -684,6 +955,8 @@ function bootstrap() {
     }
   }
   function onPointerDown(e) {
+    // Mağaza düğmesi ve paneli oyun girdisi değildir
+    if (e.target && e.target.closest && e.target.closest('[data-ui]')) return;
     if (e.pointerType === 'touch' || e.pointerType === 'pen') touch = true;
     if (e.cancelable) e.preventDefault();
     press();
@@ -692,6 +965,89 @@ function bootstrap() {
     if (e && e.cancelable) e.preventDefault();
     release();
   }
+  // --- Mağaza arayüzü (index.html'de #magaza ve #magazaBtn varsa) ----------------
+  var shopEl = document.getElementById('magaza');
+  var shopBtn = document.getElementById('magazaBtn');
+  var shopTab = 'ball';
+  function settle() {
+    if (profile && earned === 0 && (state.status === 'over' || state.status === 'won')) {
+      earned = Shop.reward(state);
+      profile.coins += earned;
+      Shop.save(window.localStorage, profile);
+    }
+  }
+  function preview(item, kind) {
+    var cv = document.createElement('canvas');
+    var pr = Math.min(3, Math.max(1, window.devicePixelRatio || 1));
+    cv.width = 72 * pr; cv.height = 52 * pr;
+    cv.className = 'onizleme';
+    var c2 = cv.getContext('2d');
+    c2.scale(pr, pr);
+    var theme = kind === 'map' ? item : Shop.equippedMap(profile);
+    c2.fillStyle = theme.c.bg; c2.fillRect(0, 0, 72, 52);
+    c2.save(); c2.scale(72 / 520, 52 / 540); window.GameRender.drawDeco(c2, theme, 0);
+    if (kind === 'map') {
+      c2.fillStyle = theme.c.wall; c2.fillRect(300, 30, 40, 150); c2.fillRect(300, 330, 40, 150);
+      c2.fillStyle = theme.c.edge; c2.fillRect(300, 177, 40, 6); c2.fillRect(300, 330, 40, 6);
+    }
+    c2.restore();
+    var skin = kind === 'ball' ? item : Shop.equippedBall(profile);
+    c2.save(); c2.translate(kind === 'ball' ? 36 : 22, 26); window.GameRender.drawBall(c2, skin.shape, kind === 'ball' ? 13 : 7, skin.color); c2.restore();
+    return cv;
+  }
+  function renderShop() {
+    if (!shopEl || !profile) return;
+    shopEl.querySelector('.cuzdan').textContent = '★ ' + profile.coins;
+    var tabs = shopEl.querySelectorAll('[data-sekme]');
+    for (var t = 0; t < tabs.length; t++) tabs[t].setAttribute('aria-selected', String(tabs[t].getAttribute('data-sekme') === shopTab));
+    var list = shopEl.querySelector('.liste');
+    list.innerHTML = '';
+    Shop.CATALOG[shopTab].forEach(function (item) {
+      var row = document.createElement('div');
+      row.className = 'urun';
+      row.appendChild(preview(item, shopTab));
+      var name = document.createElement('span');
+      name.className = 'ad';
+      name.textContent = item.name;
+      row.appendChild(name);
+      var b = document.createElement('button');
+      var owned = Shop.owns(profile, shopTab, item.id);
+      var on = profile.equipped[shopTab] === item.id;
+      if (on) { b.textContent = 'Kuşanıldı'; b.disabled = true; b.className = 'kusanildi'; }
+      else if (owned) { b.textContent = 'Kuşan'; }
+      else { b.textContent = '★ ' + item.price; b.disabled = profile.coins < item.price; b.className = 'al'; }
+      b.addEventListener('click', function () {
+        if (Shop.owns(profile, shopTab, item.id)) Shop.equip(profile, shopTab, item.id);
+        else if (!Shop.buy(profile, shopTab, item.id).ok) return;
+        Shop.save(window.localStorage, profile);
+        beep(880, 0.06, 'triangle');
+        renderShop();
+      });
+      row.appendChild(b);
+      list.appendChild(row);
+    });
+  }
+  function openShop() {
+    if (!shopEl || phase === 'playing') return;
+    shopOpen = true;
+    release();
+    shopEl.hidden = false;
+    renderShop();
+  }
+  function closeShop() {
+    if (!shopEl) return;
+    shopOpen = false;
+    shopEl.hidden = true;
+  }
+  if (shopEl && shopBtn && profile) {
+    shopBtn.addEventListener('click', openShop);
+    shopEl.querySelector('.kapat').addEventListener('click', closeShop);
+    var tabEls = shopEl.querySelectorAll('[data-sekme]');
+    for (var ti = 0; ti < tabEls.length; ti++) {
+      tabEls[ti].addEventListener('click', function (ev) { shopTab = ev.currentTarget.getAttribute('data-sekme'); renderShop(); });
+    }
+  }
+
   function pause() {
     if (phase !== 'playing') return;
     phase = 'paused';
@@ -802,10 +1158,15 @@ function bootstrap() {
     updateFx(frameDt);
     if (banner.a > 0 && phase === 'playing') banner.a = Math.max(0, banner.a - frameDt);
 
+    settle();
+    if (shopBtn) shopBtn.hidden = shopOpen || !(profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart());
     window.GameRender.draw(ctx, state, {
       best: best, muted: muted, phase: phase, fx: fx, touch: touch,
       newBest: newBest, canRestart: (phase === 'over' || phase === 'won') && canRestart(),
-      banner: banner, levelCount: C.LEVEL_COUNT, gatesPerLevel: C.GATES_PER_LEVEL
+      banner: banner, levelCount: C.LEVEL_COUNT, gatesPerLevel: C.GATES_PER_LEVEL,
+      theme: profile ? Shop.equippedMap(profile) : null, skin: profile ? Shop.equippedBall(profile) : null,
+      coins: profile && phase !== 'playing' && phase !== 'paused' ? profile.coins : undefined,
+      earned: phase === 'over' || phase === 'won' ? earned : 0
     });
     window.requestAnimationFrame(frame);
   }

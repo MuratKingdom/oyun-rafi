@@ -26,7 +26,7 @@ function makeCtx() {
     moveTo: function () {}, lineTo: function () {}, stroke: function () {}, fill: function () {},
     arc: function () {}, fillText: function () {}, measureText: function () { return { width: 10 }; },
     save: function () {}, restore: function () {}, translate: function () {},
-    setTransform: function () {}, scale: function () {}, closePath: function () {}
+    setTransform: function () {}, scale: function () {}, closePath: function () {}, rect: function () {}
   };
   return new Proxy(base, handler);
 }
@@ -186,6 +186,41 @@ function firePointer(type) {
   var restarted = lastState.status === 'playing';
   report('T5f yeniden başlatma kilidi', over && stillOver && restarted,
     'öldü=' + over + ' hemen-dokunuş-sonrası=' + (stillOver ? 'over' : 'playing') + ' kilitten-sonra=' + lastState.status);
+})();
+
+// T5g — mağaza bağlıyken: oyun sonunda ödül cüzdana bir kez yazılır, kuşanılan görünüm çizime gider
+(function t5g() {
+  rafQueue.length = 0;
+  listeners.keydown.length = 0; listeners.keyup.length = 0;
+  listeners.pointerdown.length = 0; listeners.pointerup.length = 0;
+  require('./shop.js');
+  var P = global.window.GameShop.createProfile();
+  P.coins = 100; global.window.GameShop.buy(P, 'map', 'neon');
+  global.window.GameShop.save(global.localStorage, P);
+  // Ödül hesabı T15'te ayrıca sınanıyor; burada main.js'in onu tam bir kez uyguladığını ölçmek için sabitle
+  var realReward = global.window.GameShop.reward;
+  var calls = 0;
+  global.window.GameShop.reward = function () { calls++; return 7; };
+  var lastView = null;
+  var prevDraw = global.window.GameRender.draw;
+  global.window.GameRender.draw = function (ctx, st, view) { lastView = view; return prevDraw(ctx, st, view); };
+  require('./main.js').bootstrap();
+  pumpFrames(3);
+  var themed = lastView && lastView.theme && lastView.theme.id === 'neon';
+  var coins0 = JSON.parse(global.localStorage.getItem('sekmeguc-profil')).coins;
+  fireKey('keydown', 'ArrowUp');
+  var over = false;
+  for (var i = 0; i < 300 && !over; i++) { pumpFrames(1); if (lastState.status === 'over') over = true; }
+  fireKey('keyup', 'ArrowUp');
+  pumpFrames(10);
+  var coins1 = JSON.parse(global.localStorage.getItem('sekmeguc-profil')).coins;
+  var expected = 7;
+  pumpFrames(30); // tekrar tekrar eklenmemeli
+  var coins2 = JSON.parse(global.localStorage.getItem('sekmeguc-profil')).coins;
+  global.window.GameRender.draw = prevDraw;
+  global.window.GameShop.reward = realReward;
+  report('T5g ödül cüzdana bir kez yazılır, tema uygulanır', themed && over && coins1 === coins0 + expected && coins2 === coins1 && calls === 1,
+    'tema=' + (lastView && lastView.theme && lastView.theme.id) + ' cüzdan ' + coins0 + '→' + coins1 + '→' + coins2 + ' (ödül ' + expected + ', hesaplama ' + calls + ' kez)');
 })();
 
 console.log('--- özet: ' + (fails === 0 ? 'tüm testler PASS' : fails + ' test FAIL'));

@@ -42,6 +42,23 @@ zeminden sekerek yükselir); çift duvardan sonraki duvar normal aralıkla gelir
 geçtikçe duvarlar hızlanır ve kapılar daralır. Her oyun farklı bir tohumla (seed) başlar,
 bu yüzden kapı dizilimi her seferinde değişir.
 
+## Mağaza (2 Ekim 2026)
+Başlangıç ve oyun sonu ekranındaki **🛒 Mağaza** düğmesiyle açılır. Para birimi **yıldız**dır:
+oyunda topladığın yıldızlar + geçtiğin her bölüm için 1 + kazanırsan 10. Gerçek para yok.
+
+| Top | Fiyat | | Harita | Fiyat |
+|---|---|---|---|---|
+| Klasik | ücretsiz | | Gece | ücretsiz |
+| Kor, Nane | ★ 15 | | Gün Batımı, Orman | ★ 40 |
+| Küp | ★ 30 | | Neon, Buz | ★ 70 |
+| Elmas | ★ 45 | | | |
+| Yıldız | ★ 60 | | | |
+| Gezegen (halkalı) | ★ 90 | | | |
+
+Satın alınan ürün hemen kuşanılır; sahip olunanlar arasında istediğin an geçiş yapılır.
+Cüzdan ve görünümler tarayıcıda (`localStorage`, `sekmeguc-profil`) saklanır; bozuk ya da
+elle değiştirilmiş kayıt güvenli varsayılana döner. Katalog `shop.js`'te.
+
 ## NE ÇALIŞIYOR
 - Zıplama fiziği, basılı-tutma ile yükseklik kontrolü, kapı/duvar çarpışması ve kayıp sebebi gösterimi (kanıt: T1, T2, T3, T5c, tarayıcı)
 - Artan zorluk (hız + daralan kapı) ve kapı geçme skoru (kanıt: T1, T3, W3)
@@ -59,6 +76,11 @@ bu yüzden kapı dizilimi her seferinde değişir.
 - Denge bir botla ölçüldü (aşağıda), insan oynanışıyla ayarlanmadı; 10 bölüm botun hızıyla ~105 sn sürüyor.
 
 ## Doğrulama durumu
+**Mağaza:** `test.js` T13 (satın alma/kuşanma kuralları), T14 (bozuk/kurcalanmış kayıt),
+T15 (ödül hesabı ve fiyat dengesi: bir kazanma koşusu en pahalı ürünün dörtte birinden
+fazlasını getirir); `test-dom.js` T5g (oyun sonunda ödül cüzdana tam bir kez yazılır, kuşanılan
+tema çizime gider) — hepsi PASS. Headless Chromium'da Pixel 7 boyutunda mağaza açıldı, bir top
+ve bir harita satın alındı, profil kaydı ve oyun içi görünüm doğrulandı; konsol hatası 0.
 **Bölümler (2. adım):** `test.js` T7 (bölüm atlama), T8 (kazanma), T9 (yıldız → kalkan →
 çarpma yutulur, aynı duvar ikinci kez öldürmez, kalkansız ölüm), T10 (hareketli kapı alan
 içinde), T11 (sıçrama ≤ 150 px, öğeler doğru bölümde açılıyor), T12 (bot tohum 1'de 10
