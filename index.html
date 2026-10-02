@@ -98,7 +98,7 @@
   <div class="card">
     <h2>Sekme Gücü</h2>
     <p class="meta"><span class="kanat">arcade/fizik</span> · eklendi 2026-09-24</p>
-    <p class="ne">Zıplayan bir topu tek tuşla havada tutarak duvarlardaki dar kapılardan geçiriyorsun.</p>
+    <p class="ne">Zıplayan bir topu tek tuşla havada tutarak 10 bölüm boyunca dar kapılardan geçiriyorsun; yıldızlar kalkan verir, mor kapılar hareket eder.</p>
     <div class="actions">
       <a class="btn" href="oyunlar/sekmeguc/index.html">Oyna</a>
       <a class="btn ghost" href="https://github.com/MuratKingdom/oyun-rafi/tree/oyun/sekmeguc">Kaynak</a>
@@ -106,9 +106,9 @@
     <details>
       <summary>Ne çalışıyor, ne eksik</summary>
       <ul>
-        <li><strong>Çalışıyor:</strong> zıplama fiziği ve basılı-tutma ile yükseklik kontrolü · kapı/duvar çarpışması ve kayıp sebebi · doygunluğa giden zorluk eğrisi + kapı skoru · <strong>mobil cila</strong>: dokun-başla, tüm ekran dokunma, duraklatma, parçacık/sarsıntı/titreşim · ses ve rekor</li>
-        <li><strong>Eksik:</strong> kazanma koşulu ve bölüm yok (yalnızca skor) · tek renk tema · denge insan oynanışına göre ayarlanmadı · gerçek telefonda elle denenmedi</li>
-        <li><strong>Geliştirmek için ilk adım:</strong> <code>step()</code>’e hareketli kapı ve toplanabilir ekle (plan: 2. adım içerik, 3. adım Play Store)</li>
+        <li><strong>Çalışıyor:</strong> zıplama fiziği ve basılı-tutma ile yükseklik kontrolü · kapı/duvar çarpışması ve kayıp sebebi · <strong>10 bölüm + kazanma</strong>, yıldız/kalkan, hareketli kapı, çift duvar (bot ile 8/8 tohum kalkansız kazanılabilir) · doygunluğa giden zorluk eğrisi · <strong>mobil cila</strong>: dokun-başla, tüm ekran dokunma, duraklatma, parçacık/sarsıntı/titreşim · ses ve rekor</li>
+        <li><strong>Eksik:</strong> tek renk tema · denge botla ölçüldü, insan oynanışıyla ayarlanmadı · uzun telefonlarda oyun alanı kare kalıyor · gerçek telefonda elle denenmedi</li>
+        <li><strong>Geliştirmek için ilk adım:</strong> <code>logic.js</code> başındaki bölüm sabitlerini değiştir, <code>node tools/kazanilabilirlik.js --kalkansiz</code> ile ölç (sıradaki: Play Store)</li>
       </ul>
     </details>
   </div>

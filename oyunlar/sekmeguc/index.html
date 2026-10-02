@@ -81,14 +81,14 @@ var MAX_VY = 900;
 var SPEED0 = 200;
 var SPEED_MAX = 340;
 var GAP_H0 = 170;
-var GAP_MIN = 104;
+var GAP_MIN = 120;
 // Zorluk eğrisi: doğrusal değil, doygunluğa giden üstel yaklaşım.
 // İlk dakikada hızlı sertleşir, sonra yavaşlar ve bir tavanda durur;
 // böylece uzun koşular adil kalır, "sonsuz hızlanma" ile zorla bitmez.
 var DIFF_TAU = 75;
 var WALL_W = 28;
 var SPAWN_GRACE = 2.2;
-var SPAWN_INTERVAL_MIN = 1.15;
+var SPAWN_INTERVAL_MIN = 1.3;
 var SPAWN_INTERVAL_MAX = 1.9;
 var SPAWN_RAMP = 0.01;
 
@@ -105,6 +105,29 @@ function difficulty(t) {
   return 1 - Math.exp(-t / DIFF_TAU);
 }
 
+// --- Bölümler ---------------------------------------------------------------
+// Her bölüm GATES_PER_LEVEL kapıdır. Son bölümün son kapısı geçilince oyun kazanılır.
+// Yeni öğeler bölümle açılır:
+//   2+  yıldız: kapının ortasında durur; toplanınca bir kalkan verir (en çok 1)
+//   3+  hareketli kapı: boşluk yukarı-aşağı salınır, genliği bölümle büyür
+//   6+  çift duvar: art arda iki duvar, boşlukları birbirine kaydırılmış
+// Kalkan, bir duvar çarpmasını yutar (tavanı değil).
+var LEVEL_COUNT = 10;
+var GATES_PER_LEVEL = 8;
+var STAR_FROM = 2;
+var MOVE_FROM = 3;
+var DOUBLE_FROM = 6;
+var STAR_R = 9;
+var MAX_SHIELD = 1;
+var DOUBLE_DX = 96;
+var DOUBLE_SHIFT = 46;
+var MARGIN = 40;
+// Art arda iki kapının ağız üstü arasındaki en büyük fark. Top yalnızca zeminden
+// sekerek yükselir (basılı tutmak düşüşü yavaşlatır, havada tutmaz); alçak bir
+// kapıdan hemen sonra çok yüksek bir kapı hızlanan oyunda fiziksel olarak
+// yetişilemez olabiliyordu. Bu sınır her dizilimi oynanabilir tutar.
+var MAX_JUMP = 150;
+
 function createState(seed) {
   return {
     rngA: (seed || 1) >>> 0,
@@ -113,14 +136,63 @@ function createState(seed) {
     t: 0,
     speed: SPEED0,
     gapH: GAP_H0,
+    lastGapY: -1,
     spawnTimer: SPAWN_GRACE,
     obstacles: [],
     bounces: 0,
     score: 0,
+    level: 1,
+    stars: 0,
+    shield: 0,
+    shieldUsed: 0,
     distance: 0,
     status: 'playing',
     overReason: ''
   };
+}
+
+function clampGapY(gapY, gapH) {
+  var minTop = CEIL_Y + MARGIN;
+  var maxTop = FLOOR_Y - MARGIN - gapH;
+  if (maxTop < minTop) maxTop = minTop;
+  return Math.max(minTop, Math.min(maxTop, gapY));
+}
+
+function makeWall(state, x, baseY, gapH) {
+  var lv = state.level;
+  var w = { x: x, baseY: baseY, gapY: baseY, gapH: gapH, passed: false, hit: false, move: null, star: null };
+  if (lv >= MOVE_FROM && nextRand(state) < Math.min(0.7, 0.18 * (lv - MOVE_FROM + 1))) {
+    w.move = {
+      amp: Math.min(48, 22 + 4 * (lv - MOVE_FROM)),
+      freq: 0.9 + nextRand(state) * 0.8,
+      phase: nextRand(state) * Math.PI * 2
+    };
+  }
+  if (lv >= STAR_FROM && nextRand(state) < 0.4) w.star = { taken: false };
+  return w;
+}
+
+function spawn(state) {
+  var gapH = state.gapH;
+  var minTop = CEIL_Y + MARGIN;
+  var maxTop = FLOOR_Y - MARGIN - gapH;
+  var span = Math.max(10, maxTop - minTop);
+  var gapY = minTop + nextRand(state) * span;
+  if (state.lastGapY >= 0) {
+    gapY = Math.max(state.lastGapY - MAX_JUMP, Math.min(state.lastGapY + MAX_JUMP, gapY));
+  }
+  gapY = clampGapY(gapY, gapH);
+  state.obstacles.push(makeWall(state, CANVAS_W + WALL_W, gapY, gapH));
+  state.lastGapY = gapY;
+  if (state.level >= DOUBLE_FROM && nextRand(state) < 0.3) {
+    var shift = (nextRand(state) < 0.5 ? -1 : 1) * DOUBLE_SHIFT;
+    var second = makeWall(state, CANVAS_W + WALL_W + DOUBLE_DX, clampGapY(gapY + shift, gapH), gapH);
+    second.move = null; // çift duvarın ikincisi sabit: iki hareketli üst üste adil değil
+    state.obstacles.push(second);
+    state.lastGapY = second.gapY;
+    return DOUBLE_DX / state.speed; // sonraki duvar ikinci parçaya normal aralıkla gelsin
+  }
+  return 0;
 }
 
 function step(state, input, dt) {
@@ -152,28 +224,53 @@ function step(state, input, dt) {
 
   state.spawnTimer -= dt;
   if (state.spawnTimer <= 0) {
-    var maxTop = FLOOR_Y - 40 - state.gapH;
-    var minTop = CEIL_Y + 40;
-    var span = Math.max(10, maxTop - minTop);
-    var gapY = minTop + nextRand(state) * span;
-    state.obstacles.push({ x: CANVAS_W + WALL_W, gapY: gapY, gapH: state.gapH, passed: false });
+    var extra = spawn(state);
     var interval = SPAWN_INTERVAL_MAX - state.t * SPAWN_RAMP;
     if (interval < SPAWN_INTERVAL_MIN) interval = SPAWN_INTERVAL_MIN;
-    state.spawnTimer = interval;
+    state.spawnTimer = interval + extra;
   }
 
   for (var i = 0; i < state.obstacles.length; i++) {
     var o = state.obstacles[i];
     o.x -= state.speed * dt;
+    if (o.move) {
+      o.gapY = clampGapY(o.baseY + o.move.amp * Math.sin(o.move.phase + state.t * o.move.freq), o.gapH);
+    }
+
+    // Yıldız: kapının ortasında
+    if (o.star && !o.star.taken) {
+      var sx = o.x + WALL_W / 2;
+      var sy = o.gapY + o.gapH / 2;
+      if (Math.abs(sx - BALL_X) < BALL_R + STAR_R && Math.abs(sy - state.y) < BALL_R + STAR_R) {
+        o.star.taken = true;
+        state.stars++;
+        if (state.shield < MAX_SHIELD) state.shield++;
+      }
+    }
+
     if (!o.passed && o.x + WALL_W < BALL_X) {
       o.passed = true;
       state.score++;
+      if (state.score % GATES_PER_LEVEL === 0) {
+        if (state.level >= LEVEL_COUNT) {
+          state.status = 'won';
+          state.overReason = 'Bütün bölümleri geçtin';
+          return state;
+        }
+        state.level++;
+      }
     }
-    if (o.x < BALL_X + BALL_R && o.x + WALL_W > BALL_X - BALL_R) {
+    if (!o.hit && o.x < BALL_X + BALL_R && o.x + WALL_W > BALL_X - BALL_R) {
       if (state.y - BALL_R < o.gapY || state.y + BALL_R > o.gapY + o.gapH) {
-        state.status = 'over';
-        state.overReason = 'Duvara çarptın';
-        return state;
+        if (state.shield > 0) {
+          state.shield--;
+          state.shieldUsed++;
+          o.hit = true; // kalkan bu duvarı deler; aynı duvar ikinci kez öldürmez
+        } else {
+          state.status = 'over';
+          state.overReason = 'Duvara çarptın';
+          return state;
+        }
       }
     }
   }
@@ -190,7 +287,9 @@ function step(state, input, dt) {
 var CONST = {
   CANVAS_W: CANVAS_W, CANVAS_H: CANVAS_H, BALL_X: BALL_X, BALL_R: BALL_R,
   FLOOR_Y: FLOOR_Y, CEIL_Y: CEIL_Y, WALL_W: WALL_W,
-  SPEED0: SPEED0, SPEED_MAX: SPEED_MAX, GAP_H0: GAP_H0, GAP_MIN: GAP_MIN
+  SPEED0: SPEED0, SPEED_MAX: SPEED_MAX, GAP_H0: GAP_H0, GAP_MIN: GAP_MIN,
+  LEVEL_COUNT: LEVEL_COUNT, GATES_PER_LEVEL: GATES_PER_LEVEL, STAR_R: STAR_R,
+  STAR_FROM: STAR_FROM, MOVE_FROM: MOVE_FROM, DOUBLE_FROM: DOUBLE_FROM, MAX_JUMP: MAX_JUMP
 };
 var API = { createState: createState, step: step, difficulty: difficulty, CONST: CONST };
 if (typeof module !== 'undefined') module.exports = API;
@@ -225,6 +324,19 @@ function overlay(ctx, lines) {
   ctx.textAlign = 'left';
 }
 
+function starShape(ctx, cx, cy, r, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (var i = 0; i < 10; i++) {
+    var ang = -Math.PI / 2 + i * Math.PI / 5;
+    var rr = i % 2 === 0 ? r : r * 0.45;
+    var px = cx + Math.cos(ang) * rr, py = cy + Math.sin(ang) * rr;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
 function draw(ctx, state, view) {
   view = view || {};
   var fx = view.fx || {};
@@ -257,13 +369,21 @@ function draw(ctx, state, view) {
 
   for (var i = 0; i < state.obstacles.length; i++) {
     var o = state.obstacles[i];
-    ctx.fillStyle = o.passed ? '#16233b' : '#1f3150';
+    // Hareketli kapı mor tonlu, delinen (kalkanla) duvar soluk
+    ctx.fillStyle = o.hit ? '#141c2c' : (o.passed ? '#16233b' : (o.move ? '#2b2650' : '#1f3150'));
     ctx.fillRect(o.x, CEIL_Y, WALL_W, o.gapY - CEIL_Y);
     ctx.fillRect(o.x, o.gapY + o.gapH, WALL_W, FLOOR_Y - (o.gapY + o.gapH));
     // Kapı ağzını belirginleştiren ince kenar
-    ctx.fillStyle = o.passed ? '#2a3c5c' : '#5ac8fa';
+    ctx.fillStyle = o.passed ? '#2a3c5c' : (o.move ? '#b39dfa' : '#5ac8fa');
     ctx.fillRect(o.x, o.gapY - 3, WALL_W, 3);
     ctx.fillRect(o.x, o.gapY + o.gapH, WALL_W, 3);
+  }
+
+  // Yıldızlar (kapı ortasında; toplanınca kalkan)
+  for (var si = 0; si < state.obstacles.length; si++) {
+    var so = state.obstacles[si];
+    if (!so.star || so.star.taken) continue;
+    starShape(ctx, so.x + WALL_W / 2, so.gapY + so.gapH / 2, 9, '#ffd166');
   }
 
   // İz
@@ -289,6 +409,15 @@ function draw(ctx, state, view) {
   ctx.fill();
   ctx.restore();
 
+  // Kalkan halkası
+  if (state.shield > 0 && state.status === 'playing') {
+    ctx.strokeStyle = 'rgba(255,209,102,0.85)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(BALL_X, state.y, BALL_R + 6, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
   // Parçacıklar
   var ps = fx.particles || [];
   for (var p = 0; p < ps.length; p++) {
@@ -305,10 +434,34 @@ function draw(ctx, state, view) {
   ctx.font = 'bold 22px system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText('Kapı: ' + state.score, 14, 24);
+  ctx.textAlign = 'center';
+  ctx.font = '16px system-ui, sans-serif';
+  ctx.fillStyle = '#9fb3d1';
+  var lvCount = view.levelCount || 10;
+  var per = view.gatesPerLevel || 8;
+  ctx.fillText('Bölüm ' + state.level + '/' + lvCount + '  ·  ' + (state.score % per) + '/' + per, W0 / 2, 23);
   ctx.textAlign = 'right';
+  ctx.fillStyle = '#e8ecf1';
   ctx.font = '18px system-ui, sans-serif';
   ctx.fillText('Rekor: ' + best, W0 - 14, 24);
   ctx.textAlign = 'left';
+  if (state.shield > 0) starShape(ctx, W0 - 24, FLOOR_Y + 24, 8, '#ffd166');
+
+  // Bölüm geçişi yazısı (main.js süreyi tutar)
+  if (view.banner && view.banner.a > 0) {
+    ctx.globalAlpha = Math.min(1, view.banner.a);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#e8ecf1';
+    ctx.font = 'bold 34px system-ui, sans-serif';
+    ctx.fillText(view.banner.title, W0 / 2, 150);
+    if (view.banner.sub) {
+      ctx.font = '17px system-ui, sans-serif';
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText(view.banner.sub, W0 / 2, 182);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+  }
 
   if (view.muted) {
     ctx.fillStyle = '#7c8aa5';
@@ -329,10 +482,20 @@ function draw(ctx, state, view) {
       { text: 'Duraklatıldı', font: 'bold 26px system-ui, sans-serif', gap: 40 },
       { text: tapWord + ' ve devam et', color: '#5ac8fa' }
     ]);
+  } else if (phase === 'won') {
+    overlay(ctx, [
+      { text: 'Kazandın!', font: 'bold 32px system-ui, sans-serif', color: '#ffd166', gap: 40 },
+      { text: state.overReason },
+      { text: 'Kapı: ' + state.score + '   Yıldız: ' + state.stars, gap: 44 },
+      view.canRestart
+        ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden oyna', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
+        : { text: ' ', font: '16px system-ui, sans-serif' }
+    ]);
   } else if (phase === 'over') {
     var lines = [
       { text: 'Oyun bitti', font: 'bold 28px system-ui, sans-serif', gap: 36 },
-      { text: state.overReason }
+      { text: state.overReason },
+      { text: 'Bölüm ' + state.level + '’e kadar geldin', font: '16px system-ui, sans-serif', color: '#9fb3d1' }
     ];
     if (view.newBest) lines.push({ text: 'Yeni rekor!', font: 'bold 20px system-ui, sans-serif', color: '#ffd166' });
     lines.push({ text: 'Kapı: ' + state.score + '   Rekor: ' + best, gap: 44 });
@@ -350,7 +513,7 @@ if (typeof window !== 'undefined') window.GameRender = { draw: draw };
 <script>
 // Sekme Gücü — döngü, girdi, ses, efektler; logic + render'ı bağlar
 //
-// Akış (phase): ready → playing ⇄ paused → over → (dokun/R) → playing
+// Akış (phase): ready → playing ⇄ paused → over | won → (dokun/R) → playing
 // Mobil: ekranın her yeri dokunma alanıdır; parmak canvas dışına kayınca da bırakma
 // algılanır; sekme arka plana geçince oyun kendiliğinden duraklar.
 
@@ -456,10 +619,15 @@ function bootstrap() {
   var newBest = false;
   var prevBounces = state.bounces;
   var prevScore = state.score;
+  var prevLevel = state.level;
+  var prevStars = state.stars;
+  var prevShieldUsed = state.shieldUsed;
+  var banner = { title: 'Bölüm 1', sub: '', a: 0 };
 
   function nowMs() { return Date.now(); }
 
   function startPlaying() {
+    if (phase === 'ready') banner = { title: 'Bölüm 1', sub: '', a: 1.4 };
     phase = 'playing';
     ensureAudio();
   }
@@ -467,6 +635,10 @@ function bootstrap() {
     state = newGame();
     prevBounces = state.bounces;
     prevScore = state.score;
+    prevLevel = state.level;
+    prevStars = state.stars;
+    prevShieldUsed = state.shieldUsed;
+    banner = { title: 'Bölüm 1', sub: '', a: 1.4 };
     newBest = false;
     fx.particles = [];
     fx.trail = [];
@@ -481,7 +653,7 @@ function bootstrap() {
   // Ortak "bas" ve "bırak" — klavye ve dokunuş aynı yoldan geçer.
   function press() {
     if (phase === 'ready' || phase === 'paused') { startPlaying(); input.action = true; return; }
-    if (phase === 'over') { if (canRestart()) { restart(); input.action = true; } return; }
+    if (phase === 'over' || phase === 'won') { if (canRestart()) { restart(); input.action = true; } return; }
     input.action = true;
   }
   function release() {
@@ -569,6 +741,42 @@ function bootstrap() {
           burst(C.BALL_X, state.y, 10, '#5ac8fa', 220);
           prevScore = state.score;
         }
+        if (state.stars !== prevStars) {
+          beep(990, 0.07, 'triangle');
+          beep(1320, 0.09, 'triangle');
+          burst(C.BALL_X, state.y, 12, '#ffd166', 200);
+          prevStars = state.stars;
+        }
+        if (state.shieldUsed !== prevShieldUsed) {
+          beep(300, 0.12, 'square');
+          buzz(30);
+          shakeLeft = SHAKE_MS * 0.6;
+          burst(C.BALL_X + 14, state.y, 16, '#ffd166', 260);
+          prevShieldUsed = state.shieldUsed;
+        }
+        if (state.level !== prevLevel) {
+          var sub = state.level === C.STAR_FROM ? 'Yıldız topla: bir çarpmayı affeder'
+            : state.level === C.MOVE_FROM ? 'Mor kapılar hareket eder'
+            : state.level === C.DOUBLE_FROM ? 'Çift duvarlar geliyor' : '';
+          banner = { title: 'Bölüm ' + state.level, sub: sub, a: sub ? 2.2 : 1.4 };
+          beep(523, 0.08, 'sine'); beep(784, 0.12, 'sine');
+          prevLevel = state.level;
+        }
+        if (state.status === 'won') {
+          beep(523, 0.1, 'sine'); beep(659, 0.1, 'sine'); beep(784, 0.2, 'sine');
+          buzz(40);
+          burst(C.BALL_X, state.y, 40, '#ffd166', 360);
+          if (state.score > best) {
+            best = state.score;
+            newBest = true;
+            try { window.localStorage.setItem('sekmeguc-best', String(best)); } catch (e) {}
+          }
+          phase = 'won';
+          overAt = nowMs();
+          input.action = false;
+          acc = 0;
+          break;
+        }
         if (state.status === 'over') {
           beep(110, 0.25, 'sawtooth');
           buzz(60);
@@ -592,10 +800,12 @@ function bootstrap() {
       acc = 0;
     }
     updateFx(frameDt);
+    if (banner.a > 0 && phase === 'playing') banner.a = Math.max(0, banner.a - frameDt);
 
     window.GameRender.draw(ctx, state, {
       best: best, muted: muted, phase: phase, fx: fx, touch: touch,
-      newBest: newBest, canRestart: phase === 'over' && canRestart()
+      newBest: newBest, canRestart: (phase === 'over' || phase === 'won') && canRestart(),
+      banner: banner, levelCount: C.LEVEL_COUNT, gatesPerLevel: C.GATES_PER_LEVEL
     });
     window.requestAnimationFrame(frame);
   }
