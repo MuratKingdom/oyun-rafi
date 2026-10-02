@@ -26,7 +26,7 @@ function makeCtx() {
     moveTo: function () {}, lineTo: function () {}, stroke: function () {}, fill: function () {},
     arc: function () {}, fillText: function () {}, measureText: function () { return { width: 10 }; },
     save: function () {}, restore: function () {}, translate: function () {},
-    setTransform: function () {}, scale: function () {}
+    setTransform: function () {}, scale: function () {}, closePath: function () {}
   };
   return new Proxy(base, handler);
 }

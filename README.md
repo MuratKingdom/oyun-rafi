@@ -28,7 +28,17 @@ duvarda farklı bir yükseklikte durur. Zıplarken tuşu **basılı tuttuğun s�
 zayıflar ve top daha yükseğe çıkar; bıraktığında normal yerçekimiyle geri düşer. Amaç, her
 duvarın kapısını topun mevcut yüksekliğine denk getirip çarpmadan geçmek. Kapıyı ıskalayıp
 duvara çarparsan ya da tuşu çok uzun süre basılı tutup tavana çarparsan oyun biter. Skor
-(**Kapı**) geçtiğin kapı sayısıdır; en yüksek skor (**Rekor**) tarayıcıda saklanır. Zaman
+(**Kapı**) geçtiğin kapı sayısıdır; en yüksek skor (**Rekor**) tarayıcıda saklanır.
+
+**Bölümler (2 Ekim 2026):** Oyun 10 bölümdür, her bölüm 8 kapı. 10. bölümün son kapısı
+geçilince **kazanırsın**. Yeni öğeler bölümle açılır:
+- **Bölüm 2+ · Yıldız:** kapının ortasında durur; toplayınca topun çevresinde bir **kalkan**
+  belirir (en fazla 1). Kalkan bir duvar çarpmasını affeder; tavanı affetmez.
+- **Bölüm 3+ · Hareketli kapı (mor):** boşluk yukarı-aşağı salınır; genlik bölümle büyür.
+- **Bölüm 6+ · Çift duvar:** art arda iki duvar, boşlukları birbirine kaydırılmış.
+
+Adalet kuralları: art arda iki kapının yükseklik farkı en fazla 150 px'tir (top yalnız
+zeminden sekerek yükselir); çift duvardan sonraki duvar normal aralıkla gelir. Zaman
 geçtikçe duvarlar hızlanır ve kapılar daralır. Her oyun farklı bir tohumla (seed) başlar,
 bu yüzden kapı dizilimi her seferinde değişir.
 
@@ -41,13 +51,21 @@ bu yüzden kapı dizilimi her seferinde değişir.
 - **Mobil cila (2 Ekim 2026):** başlangıç ekranı dokunuşu bekler (T5e), ölüm sonrası yanlış yeniden başlamayı önleyen kilit (T5f), tüm ekran dokunma alanı, kaydırma/yakınlaştırma kapalı, ekrana oranlı sığan keskin (DPR) canvas, parçacık + ekran sarsıntısı + top basılması + iz, titreşim (destekleyen cihazda), doygunluğa giden zorluk eğrisi (T6). Kanıt: test.js/test-dom.js PASS; Pixel 7 ve masaüstü boyutunda headless Chromium ekran görüntüleri, konsol hatası 0
 
 ## NE EKSİK / İSKELE
-- Kazanma koşulu yok; oyun yalnızca "kaç kapı geçebilirsin" mantığıyla ilerliyor, sabit bir hedefte bitmiyor.
 - Görsel tema tek renk; arka plan/tema çeşitliliği yok.
 - Zorluk eğrisi sabitleri (`SPEED_MAX`, `GAP_MIN`, `DIFF_TAU`) insan oynanışına göre ayarlanmadı.
 - Uzun (dikey) telefon ekranlarında oyun alanı kare kaldığı için üstte/altta boşluk kalıyor.
 - Gerçek bir telefonda elle denenmedi (titreşim ve dokunma hissi dahil).
 
+- Denge bir botla ölçüldü (aşağıda), insan oynanışıyla ayarlanmadı; 10 bölüm botun hızıyla ~105 sn sürüyor.
+
 ## Doğrulama durumu
+**Bölümler (2. adım):** `test.js` T7 (bölüm atlama), T8 (kazanma), T9 (yıldız → kalkan →
+çarpma yutulur, aynı duvar ikinci kez öldürmez, kalkansız ölüm), T10 (hareketli kapı alan
+içinde), T11 (sıçrama ≤ 150 px, öğeler doğru bölümde açılıyor), T12 (bot tohum 1'de 10
+bölümü bitiriyor) — hepsi PASS. `tools/kazanilabilirlik.js` ileriyi simüle eden bir botla
+8 tohumun 8'ini **kalkan kapalıyken bile** bitirdi (5'i normal aramayla, 3'ü `--guclu` ile);
+yani her dizilim fiziksel olarak geçilebilir. Bot insan tepki süresini temsil etmez.
+
 `node --check` tüm dosyalarda temiz (çıkış kodu 0). `test.js` (T1-T4) ve `test-dom.js`
 (T5a-T5d) hepsi PASS, çıkış kodu 0. Ağ/`file://` taraması ve telif taraması sıfır eşleşme.
 Ortamda bulunan headless Chromium (Playwright) ile sayfa gerçekten `file://` üzerinden açıldı,
@@ -66,6 +84,10 @@ bir arcade/fizik mekaniği düzeyinde esinlenilmiştir.
 `file://` altında en yüksek skor kaydı bazı tarayıcılarda çalışmayabilir; oyun yine oynanır.
 
 ## Geliştirmek isteyen için ilk adım
+Denge sabitleri `logic.js` başında: `LEVEL_COUNT`, `GATES_PER_LEVEL`, `STAR_FROM` /
+`MOVE_FROM` / `DOUBLE_FROM`, `MAX_JUMP`. Değiştirdikten sonra
+`node tools/kazanilabilirlik.js --kalkansiz` ile oyunun hâlâ geçilebilir olduğunu ölç.
+
 `logic.js` içindeki `THRUST`, `BOUNCE_V` ve `GAP_H0`/`GAP_SHRINK` sabitlerini değiştirerek
 zıplama hissini ve zorluk dengesini ayarlayabilir veya `step()` içindeki kapı yerleştirme
 mantığına yeni bir duvar tipi (örn. hareketli kapı) ekleyebilirsin.
