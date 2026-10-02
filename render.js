@@ -1,5 +1,6 @@
 // Sekme Gücü — yalnızca çizim, state değiştirmez
-// view: { best, muted, phase: 'ready'|'playing'|'paused'|'over', fx, touch, newBest, canRestart }
+// view: { best, muted, phase: 'ready'|'playing'|'paused'|'over'|'won', fx, touch, newBest, canRestart,
+//         theme: {deco, c:{...}}, skin: {shape, color}, coins, earned }  (theme/skin: shop.js kataloğu)
 //   fx: { particles: [{x,y,life,max,color}], shake: 0..1, squash: 0..1, trail: [{x,y}] }
 
 var W0 = 520;
@@ -38,6 +39,82 @@ function starShape(ctx, cx, cy, r, color) {
   ctx.fill();
 }
 
+var DEFAULT_THEME = { deco: 'dots', c: { bg: '#0b1220', line: '#223352', wall: '#1f3150', wallPassed: '#16233b', wallMove: '#2b2650', edge: '#5ac8fa', edgeMove: '#b39dfa', deco: 'rgba(200,220,255,0.35)' } };
+var DEFAULT_SKIN = { shape: 'circle', color: '#5ac8fa' };
+
+// Top şekli (0,0 merkezli). Mağaza önizlemesi de bunu kullanır.
+function drawBall(ctx, shape, r, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  if (shape === 'square') {
+    ctx.rect(-r * 0.9, -r * 0.9, r * 1.8, r * 1.8);
+  } else if (shape === 'diamond') {
+    ctx.moveTo(0, -r * 1.15); ctx.lineTo(r * 1.0, 0); ctx.lineTo(0, r * 1.15); ctx.lineTo(-r * 1.0, 0);
+    ctx.closePath();
+  } else if (shape === 'star') {
+    for (var i = 0; i < 10; i++) {
+      var ang = -Math.PI / 2 + i * Math.PI / 5;
+      var rr = i % 2 === 0 ? r * 1.25 : r * 0.6;
+      if (i === 0) ctx.moveTo(Math.cos(ang) * rr, Math.sin(ang) * rr); else ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr);
+    }
+    ctx.closePath();
+  } else {
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+  }
+  ctx.fill();
+  if (shape === 'ring') {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.save();
+    ctx.scale(1, 0.35);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// Arka plan süsü: kaymalı (paralaks) ama deterministik; dist = katedilen yol.
+function drawDeco(ctx, theme, dist) {
+  var col = theme.c.deco;
+  var d = dist || 0;
+  ctx.fillStyle = col;
+  ctx.strokeStyle = col;
+  var i, x;
+  if (theme.deco === 'sun') {
+    // Ufukta yarım güneş + soluk çizgiler; oyun alanında engel gibi görünmesin
+    ctx.beginPath();
+    ctx.arc(400, FLOOR_Y, 60, Math.PI, Math.PI * 2);
+    ctx.fill();
+    for (i = 0; i < 3; i++) ctx.fillRect(0, FLOOR_Y - 14 - i * 16, W0, 1);
+  } else if (theme.deco === 'trees') {
+    for (i = 0; i < 9; i++) {
+      x = ((i * 83 - d * 0.25) % (W0 + 80) + W0 + 80) % (W0 + 80) - 40;
+      var h = 60 + (i * 37) % 70;
+      ctx.beginPath();
+      ctx.moveTo(x, FLOOR_Y); ctx.lineTo(x + 26, FLOOR_Y - h); ctx.lineTo(x + 52, FLOOR_Y);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (theme.deco === 'grid') {
+    ctx.lineWidth = 1;
+    var off = (d * 0.5) % 40;
+    for (x = -off; x < W0; x += 40) { ctx.beginPath(); ctx.moveTo(x, CEIL_Y); ctx.lineTo(x, FLOOR_Y); ctx.stroke(); }
+    for (var y = CEIL_Y; y < FLOOR_Y; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W0, y); ctx.stroke(); }
+  } else if (theme.deco === 'flakes') {
+    for (i = 0; i < 26; i++) {
+      x = ((i * 61 - d * 0.15) % W0 + W0) % W0;
+      var fy = CEIL_Y + 10 + ((i * 97) % (FLOOR_Y - CEIL_Y - 20));
+      ctx.fillRect(x - 1.5, fy - 1.5, 3, 3);
+    }
+  } else {
+    for (i = 0; i < 30; i++) {
+      x = ((i * 53 - d * 0.1) % W0 + W0) % W0;
+      ctx.fillRect(x, CEIL_Y + 8 + ((i * 71) % (FLOOR_Y - CEIL_Y - 16)), 2, 2);
+    }
+  }
+}
+
 function draw(ctx, state, view) {
   view = view || {};
   var fx = view.fx || {};
@@ -47,8 +124,14 @@ function draw(ctx, state, view) {
   var scale = ctx.canvas.width / W0;
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
-  ctx.fillStyle = '#0b1220';
+  var theme = view.theme || DEFAULT_THEME;
+  var tc = theme.c;
+  var skin = view.skin || DEFAULT_SKIN;
+  var textCol = tc.text || '#e8ecf1';
+  var textDim = tc.textDim || '#9fb3d1';
+  ctx.fillStyle = tc.bg;
   ctx.fillRect(0, 0, W0, H0);
+  drawDeco(ctx, theme, state.distance);
 
   // Ekran sarsıntısı (≤ 200 ms, zamanlamayı main.js yapar)
   var shake = fx.shake || 0;
@@ -57,7 +140,7 @@ function draw(ctx, state, view) {
     ctx.translate((Math.random() * 2 - 1) * amp, (Math.random() * 2 - 1) * amp);
   }
 
-  ctx.strokeStyle = '#223352';
+  ctx.strokeStyle = tc.line;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(0, CEIL_Y);
@@ -71,13 +154,15 @@ function draw(ctx, state, view) {
   for (var i = 0; i < state.obstacles.length; i++) {
     var o = state.obstacles[i];
     // Hareketli kapı mor tonlu, delinen (kalkanla) duvar soluk
-    ctx.fillStyle = o.hit ? '#141c2c' : (o.passed ? '#16233b' : (o.move ? '#2b2650' : '#1f3150'));
+    ctx.fillStyle = o.hit ? tc.wallPassed : (o.passed ? tc.wallPassed : (o.move ? tc.wallMove : tc.wall));
+    ctx.globalAlpha = o.hit ? 0.5 : 1;
     ctx.fillRect(o.x, CEIL_Y, WALL_W, o.gapY - CEIL_Y);
     ctx.fillRect(o.x, o.gapY + o.gapH, WALL_W, FLOOR_Y - (o.gapY + o.gapH));
     // Kapı ağzını belirginleştiren ince kenar
-    ctx.fillStyle = o.passed ? '#2a3c5c' : (o.move ? '#b39dfa' : '#5ac8fa');
+    ctx.fillStyle = o.passed ? tc.line : (o.move ? tc.edgeMove : tc.edge);
     ctx.fillRect(o.x, o.gapY - 3, WALL_W, 3);
     ctx.fillRect(o.x, o.gapY + o.gapH, WALL_W, 3);
+    ctx.globalAlpha = 1;
   }
 
   // Yıldızlar (kapı ortasında; toplanınca kalkan)
@@ -91,23 +176,22 @@ function draw(ctx, state, view) {
   var trail = fx.trail || [];
   for (var t = 0; t < trail.length; t++) {
     var a = (t + 1) / (trail.length + 1);
-    ctx.fillStyle = 'rgba(90,200,250,' + (0.25 * a).toFixed(3) + ')';
+    ctx.globalAlpha = 0.25 * a;
+    ctx.fillStyle = skin.color;
     ctx.beginPath();
     ctx.arc(trail[t].x, trail[t].y, BALL_R * (0.4 + 0.5 * a), 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
   // Top — zemine çarpınca kısa basılma
   var sq = fx.squash || 0;
   var sx = 1 + 0.35 * sq;
   var sy = 1 - 0.3 * sq;
-  ctx.fillStyle = state.status === 'over' ? '#e05656' : '#5ac8fa';
   ctx.save();
   ctx.translate(BALL_X, state.y + BALL_R * (1 - sy));
   ctx.scale(sx, sy);
-  ctx.beginPath();
-  ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
-  ctx.fill();
+  drawBall(ctx, skin.shape, BALL_R, state.status === 'over' ? '#e05656' : skin.color);
   ctx.restore();
 
   // Kalkan halkası
@@ -131,18 +215,18 @@ function draw(ctx, state, view) {
 
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
-  ctx.fillStyle = '#e8ecf1';
+  ctx.fillStyle = textCol;
   ctx.font = 'bold 22px system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText('Kapı: ' + state.score, 14, 24);
   ctx.textAlign = 'center';
   ctx.font = '16px system-ui, sans-serif';
-  ctx.fillStyle = '#9fb3d1';
+  ctx.fillStyle = textDim;
   var lvCount = view.levelCount || 10;
   var per = view.gatesPerLevel || 8;
   ctx.fillText('Bölüm ' + state.level + '/' + lvCount + '  ·  ' + (state.score % per) + '/' + per, W0 / 2, 23);
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#e8ecf1';
+  ctx.fillStyle = textCol;
   ctx.font = '18px system-ui, sans-serif';
   ctx.fillText('Rekor: ' + best, W0 - 14, 24);
   ctx.textAlign = 'left';
@@ -152,7 +236,7 @@ function draw(ctx, state, view) {
   if (view.banner && view.banner.a > 0) {
     ctx.globalAlpha = Math.min(1, view.banner.a);
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#e8ecf1';
+    ctx.fillStyle = textCol;
     ctx.font = 'bold 34px system-ui, sans-serif';
     ctx.fillText(view.banner.title, W0 / 2, 150);
     if (view.banner.sub) {
@@ -171,13 +255,16 @@ function draw(ctx, state, view) {
   }
 
   var tapWord = view.touch ? 'Dokun' : 'Boşluk / dokun';
+  var wallet = typeof view.coins === 'number'
+    ? { text: '★ ' + view.coins + (view.earned ? '  (+' + view.earned + ')' : '') + '  ·  Mağaza: aşağıdaki düğme', font: '15px system-ui, sans-serif', color: '#ffd166' }
+    : null;
   if (phase === 'ready') {
     overlay(ctx, [
       { text: 'Sekme Gücü', font: 'bold 30px system-ui, sans-serif', gap: 40 },
       { text: 'Basılı tut: top yükselir · bırak: düşer' },
       { text: 'Kapıları ıskalama, tavana değme', gap: 44 },
-      { text: tapWord + ' ve başla', font: 'bold 20px system-ui, sans-serif', color: '#5ac8fa' }
-    ]);
+      { text: tapWord + ' ve başla', font: 'bold 20px system-ui, sans-serif', color: '#5ac8fa', gap: 40 }
+    ].concat(wallet ? [wallet] : []));
   } else if (phase === 'paused') {
     overlay(ctx, [
       { text: 'Duraklatıldı', font: 'bold 26px system-ui, sans-serif', gap: 40 },
@@ -191,7 +278,7 @@ function draw(ctx, state, view) {
       view.canRestart
         ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden oyna', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
         : { text: ' ', font: '16px system-ui, sans-serif' }
-    ]);
+    ].concat(wallet ? [wallet] : []));
   } else if (phase === 'over') {
     var lines = [
       { text: 'Oyun bitti', font: 'bold 28px system-ui, sans-serif', gap: 36 },
@@ -203,9 +290,11 @@ function draw(ctx, state, view) {
     lines.push(view.canRestart
       ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden başla', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
       : { text: ' ', font: '16px system-ui, sans-serif' });
+    if (wallet) lines.push(wallet);
     overlay(ctx, lines);
   }
 }
 
-if (typeof module !== 'undefined') module.exports = { draw: draw };
-if (typeof window !== 'undefined') window.GameRender = { draw: draw };
+var RenderAPI = { draw: draw, drawBall: drawBall, drawDeco: drawDeco };
+if (typeof module !== 'undefined') module.exports = RenderAPI;
+if (typeof window !== 'undefined') window.GameRender = RenderAPI;

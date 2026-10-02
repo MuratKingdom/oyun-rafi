@@ -187,5 +187,51 @@ function quiet(s) { s.spawnTimer = 999; return s; } // testte rastgele duvar do�
     'status=' + r.status + ' skor=' + r.score + ' bölüm=' + r.level + ' süre=' + r.t.toFixed(0) + 's');
 })();
 
+// --- Mağaza (3. tur: görünümler) ---------------------------------------------
+var Shop = require('./shop.js');
+
+// T13 — satın alma ve kuşanma kuralları
+(function t13() {
+  var p = Shop.createProfile();
+  var r1 = Shop.buy(p, 'ball', 'kup');                // para yok
+  p.coins = 50;
+  var r2 = Shop.buy(p, 'ball', 'kup');                // 30 öder, kuşanır
+  var r3 = Shop.buy(p, 'ball', 'kup');                // ikinci kez alınmaz
+  var r4 = Shop.buy(p, 'map', 'yok-boyle-bir-sey');
+  var eqBad = Shop.equip(p, 'map', 'neon');            // sahip değil
+  var eqOk = Shop.equip(p, 'ball', 'klasik');
+  var ok = !r1.ok && r1.reason === 'yetersiz' && r2.ok && p.coins === 20 &&
+    !r3.ok && r3.reason === 'zaten-var' && !r4.ok && r4.reason === 'yok' &&
+    !eqBad && eqOk && p.equipped.ball === 'klasik' && Shop.owns(p, 'ball', 'kup');
+  report('T13 mağaza satın alma/kuşanma', ok,
+    'r1=' + r1.reason + ' r2=' + r2.ok + ' kalan=' + p.coins + ' r3=' + r3.reason + ' r4=' + r4.reason + ' sahipsizKuşan=' + eqBad);
+})();
+
+// T14 — bozuk ya da kurcalanmış kayıt güvenli varsayılana döner
+(function t14() {
+  function mem(v) { var d = { 'sekmeguc-profil': v }; return { getItem: function (k) { return d[k] === undefined ? null : d[k]; }, setItem: function (k, x) { d[k] = x; } }; }
+  var a = Shop.load(mem('{bozuk json'));
+  var b = Shop.load(mem(JSON.stringify({ coins: -5, owned: { ball: ['gezegen', 'hile'], map: 'x' }, equipped: { ball: 'hile', map: 'neon' } })));
+  var c = Shop.load(mem(JSON.stringify({ coins: 12.9, owned: { ball: ['kor'] }, equipped: { ball: 'kor' } })));
+  var st = mem(null); Shop.save(st, c); var d = Shop.load(st);
+  var ok = a.coins === 0 && a.equipped.ball === 'klasik' &&
+    b.coins === 0 && b.owned.ball.indexOf('hile') < 0 && b.owned.ball.indexOf('gezegen') >= 0 && b.equipped.ball === 'klasik' && b.equipped.map === 'gece' &&
+    c.coins === 12 && c.equipped.ball === 'kor' && d.coins === 12 && d.equipped.ball === 'kor';
+  report('T14 kayıt doğrulama', ok, 'bozuk→' + a.coins + ' kurcalanmış→coins=' + b.coins + ',kuşanılan=' + b.equipped.ball + ' gidiş-dönüş=' + d.coins + '/' + d.equipped.ball);
+})();
+
+// T15 — ödül: yıldız + geçilen bölüm başına 1 + kazanınca 10; katalog fiyatları erişilebilir
+(function t15() {
+  var r1 = Shop.reward({ stars: 3, level: 4, status: 'over' });
+  var r2 = Shop.reward({ stars: 20, level: 10, status: 'won' });
+  var r3 = Shop.reward({ stars: 0, level: 1, status: 'over' });
+  var maxPrice = 0;
+  ['ball', 'map'].forEach(function (k) { Shop.CATALOG[k].forEach(function (it) { maxPrice = Math.max(maxPrice, it.price); }); });
+  var freeDefaults = Shop.find('ball', 'klasik').price === 0 && Shop.find('map', 'gece').price === 0;
+  // bir kazanma koşusu (~20 yıldız) en pahalı ürünün en az dörtte birini getirmeli
+  var ok = r1 === 6 && r2 === 39 && r3 === 0 && freeDefaults && r2 * 4 >= maxPrice;
+  report('T15 ödül ve fiyat dengesi', ok, 'ödüller=' + r1 + '/' + r2 + '/' + r3 + ' en pahalı=' + maxPrice);
+})();
+
 console.log('--- özet: ' + (fails === 0 ? 'tüm testler PASS' : fails + ' test FAIL'));
 process.exit(fails === 0 ? 0 : 1);

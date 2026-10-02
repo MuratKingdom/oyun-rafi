@@ -55,6 +55,48 @@
     max-width: 500px;
     padding: 0 8px;
   }
+  #magazaBtn {
+    font: 600 15px system-ui, sans-serif;
+    color: #05070c; background: #ffd166; border: 0; border-radius: 999px;
+    padding: 9px 18px; cursor: pointer;
+  }
+  #magaza {
+    position: fixed; inset: 0; z-index: 10;
+    background: rgba(5,7,12,0.92);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px; box-sizing: border-box;
+  }
+  #magaza[hidden], #magazaBtn[hidden] { display: none; }
+  #magaza .panel {
+    width: min(440px, 100%); max-height: 100%;
+    display: flex; flex-direction: column; gap: 10px;
+    background: #0f1828; border: 1px solid #263a5c; border-radius: 12px; padding: 14px;
+    box-sizing: border-box;
+  }
+  #magaza header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  #magaza h2 { margin: 0; font-size: 20px; }
+  #magaza .cuzdan { color: #ffd166; font-weight: 700; font-size: 18px; }
+  #magaza .kapat, #magaza [data-sekme] {
+    font: 600 14px system-ui, sans-serif; color: #e8ecf1;
+    background: #1c2a44; border: 1px solid #2c4369; border-radius: 8px; padding: 8px 12px; cursor: pointer;
+  }
+  #magaza .sekmeler { display: flex; gap: 6px; }
+  #magaza [data-sekme][aria-selected="true"] { background: #5ac8fa; color: #05070c; border-color: #5ac8fa; }
+  #magaza .liste { overflow-y: auto; touch-action: pan-y; display: flex; flex-direction: column; gap: 8px; }
+  #magaza .urun {
+    display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 12px;
+    background: #14203a; border-radius: 10px; padding: 8px;
+  }
+  #magaza .onizleme { width: 72px; height: 52px; border-radius: 6px; }
+  #magaza .ad { font-size: 16px; }
+  #magaza .urun button {
+    font: 700 14px system-ui, sans-serif; min-width: 92px; min-height: 40px;
+    border-radius: 8px; border: 0; cursor: pointer; background: #5ac8fa; color: #05070c;
+  }
+  #magaza .urun button.al { background: #ffd166; }
+  #magaza .urun button.kusanildi { background: transparent; color: #7c8aa5; border: 1px solid #2c4369; cursor: default; }
+  #magaza .urun button:disabled.al { opacity: 0.45; cursor: not-allowed; }
+  #magaza .not { font-size: 12px; color: #7c8aa5; margin: 0; }
   @media (pointer: coarse) {
     #hint .kb { display: none; }
   }
@@ -64,8 +106,21 @@
 <div id="wrap">
   <canvas id="game" width="520" height="540"></canvas>
   <div id="hint">Ekranın herhangi bir yerine basılı tut: yükseklik kazan<span class="kb"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
+  <button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button>
+</div>
+<div id="magaza" data-ui hidden role="dialog" aria-label="Mağaza">
+  <div class="panel">
+    <header><h2>Mağaza</h2><span class="cuzdan">★ 0</span><button class="kapat" type="button">Kapat</button></header>
+    <div class="sekmeler" role="tablist">
+      <button type="button" role="tab" data-sekme="ball" aria-selected="true">Top</button>
+      <button type="button" role="tab" data-sekme="map" aria-selected="false">Harita</button>
+    </div>
+    <div class="liste"></div>
+    <p class="not">Yıldız kazanmak için: oyunda yıldız topla, her geçtiğin bölüm +1, kazanırsan +10. Gerçek para yok.</p>
+  </div>
 </div>
 <script src="logic.js"></script>
+<script src="shop.js"></script>
 <script src="render.js"></script>
 <script src="main.js"></script>
 </body>
