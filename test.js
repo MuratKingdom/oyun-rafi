@@ -378,7 +378,7 @@ var Shop = require('./shop.js');
     localStorage: { getItem: function (k) { return store[k] === undefined ? null : store[k]; }, setItem: function (k, v) { store[k] = String(v); } } };
   ctx.window = ctx;
   vm.createContext(ctx);
-  ['logic.js', 'shop.js', 'quests.js', 'render.js'].forEach(function (f) {
+  ['logic.js', 'shop.js', 'quests.js', 'audio.js', 'render.js'].forEach(function (f) {
     var file = path.join(__dirname, f);
     if (fs.existsSync(file)) vm.runInContext(fs.readFileSync(file, 'utf8'), ctx, { filename: f });
   });
@@ -457,6 +457,66 @@ var Q = require('./quests.js');
   var ok = a.day === '' && a.quests.length === 0 && b.streak === 0 && b.lastLogin === '' &&
     b.quests.every(function (q, i) { return q.reward === real[i].reward && q.target === real[i].target && q.progress === q.target; });
   report('T21 günlük kayıt doğrulama', ok, 'bozuk→boş, kurcalanmış ödül=' + b.quests.map(function (q) { return q.reward; }).join('/') + ' (gerçek ' + real.map(function (q) { return q.reward; }).join('/') + ')');
+})();
+
+// --- Ses ve müzik ---------------------------------------------------------------
+var A = require('./audio.js');
+
+// T28 — müzik notaları: belirlenimli, duyulur aralıkta, katmanlar bölümle açılır, tempo tavanlı, her harita farklı
+(function t28() {
+  var maps = Object.keys(A.TUNES), okRange = true, okDet = true, firstBars = {};
+  maps.forEach(function (m) {
+    for (var b = 0; b < A.BARS; b++) {
+      for (var lv = 1; lv <= 10; lv++) {
+        var n = A.bar(m, b, lv);
+        if (JSON.stringify(n) !== JSON.stringify(A.bar(m, b, lv))) okDet = false;
+        n.forEach(function (x) { if (!(x.freq > 30 && x.freq < 2500) || x.step < 0 || x.step >= A.STEPS_PER_BAR || !(x.len > 0)) okRange = false; });
+      }
+    }
+    firstBars[JSON.stringify(A.bar(m, 0, 5).map(function (x) { return Math.round(x.freq); }))] = 1;
+  });
+  var lead1 = A.bar('gece', 0, 2).filter(function (x) { return x.ch === 'lead'; }).length;
+  var lead3 = [0, 1, 2, 3].reduce(function (s, b) { return s + A.bar('gece', b, 3).filter(function (x) { return x.ch === 'lead'; }).length; }, 0);
+  var bpms = []; for (var lv = 1; lv <= 30; lv++) bpms.push(A.bpm(lv));
+  var mono = bpms.every(function (v, i) { return i === 0 || v >= bpms[i - 1]; }) && Math.max.apply(null, bpms) === A.BPM_MAX;
+  var ok = okRange && okDet && lead1 === 0 && lead3 > 0 && mono && Object.keys(firstBars).length === maps.length;
+  report('T28 prosedürel müzik', ok, 'aralık=' + okRange + ' belirlenimli=' + okDet + ' ezgi bölüm2=' + lead1 + ' bölüm3=' + lead3 +
+    ' tempo ' + bpms[0] + '→' + bpms[bpms.length - 1] + ' farklı harita ezgisi=' + Object.keys(firstBars).length + '/' + maps.length);
+})();
+
+// T29 — sıralayıcı: kare kare çağrılsa da her adım tam bir kez, eşit aralıkla; arka plandan dönünce birikmiş notaları bir anda çalmaz
+(function t29() {
+  var seq = A.createSequencer(0), times = [], now = 0;
+  while (now < 4) { A.pump(seq, now, 0.15, 'gece', 1, function (n, t) { times.push(t); }); now += 1 / 60; }
+  var uniq = times.filter(function (t, i) { return i === 0 || t !== times[i - 1]; });
+  var sd = A.stepDur(1), steps = {};
+  times.forEach(function (t) { steps[Math.round(t / sd)] = 1; });
+  var maxGap = 0, keys = Object.keys(steps).map(Number).sort(function (a, b) { return a - b; });
+  for (var i = 1; i < keys.length; i++) maxGap = Math.max(maxGap, keys[i] - keys[i - 1]);
+  var sortedOk = times.every(function (t, i) { return i === 0 || t >= times[i - 1]; });
+  var perStep = A.bar('gece', 0, 1).filter(function (x) { return x.step === 0; }).length; // adım 0'da bas + arpej
+  var dupFree = times.filter(function (t) { return Math.abs(t) < 1e-9; }).length === perStep;
+  var burst = 0;
+  A.pump(seq, 60, 0.15, 'gece', 1, function () { burst++; });
+  var ok = sortedOk && dupFree && maxGap <= 2 && times[times.length - 1] < 4 + 0.15 + 1e-9 && burst <= 8;
+  report('T29 müzik sıralayıcısı', ok, 'nota=' + times.length + ' sıralı=' + sortedOk + ' ilk adım tek=' + dupFree + ' en büyük adım boşluğu=' + maxGap + ' 56 sn sonra dönüşte nota=' + burst);
+})();
+
+// T30 — ses ayarları ve efekt tablosu
+(function t30() {
+  var bad = [null, 'x', 5, { music: 'hayır' }, { sfx: 0 }].every(function (r) { var s = A.sanitize(r); return s.music === true && s.sfx === true; });
+  var keep = A.sanitize({ music: false, sfx: true }).music === false && A.sanitize({ sfx: false }).sfx === false;
+  var store = {}, st = { getItem: function (k) { return store[k] || null; }, setItem: function (k, v) { store[k] = v; } };
+  A.save(st, { music: false, sfx: false });
+  var round = A.load(st).music === false && A.load(st).sfx === false;
+  store[A.SETTINGS_KEY] = '{bozuk';
+  var corrupt = A.load(st).music === true;
+  var need = ['bounce', 'star', 'slow', 'small', 'shield', 'level', 'win', 'over', 'buy', 'quest'];
+  var sfxOk = need.every(function (n) {
+    return Array.isArray(A.SFX[n]) && A.SFX[n].length > 0 && A.SFX[n].every(function (x) { return x.f > 30 && x.d > 0 && x.at >= 0 && (!x.to || x.to > 0); });
+  });
+  report('T30 ses ayarları ve efekt tablosu', bad && keep && round && corrupt && sfxOk,
+    'çöp→varsayılan=' + bad + ' tercih korunur=' + keep + ' kayıt=' + round + ' bozuk kayıt=' + corrupt + ' efektler=' + sfxOk);
 })();
 
 console.log('--- özet: ' + (fails === 0 ? 'tüm testler PASS' : fails + ' test FAIL'));

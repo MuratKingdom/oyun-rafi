@@ -41,7 +41,10 @@ function bootstrap() {
 
   var touch = false;
   var input = { action: false };
-  var muted = false;
+  // Ses ayarları (müzik / efekt ayrı; M ikisini birden açar-kapatır)
+  var Snd = window.GameAudio || null;
+  var sound = Snd ? Snd.load(window.localStorage) : { music: true, sfx: true };
+  var muted = !sound.sfx && !sound.music;
   var best = 0;
   // Mağaza profili (cüzdan + sahip olunan/kuşanılan görünümler)
   var Shop = window.GameShop || null;
@@ -81,24 +84,69 @@ function bootstrap() {
     }
     return audioCtx;
   }
-  function beep(freq, dur, type) {
-    if (muted) return;
+  // Tek nota: when (AudioContext zamanı) anında başlar, dur saniyede söner; to verilirse frekans kayar
+  function tone(freq, dur, type, when, vol, to) {
     var ac = ensureAudio();
     if (!ac) return;
     try {
       if (ac.state === 'suspended' && ac.resume) ac.resume();
+      var t0 = Math.max(ac.currentTime, when || 0);
       var osc = ac.createOscillator();
       var gain = ac.createGain();
       osc.type = type || 'sine';
-      osc.frequency.value = freq;
-      gain.gain.value = 0.08;
+      osc.frequency.setValueAtTime(freq, t0);
+      if (to) osc.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+      gain.gain.setValueAtTime(vol || 0.08, t0);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
       osc.connect(gain);
       gain.connect(ac.destination);
-      osc.start();
-      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
-      osc.stop(ac.currentTime + dur);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.02);
     } catch (e) {}
   }
+  function beep(freq, dur, type) {
+    if (!sound.sfx) return;
+    tone(freq, dur, type, 0, 0.08);
+  }
+  // audio.js efekt tablosundan bir efekt çal
+  function sfx(name) {
+    if (!sound.sfx || !Snd || !Snd.SFX[name]) return;
+    var ac = ensureAudio();
+    if (!ac) return;
+    var list = Snd.SFX[name];
+    for (var i = 0; i < list.length; i++) {
+      var n = list[i];
+      tone(n.f, n.d, n.type, ac.currentTime + n.at, 0.08, n.to);
+    }
+  }
+  // Müzik: oyun sürerken ileriye bakan sıralayıcı ~150 ms önden nota kurar
+  var MUSIC_VOL = { bass: 0.05, arp: 0.018, lead: 0.035 };
+  var seq = null;
+  function musicTick() {
+    var ac = audioCtx;
+    if (!Snd || !ac || !sound.music || phase !== 'playing' || ac.state !== 'running') { seq = null; return; }
+    if (!seq) seq = Snd.createSequencer(ac.currentTime + 0.05);
+    var mapId = profile ? profile.equipped.map : 'gece';
+    Snd.pump(seq, ac.currentTime, 0.15, mapId, state.level, function (n, t, d) {
+      tone(n.freq, Math.max(0.05, d * 0.9), n.type, t, MUSIC_VOL[n.ch] || 0.03);
+    });
+  }
+  function setSound(next) {
+    sound = next;
+    muted = !sound.sfx && !sound.music;
+    if (Snd) Snd.save(window.localStorage, sound);
+    if (!sound.music) seq = null;
+    updateSoundBtns();
+  }
+  var sesBtn = document.getElementById('sesBtn');
+  var muzikBtn = document.getElementById('muzikBtn');
+  function updateSoundBtns() {
+    if (sesBtn) { sesBtn.textContent = sound.sfx ? '🔊' : '🔇'; sesBtn.setAttribute('aria-pressed', String(sound.sfx)); sesBtn.title = 'Efekt sesleri: ' + (sound.sfx ? 'açık' : 'kapalı'); }
+    if (muzikBtn) { muzikBtn.textContent = '🎵'; muzikBtn.className = sound.music ? '' : 'kapali'; muzikBtn.setAttribute('aria-pressed', String(sound.music)); muzikBtn.title = 'Müzik: ' + (sound.music ? 'açık' : 'kapalı'); }
+  }
+  if (sesBtn) sesBtn.addEventListener('click', function () { ensureAudio(); setSound({ music: sound.music, sfx: !sound.sfx }); sfx('buy'); });
+  if (muzikBtn) muzikBtn.addEventListener('click', function () { ensureAudio(); setSound({ music: !sound.music, sfx: sound.sfx }); });
+  updateSoundBtns();
   function buzz(ms) {
     if (muted) return;
     try {
@@ -212,7 +260,7 @@ function bootstrap() {
       restart(); // R bilinçli bir tuş: kilit uygulanmaz
     } else if (e.code === 'KeyM') {
       e.preventDefault();
-      muted = !muted;
+      setSound(muted ? { music: true, sfx: true } : { music: false, sfx: false });
     } else if (e.code === 'KeyP' || e.code === 'Escape') {
       e.preventDefault();
       if (phase === 'playing') pause();
@@ -248,7 +296,7 @@ function bootstrap() {
       questDone = Quests.applyRun(daily, state);
       for (var qi = 0; qi < questDone.length; qi++) earned += questDone[qi].reward;
       Quests.save(window.localStorage, daily);
-      if (questDone.length) { beep(784, 0.1, 'triangle'); beep(1046, 0.14, 'triangle'); }
+      if (questDone.length) sfx('quest');
     }
     profile.coins += earned;
     Shop.save(window.localStorage, profile);
@@ -327,7 +375,7 @@ function bootstrap() {
         if (Shop.owns(profile, shopTab, item.id)) Shop.equip(profile, shopTab, item.id);
         else if (!Shop.buy(profile, shopTab, item.id).ok) return;
         Shop.save(window.localStorage, profile);
-        beep(880, 0.06, 'triangle');
+        sfx('buy');
         renderShop();
       });
       row.appendChild(b);
@@ -399,32 +447,31 @@ function bootstrap() {
         steps++;
 
         if (state.bounces !== prevBounces) {
-          beep(220, 0.06, 'square');
+          sfx('bounce');
           squashLeft = SQUASH_MS;
           burst(C.BALL_X, C.FLOOR_Y, 4, '#2f4a73', 120);
           prevBounces = state.bounces;
         }
         if (state.score !== prevScore) {
-          beep(660 + Math.min(state.score, 30) * 12, 0.08, 'sine');
+          beep(Snd ? Snd.gateFreq(state.score) : 660, 0.08, 'sine');
           buzz(8);
           burst(C.BALL_X, state.y, 10, '#5ac8fa', 220);
           prevScore = state.score;
         }
         if (state.stars !== prevStars) {
-          beep(990, 0.07, 'triangle');
-          beep(1320, 0.09, 'triangle');
+          sfx('star');
           burst(C.BALL_X, state.y, 12, '#ffd166', 200);
           prevStars = state.stars;
         }
         if (state.powers !== prevPowers) {
           var slowNow = state.slowT === C.POWER_SLOW_T; // bu adımda alındıysa süre tam dolu
-          beep(slowNow ? 440 : 880, 0.1, 'sine'); beep(slowNow ? 330 : 1175, 0.12, 'sine');
+          sfx(slowNow ? 'slow' : 'small');
           buzz(12);
           burst(C.BALL_X, state.y, 14, slowNow ? '#6fe0ff' : '#ff9df0', 220);
           prevPowers = state.powers;
         }
         if (state.shieldUsed !== prevShieldUsed) {
-          beep(300, 0.12, 'square');
+          sfx('shield');
           buzz(30);
           shakeLeft = SHAKE_MS * 0.6;
           burst(C.BALL_X + 14, state.y, 16, '#ffd166', 260);
@@ -438,11 +485,11 @@ function bootstrap() {
             : state.level === C.DOUBLE_FROM ? 'Çift duvarlar geliyor'
             : state.level === C.SPIKE_FROM ? 'Kırmızı dikenlere sekme: basılı tut, havada kal' : '';
           banner = { title: 'Bölüm ' + state.level, sub: sub, a: sub ? 2.2 : 1.4 };
-          beep(523, 0.08, 'sine'); beep(784, 0.12, 'sine');
+          sfx('level');
           prevLevel = state.level;
         }
         if (state.status === 'won') {
-          beep(523, 0.1, 'sine'); beep(659, 0.1, 'sine'); beep(784, 0.2, 'sine');
+          sfx('win');
           buzz(40);
           burst(C.BALL_X, state.y, 40, '#ffd166', 360);
           if (state.score > best) {
@@ -457,7 +504,7 @@ function bootstrap() {
           break;
         }
         if (state.status === 'over') {
-          beep(110, 0.25, 'sawtooth');
+          sfx('over');
           buzz(60);
           shakeLeft = SHAKE_MS;
           burst(C.BALL_X, state.y, 24, '#e05656', 320);
@@ -481,6 +528,7 @@ function bootstrap() {
     updateFx(frameDt);
     if (banner.a > 0 && phase === 'playing') banner.a = Math.max(0, banner.a - frameDt);
 
+    musicTick();
     settle();
     var showBtns = !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
     if (shopBtn) shopBtn.hidden = !showBtns;

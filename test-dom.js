@@ -253,5 +253,47 @@ function firePointer(type) {
     'ilk açılış=' + c1 + ' ikinci açılış=' + c2 + ' seri=' + dly.streak + ' ilerleme ' + runsBefore + ' → ' + after.quests.map(function (q) { return q.kind + ':' + q.progress; }).join(',') + (hasRunQuest ? '' : ' (bugün day_runs yok)'));
 })();
 
+// T5i — müzik oyun sürerken nota kurar, M ile her ses kapanır ve tercih kaydedilir
+(function t5i() {
+  rafQueue.length = 0;
+  listeners.keydown.length = 0; listeners.keyup.length = 0;
+  listeners.pointerdown.length = 0; listeners.pointerup.length = 0;
+  require('./audio.js');
+  global.localStorage.setItem('sekmeguc-ses', '');
+  var oscs = [];
+  var acFake = {
+    currentTime: 0, state: 'running',
+    createOscillator: function () {
+      var o = { type: 'sine', at: null, frequency: { value: 0, setValueAtTime: function (v, t) { o.f = v; }, exponentialRampToValueAtTime: function () {} },
+        connect: function () {}, start: function (t) { o.at = t; }, stop: function () {} };
+      oscs.push(o);
+      return o;
+    },
+    createGain: function () {
+      return { gain: { value: 0, setValueAtTime: function () {}, exponentialRampToValueAtTime: function () {} }, connect: function () {} };
+    },
+    destination: {}
+  };
+  var oldAC = global.window.AudioContext;
+  global.window.AudioContext = function () { return acFake; };
+  require('./main.js').bootstrap();
+  pumpFrames(2);
+  var readyCount = oscs.length;
+  fireKey('keydown', 'Space'); fireKey('keyup', 'Space');
+  // kısa bas-bırak ile 2 sn oyna; ses saati kareyle ilerlesin
+  for (var i = 0; i < 120; i++) { acFake.currentTime += 1 / 60; if (i % 20 === 0) { fireKey('keydown', 'Space'); } if (i % 20 === 6) fireKey('keyup', 'Space'); pumpFrames(1); }
+  var playing = lastState.status === 'playing';
+  var musicNotes = oscs.length - readyCount;
+  fireKey('keydown', 'KeyM');
+  var saved = JSON.parse(global.localStorage.getItem('sekmeguc-ses') || '{}');
+  var afterMute = oscs.length;
+  for (var j = 0; j < 60; j++) { acFake.currentTime += 1 / 60; if (j % 20 === 0) fireKey('keydown', 'Space'); if (j % 20 === 6) fireKey('keyup', 'Space'); pumpFrames(1); }
+  // M'den önce kurulmuş en çok ~150 ms'lik notalar zaten kuyrukta; M'den sonra yenisi kurulmamalı
+  var silent = oscs.length === afterMute;
+  global.window.AudioContext = oldAC;
+  report('T5i müzik çalar, M her sesi kapatır ve kaydeder', playing && musicNotes >= 10 && saved.music === false && saved.sfx === false && silent,
+    'oyunda=' + playing + ' 2 sn nota=' + musicNotes + ' kayıt=' + JSON.stringify(saved) + ' sessizde yeni nota=' + (oscs.length - afterMute));
+})();
+
 console.log('--- özet: ' + (fails === 0 ? 'tüm testler PASS' : fails + ' test FAIL'));
 process.exit(fails === 0 ? 0 : 1);

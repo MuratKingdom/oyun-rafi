@@ -50,6 +50,16 @@ boyu, salınım genliği, sıçrama sınırı. Oyun geometrik olarak aynı kalı
 ekranda geçerlidir (T16 eşdeğerlik, T17 H=900'de kazanılabilirlik). Yükseklik yalnız yeni oyunda
 değişir; oyun sürerken ekran dönerse alan sabit kalır.
 
+## Ses ve müzik (2 Ekim 2026)
+Müzik ses dosyası değildir; `audio.js` her harita için kendi tonunda (Gece la minör, Gün Batımı
+do majör, Orman re dorian, Neon sol minör, Buz mi pentatonik) 4 ölçülük bir döngü üretir:
+bas + arpej, 3. bölümden itibaren ezgi, 6. bölümden itibaren sıklaşan bas. Tempo bölümle
+100'den 136 BPM'e çıkar. Müzik yalnız oyun sürerken çalar; ileriye bakan sıralayıcı notaları
+~150 ms önden kurar, sekme arka plandan dönünce birikmiş notaları bir anda çalmaz.
+Efektler (sekme, kapı, yıldız, iki güç, kalkan, bölüm, kazanma, kayıp, satın alma, görev)
+tek tabloda. Alttaki **🎵** müziği, **🔊** efektleri ayrı açıp kapatır; **M** ikisini birden.
+Tercih `localStorage`'da (`sekmeguc-ses`).
+
 ## Yeni güçler ve engeller (2 Ekim 2026)
 | Bölüm | Öğe | Ne yapar |
 |---|---|---|
@@ -110,6 +120,12 @@ T15 (ödül hesabı ve fiyat dengesi: bir kazanma koşusu en pahalı ürünün d
 fazlasını getirir); `test-dom.js` T5g (oyun sonunda ödül cüzdana tam bir kez yazılır, kuşanılan
 tema çizime gider) — hepsi PASS. Headless Chromium'da Pixel 7 boyutunda mağaza açıldı, bir top
 ve bir harita satın alındı, profil kaydı ve oyun içi görünüm doğrulandı; konsol hatası 0.
+**Ses ve müzik:** `test.js` T28 (notalar belirlenimli ve duyulur aralıkta, ezgi 3. bölümde
+açılır, tempo tavanlı, 5 haritanın ezgisi farklı), T29 (sıralayıcı her adımı bir kez ve sırayla
+verir, arka plandan dönüşte nota yığmaz), T30 (ayar doğrulama/kayıt, efekt tablosu); `test-dom.js`
+T5i (oyunda müzik notası kurulur, M her sesi kapatır ve kaydeder) — hepsi PASS. Headless
+Chromium'da gerçek AudioContext ile müzik notaları sayıldı, 🎵 kapanınca yeni müzik notası
+kurulmadı; düğme satırı 320/360/412/800 px genişlikte taşmadan sığıyor, konsol hatası 0.
 **Güçler ve engeller:** `test.js` T23 (nefes kapısı ortası sabit, boy sınır içinde), T24
 (yavaşlatma oranı 0,65 ve süre bitince normal), T25 (küçük top normalin sığmadığı ağızdan geçer),
 T26 (diken öldürür, kalkan yutar, havada geçiş sayılır), T27 (öğeler doğru bölümde, adil birleşim)
