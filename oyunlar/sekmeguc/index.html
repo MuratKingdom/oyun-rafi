@@ -40,13 +40,15 @@
     background: #0b1220;
     border: 2px solid #223;
     border-radius: 6px;
-    /* 520x540 oranını koruyarak ekrana sığ: genişlik ya da yükseklik hangisi darsa */
-    width: min(98vw, calc((100dvh - 40px) * 520 / 540));
-    aspect-ratio: 520 / 540;
+    /* Mantıksal alan 520 x --h (main.js ayarlar: 540–1000). Oranı koruyarak ekrana sığ;
+       uzun telefonda alan da uzadığı için üstte/altta boşluk kalmaz. */
+    --h: 540;
+    width: min(98vw, 760px, calc((100dvh - 76px) * 520 / var(--h)));
+    aspect-ratio: 520 / var(--h);
     height: auto;
   }
   @supports not (height: 100dvh) {
-    canvas { width: min(98vw, calc((100vh - 40px) * 520 / 540)); }
+    canvas { width: min(98vw, 760px, calc((100vh - 76px) * 520 / var(--h))); }
   }
   #hint {
     font-size: 12px;
@@ -55,6 +57,23 @@
     max-width: 500px;
     padding: 0 8px;
   }
+  .dugmeler { display: flex; gap: 8px; justify-content: center; min-height: 0; }
+  #gorevBtn {
+    font: 600 15px system-ui, sans-serif;
+    color: #e8ecf1; background: #1c2a44; border: 1px solid #2c4369; border-radius: 999px;
+    padding: 9px 16px; cursor: pointer;
+  }
+  #gorevBtn[hidden] { display: none; }
+  #magaza .seri { margin: 2px 0 4px; color: #ffd166; font-weight: 600; font-size: 14px; }
+  #magaza .gorev {
+    display: grid; grid-template-columns: 1fr auto; gap: 6px 10px;
+    background: #14203a; border-radius: 10px; padding: 10px 12px;
+  }
+  #magaza .gorev .odul { color: #ffd166; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  #magaza .gorev .cubuk { grid-column: 1 / -1; height: 6px; background: #22324f; border-radius: 3px; overflow: hidden; }
+  #magaza .gorev .cubuk i { display: block; height: 100%; background: #5ac8fa; }
+  #magaza .gorev.bitti .cubuk i { background: #46d39a; }
+  #magaza .gorev.bitti .ad { color: #46d39a; }
   #magazaBtn {
     font: 600 15px system-ui, sans-serif;
     color: #05070c; background: #ffd166; border: 0; border-radius: 999px;
@@ -106,7 +125,7 @@
 <div id="wrap">
   <canvas id="game" width="520" height="540"></canvas>
   <div id="hint">Ekranın herhangi bir yerine basılı tut: yükseklik kazan<span class="kb"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
-  <button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button>
+  <div class="dugmeler"><button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button></div>
 </div>
 <div id="magaza" data-ui hidden role="dialog" aria-label="Mağaza">
   <div class="panel">
@@ -114,6 +133,7 @@
     <div class="sekmeler" role="tablist">
       <button type="button" role="tab" data-sekme="ball" aria-selected="true">Top</button>
       <button type="button" role="tab" data-sekme="map" aria-selected="false">Harita</button>
+      <button type="button" role="tab" data-sekme="quests" aria-selected="false">Görevler</button>
     </div>
     <div class="liste"></div>
     <p class="not">Yıldız kazanmak için: oyunda yıldız topla, her geçtiğin bölüm +1, kazanırsan +10. Gerçek para yok.</p>
@@ -121,6 +141,10 @@
 </div>
 <script>
 // Sekme Gücü — saf oyun mantığı (DOM/canvas/window kullanılmaz)
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
+// fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
+// window.Game* ve module.exports çıkar.
+(function () {
 
 var CANVAS_W = 520;
 var CANVAS_H = 540;
@@ -182,14 +206,31 @@ var MARGIN = 40;
 // yetişilemez olabiliyordu. Bu sınır her dizilimi oynanabilir tutar.
 var MAX_JUMP = 150;
 
-function createState(seed) {
+// --- Geometri --------------------------------------------------------------
+// Oyun alanının mantıksal yüksekliği cihaza göre değişebilir (dikey telefonda uzun).
+// Genişlik ve zaman sabit kalır; dikey olan her şey (yerçekimi, itiş, sekme hızı,
+// kapı boyu, salınım, sıçrama sınırı) alanla aynı oranda (k) ölçeklenir. Böylece
+// oyun geometrik olarak aynı kalır: botla ölçülen denge her ekran boyunda geçerli.
+var MIN_H = 540;
+var MAX_H = 1000;
+
+function makeGeo(height) {
+  var H = Math.round(Math.max(MIN_H, Math.min(MAX_H, height || CANVAS_H)));
+  var floorY = H - (CANVAS_H - FLOOR_Y);
+  return { H: H, ceilY: CEIL_Y, floorY: floorY, k: (floorY - CEIL_Y) / (FLOOR_Y - CEIL_Y) };
+}
+
+// opts.height: mantıksal alan yüksekliği (540–1000); verilmezse 540 (klasik kare alan)
+function createState(seed, opts) {
+  var g = makeGeo(opts && opts.height);
   return {
+    geo: g,
     rngA: (seed || 1) >>> 0,
-    y: FLOOR_Y - BALL_R - 60,
+    y: g.floorY - BALL_R - 60 * g.k,
     vy: 0,
     t: 0,
     speed: SPEED0,
-    gapH: GAP_H0,
+    gapH: GAP_H0 * g.k,
     lastGapY: -1,
     spawnTimer: SPAWN_GRACE,
     obstacles: [],
@@ -199,15 +240,16 @@ function createState(seed) {
     stars: 0,
     shield: 0,
     shieldUsed: 0,
+    movingPassed: 0,
     distance: 0,
     status: 'playing',
     overReason: ''
   };
 }
 
-function clampGapY(gapY, gapH) {
-  var minTop = CEIL_Y + MARGIN;
-  var maxTop = FLOOR_Y - MARGIN - gapH;
+function clampGapY(g, gapY, gapH) {
+  var minTop = g.ceilY + MARGIN * g.k;
+  var maxTop = g.floorY - MARGIN * g.k - gapH;
   if (maxTop < minTop) maxTop = minTop;
   return Math.max(minTop, Math.min(maxTop, gapY));
 }
@@ -217,7 +259,7 @@ function makeWall(state, x, baseY, gapH) {
   var w = { x: x, baseY: baseY, gapY: baseY, gapH: gapH, passed: false, hit: false, move: null, star: null };
   if (lv >= MOVE_FROM && nextRand(state) < Math.min(0.7, 0.18 * (lv - MOVE_FROM + 1))) {
     w.move = {
-      amp: Math.min(48, 22 + 4 * (lv - MOVE_FROM)),
+      amp: Math.min(48, 22 + 4 * (lv - MOVE_FROM)) * state.geo.k,
       freq: 0.9 + nextRand(state) * 0.8,
       phase: nextRand(state) * Math.PI * 2
     };
@@ -227,20 +269,22 @@ function makeWall(state, x, baseY, gapH) {
 }
 
 function spawn(state) {
+  var g = state.geo;
   var gapH = state.gapH;
-  var minTop = CEIL_Y + MARGIN;
-  var maxTop = FLOOR_Y - MARGIN - gapH;
+  var minTop = g.ceilY + MARGIN * g.k;
+  var maxTop = g.floorY - MARGIN * g.k - gapH;
   var span = Math.max(10, maxTop - minTop);
   var gapY = minTop + nextRand(state) * span;
   if (state.lastGapY >= 0) {
-    gapY = Math.max(state.lastGapY - MAX_JUMP, Math.min(state.lastGapY + MAX_JUMP, gapY));
+    var jump = MAX_JUMP * g.k;
+    gapY = Math.max(state.lastGapY - jump, Math.min(state.lastGapY + jump, gapY));
   }
-  gapY = clampGapY(gapY, gapH);
+  gapY = clampGapY(g, gapY, gapH);
   state.obstacles.push(makeWall(state, CANVAS_W + WALL_W, gapY, gapH));
   state.lastGapY = gapY;
   if (state.level >= DOUBLE_FROM && nextRand(state) < 0.3) {
-    var shift = (nextRand(state) < 0.5 ? -1 : 1) * DOUBLE_SHIFT;
-    var second = makeWall(state, CANVAS_W + WALL_W + DOUBLE_DX, clampGapY(gapY + shift, gapH), gapH);
+    var shift = (nextRand(state) < 0.5 ? -1 : 1) * DOUBLE_SHIFT * g.k;
+    var second = makeWall(state, CANVAS_W + WALL_W + DOUBLE_DX, clampGapY(g, gapY + shift, gapH), gapH);
     second.move = null; // çift duvarın ikincisi sabit: iki hareketli üst üste adil değil
     state.obstacles.push(second);
     state.lastGapY = second.gapY;
@@ -252,20 +296,22 @@ function spawn(state) {
 function step(state, input, dt) {
   if (state.status !== 'playing') return state;
 
-  var accel = GRAVITY;
-  if (input.action) accel += THRUST;
+  var g = state.geo || (state.geo = makeGeo(CANVAS_H));
+  var accel = GRAVITY * g.k;
+  if (input.action) accel += THRUST * g.k;
   state.vy += accel * dt;
-  if (state.vy > MAX_VY) state.vy = MAX_VY;
-  if (state.vy < -MAX_VY) state.vy = -MAX_VY;
+  var maxVy = MAX_VY * g.k;
+  if (state.vy > maxVy) state.vy = maxVy;
+  if (state.vy < -maxVy) state.vy = -maxVy;
   state.y += state.vy * dt;
 
-  if (state.y + BALL_R >= FLOOR_Y) {
-    state.y = FLOOR_Y - BALL_R;
-    state.vy = BOUNCE_V;
+  if (state.y + BALL_R >= g.floorY) {
+    state.y = g.floorY - BALL_R;
+    state.vy = BOUNCE_V * g.k;
     state.bounces++;
   }
 
-  if (state.y - BALL_R <= CEIL_Y) {
+  if (state.y - BALL_R <= g.ceilY) {
     state.status = 'over';
     state.overReason = 'Tavana çarptın';
     return state;
@@ -274,7 +320,7 @@ function step(state, input, dt) {
   state.t += dt;
   var d = difficulty(state.t);
   state.speed = SPEED0 + (SPEED_MAX - SPEED0) * d;
-  state.gapH = GAP_H0 - (GAP_H0 - GAP_MIN) * d;
+  state.gapH = (GAP_H0 - (GAP_H0 - GAP_MIN) * d) * g.k;
 
   state.spawnTimer -= dt;
   if (state.spawnTimer <= 0) {
@@ -288,7 +334,7 @@ function step(state, input, dt) {
     var o = state.obstacles[i];
     o.x -= state.speed * dt;
     if (o.move) {
-      o.gapY = clampGapY(o.baseY + o.move.amp * Math.sin(o.move.phase + state.t * o.move.freq), o.gapH);
+      o.gapY = clampGapY(g, o.baseY + o.move.amp * Math.sin(o.move.phase + state.t * o.move.freq), o.gapH);
     }
 
     // Yıldız: kapının ortasında
@@ -305,6 +351,7 @@ function step(state, input, dt) {
     if (!o.passed && o.x + WALL_W < BALL_X) {
       o.passed = true;
       state.score++;
+      if (o.move) state.movingPassed++;
       if (state.score % GATES_PER_LEVEL === 0) {
         if (state.level >= LEVEL_COUNT) {
           state.status = 'won';
@@ -343,11 +390,13 @@ var CONST = {
   FLOOR_Y: FLOOR_Y, CEIL_Y: CEIL_Y, WALL_W: WALL_W,
   SPEED0: SPEED0, SPEED_MAX: SPEED_MAX, GAP_H0: GAP_H0, GAP_MIN: GAP_MIN,
   LEVEL_COUNT: LEVEL_COUNT, GATES_PER_LEVEL: GATES_PER_LEVEL, STAR_R: STAR_R,
-  STAR_FROM: STAR_FROM, MOVE_FROM: MOVE_FROM, DOUBLE_FROM: DOUBLE_FROM, MAX_JUMP: MAX_JUMP
+  STAR_FROM: STAR_FROM, MOVE_FROM: MOVE_FROM, DOUBLE_FROM: DOUBLE_FROM, MAX_JUMP: MAX_JUMP,
+  MIN_H: MIN_H, MAX_H: MAX_H
 };
-var API = { createState: createState, step: step, difficulty: difficulty, CONST: CONST };
+var API = { createState: createState, step: step, difficulty: difficulty, makeGeo: makeGeo, CONST: CONST };
 if (typeof module !== 'undefined') module.exports = API;
 if (typeof window !== 'undefined') window.GameLogic = API;
+})();
 
 </script>
 <script>
@@ -356,6 +405,10 @@ if (typeof window !== 'undefined') window.GameLogic = API;
 // Para birimi yıldızdır. Oyun sonunda kazanılan: o koşuda toplanan yıldızlar
 // + geçilen her bölüm için 1 + kazanınca 10. Gerçek para yok.
 // Profil tarayıcıda localStorage'da tutulur; bozuk/eksik veri sessizce varsayılana döner.
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
+// fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
+// window.Game* ve module.exports çıkar.
+(function () {
 
 var STORAGE_KEY = 'sekmeguc-profil';
 
@@ -465,6 +518,169 @@ var Shop = {
 };
 if (typeof module !== 'undefined') module.exports = Shop;
 if (typeof window !== 'undefined') window.GameShop = Shop;
+})();
+
+</script>
+<script>
+// Sekme Gücü — günlük görevler ve giriş serisi (saf mantık; DOM yok)
+//
+// Her gün 3 görev: tarih anahtarından (YYYY-AA-GG) deterministik seçilir, yani aynı gün
+// aynı cihazda hep aynı görevler gelir. Tamamlanan görevin ödülü kendiliğinden verilir.
+// Giriş serisi: ardışık her gün ilk açılışta 3, 4, 5, 6, 7 (tavan) yıldız; gün atlanırsa sıfırlanır.
+// Kayıt ayrı anahtardadır ('sekmeguc-gunluk'); bozuk/eski kayıt güvenle yeniden kurulur.
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
+// fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
+// window.Game* ve module.exports çıkar.
+(function () {
+
+var DAILY_KEY = 'sekmeguc-gunluk';
+var QUESTS_PER_DAY = 3;
+
+// kind: run_* tek koşuda, day_* gün boyunca birikir
+var TEMPLATES = [
+  { kind: 'run_stars', targets: [3, 5, 8], rewards: [10, 12, 15], text: 'Bir koşuda {n} yıldız topla' },
+  { kind: 'run_gates', targets: [10, 20, 30], rewards: [8, 12, 16], text: 'Bir koşuda {n} kapı geç' },
+  { kind: 'reach_level', targets: [3, 4, 6], rewards: [8, 12, 18], text: '{n}. bölüme ulaş' },
+  { kind: 'day_gates', targets: [25, 40, 60], rewards: [8, 12, 16], text: 'Bugün toplam {n} kapı geç' },
+  { kind: 'day_runs', targets: [3, 5], rewards: [6, 9], text: 'Bugün {n} oyun oyna' },
+  { kind: 'day_shield', targets: [1, 2], rewards: [8, 12], text: 'Kalkanla {n} çarpmadan kurtul' },
+  { kind: 'day_moving', targets: [3, 6], rewards: [8, 12], text: '{n} hareketli (mor) kapıdan geç' },
+  { kind: 'win', targets: [1], rewards: [25], text: 'Oyunu kazan (10 bölüm)' }
+];
+
+function pad(n) { return (n < 10 ? '0' : '') + n; }
+function dayKey(date) {
+  var d = date || new Date();
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+}
+// İki gün anahtarı arasındaki takvim farkı (gün)
+function dayDiff(a, b) {
+  function toUtc(k) { var p = k.split('-'); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
+  return Math.round((toUtc(b) - toUtc(a)) / 86400000);
+}
+function validKey(k) { return typeof k === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(k); }
+
+function hash(str) {
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+function describe(q) {
+  var tpl = null;
+  for (var i = 0; i < TEMPLATES.length; i++) if (TEMPLATES[i].kind === q.kind) tpl = TEMPLATES[i];
+  return tpl ? tpl.text.replace('{n}', q.target) : q.kind;
+}
+
+// Günün 3 görevi: farklı türlerden, tarihten deterministik
+function generate(key) {
+  var h = hash('sekmeguc:' + key);
+  var pool = TEMPLATES.slice();
+  var out = [];
+  while (out.length < QUESTS_PER_DAY && pool.length) {
+    h = (Math.imul(h, 1103515245) + 12345) >>> 0;
+    var tpl = pool.splice(h % pool.length, 1)[0];
+    h = (Math.imul(h, 1103515245) + 12345) >>> 0;
+    var ti = h % tpl.targets.length;
+    out.push({ kind: tpl.kind, target: tpl.targets[ti], reward: tpl.rewards[ti], progress: 0, done: false });
+  }
+  return out;
+}
+
+function fresh() {
+  return { day: '', streak: 0, lastLogin: '', quests: [] };
+}
+
+function sanitize(raw) {
+  var d = fresh();
+  if (!raw || typeof raw !== 'object') return d;
+  if (validKey(raw.day)) d.day = raw.day;
+  if (validKey(raw.lastLogin)) d.lastLogin = raw.lastLogin;
+  var st = Math.floor(Number(raw.streak));
+  d.streak = isFinite(st) && st > 0 ? Math.min(st, 3650) : 0;
+  // Görevler kayıttan değil, günün anahtarından yeniden üretilir; kayıttan yalnız ilerleme alınır
+  if (d.day) {
+    d.quests = generate(d.day);
+    var saved = Array.isArray(raw.quests) ? raw.quests : [];
+    for (var i = 0; i < d.quests.length; i++) {
+      var s = saved[i];
+      if (s && s.kind === d.quests[i].kind) {
+        var pr = Math.floor(Number(s.progress));
+        d.quests[i].progress = isFinite(pr) && pr > 0 ? Math.min(pr, d.quests[i].target) : 0;
+        d.quests[i].done = !!s.done && d.quests[i].progress >= d.quests[i].target;
+      }
+    }
+  }
+  return d;
+}
+
+function load(storage) {
+  try {
+    var txt = storage && storage.getItem(DAILY_KEY);
+    return sanitize(txt ? JSON.parse(txt) : null);
+  } catch (e) {
+    return fresh();
+  }
+}
+function save(storage, d) {
+  try { if (storage) storage.setItem(DAILY_KEY, JSON.stringify(d)); } catch (e) {}
+}
+
+function loginRewardFor(streak) { return Math.min(7, 2 + streak); }
+
+// Günün ilk açılışı: görevleri yenile, seriyi ilerlet. Dönen: { coins, streak } (yeni gün değilse coins 0)
+function ensureDay(d, key) {
+  var res = { coins: 0, streak: d.streak };
+  if (d.day !== key) {
+    d.day = key;
+    d.quests = generate(key);
+  }
+  if (d.lastLogin !== key) {
+    var gap = d.lastLogin ? dayDiff(d.lastLogin, key) : 99;
+    d.streak = gap === 1 ? d.streak + 1 : 1;
+    d.lastLogin = key;
+    res.coins = loginRewardFor(d.streak);
+    res.streak = d.streak;
+  }
+  return res;
+}
+
+// Bir koşu bitti: ilerlemeyi işle. run: { stars, score, level, shieldUsed, movingPassed, status }
+// Dönen: yeni tamamlanan görevler [{ text, reward }]; ödüller toplamı çağıran tarafından cüzdana eklenir
+function applyRun(d, run) {
+  var done = [];
+  for (var i = 0; i < d.quests.length; i++) {
+    var q = d.quests[i];
+    if (q.done) continue;
+    var v;
+    switch (q.kind) {
+      case 'run_stars': v = Math.max(q.progress, run.stars || 0); break;
+      case 'run_gates': v = Math.max(q.progress, run.score || 0); break;
+      case 'reach_level': v = Math.max(q.progress, run.level || 1); break;
+      case 'day_gates': v = q.progress + (run.score || 0); break;
+      case 'day_runs': v = q.progress + 1; break;
+      case 'day_shield': v = q.progress + (run.shieldUsed || 0); break;
+      case 'day_moving': v = q.progress + (run.movingPassed || 0); break;
+      case 'win': v = run.status === 'won' ? 1 : q.progress; break;
+      default: v = q.progress;
+    }
+    q.progress = Math.min(q.target, v);
+    if (q.progress >= q.target) {
+      q.done = true;
+      done.push({ text: describe(q), reward: q.reward });
+    }
+  }
+  return done;
+}
+
+var Quests = {
+  DAILY_KEY: DAILY_KEY, TEMPLATES: TEMPLATES, dayKey: dayKey, dayDiff: dayDiff,
+  generate: generate, describe: describe, fresh: fresh, sanitize: sanitize,
+  load: load, save: save, ensureDay: ensureDay, applyRun: applyRun, loginRewardFor: loginRewardFor
+};
+if (typeof module !== 'undefined') module.exports = Quests;
+if (typeof window !== 'undefined') window.GameQuests = Quests;
+})();
 
 </script>
 <script>
@@ -472,11 +688,21 @@ if (typeof window !== 'undefined') window.GameShop = Shop;
 // view: { best, muted, phase: 'ready'|'playing'|'paused'|'over'|'won', fx, touch, newBest, canRestart,
 //         theme: {deco, c:{...}}, skin: {shape, color}, coins, earned }  (theme/skin: shop.js kataloğu)
 //   fx: { particles: [{x,y,life,max,color}], shake: 0..1, squash: 0..1, trail: [{x,y}] }
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
+// fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
+// window.Game* ve module.exports çıkar.
+(function () {
 
 var W0 = 520;
+// Dikey ölçüler oyun durumunun geometrisinden gelir (uzun telefonda alan uzar); setGeo ayarlar.
+var DEFAULT_GEO = { H: 540, ceilY: 30, floorY: 480 };
 var H0 = 540;
 var FLOOR_Y = 480;
 var CEIL_Y = 30;
+function setGeo(g) {
+  g = g || DEFAULT_GEO;
+  H0 = g.H; FLOOR_Y = g.floorY; CEIL_Y = g.ceilY;
+}
 var BALL_X = 160;
 var BALL_R = 12;
 var WALL_W = 28;
@@ -545,7 +771,8 @@ function drawBall(ctx, shape, r, color) {
 }
 
 // Arka plan süsü: kaymalı (paralaks) ama deterministik; dist = katedilen yol.
-function drawDeco(ctx, theme, dist) {
+function drawDeco(ctx, theme, dist, geo) {
+  if (geo) setGeo(geo);
   var col = theme.c.deco;
   var d = dist || 0;
   ctx.fillStyle = col;
@@ -585,11 +812,22 @@ function drawDeco(ctx, theme, dist) {
   }
 }
 
+function questLines(view) {
+  var q = view.questDone || [];
+  var out = [];
+  for (var i = 0; i < q.length && i < 3; i++) {
+    out.push({ text: '✓ Görev: ' + q[i].text + '  +' + q[i].reward + ' ★', font: '15px system-ui, sans-serif', color: '#46d39a', gap: 26 });
+  }
+  if (out.length) out[out.length - 1].gap = 40;
+  return out;
+}
+
 function draw(ctx, state, view) {
   view = view || {};
   var fx = view.fx || {};
   var best = view.best || 0;
   var phase = view.phase || state.status;
+  setGeo(state.geo);
   // Canvas piksel boyutu main.js'de DPR'ye göre ayarlanır; burada mantıksal 520x540 ile çizilir.
   var scale = ctx.canvas.width / W0;
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
@@ -734,7 +972,7 @@ function draw(ctx, state, view) {
       { text: 'Basılı tut: top yükselir · bırak: düşer' },
       { text: 'Kapıları ıskalama, tavana değme', gap: 44 },
       { text: tapWord + ' ve başla', font: 'bold 20px system-ui, sans-serif', color: '#5ac8fa', gap: 40 }
-    ].concat(wallet ? [wallet] : []));
+    ].concat(wallet ? [wallet] : []).concat(view.notice ? [{ text: view.notice, font: 'bold 16px system-ui, sans-serif', color: '#46d39a' }] : []));
   } else if (phase === 'paused') {
     overlay(ctx, [
       { text: 'Duraklatıldı', font: 'bold 26px system-ui, sans-serif', gap: 40 },
@@ -744,11 +982,12 @@ function draw(ctx, state, view) {
     overlay(ctx, [
       { text: 'Kazandın!', font: 'bold 32px system-ui, sans-serif', color: '#ffd166', gap: 40 },
       { text: state.overReason },
-      { text: 'Kapı: ' + state.score + '   Yıldız: ' + state.stars, gap: 44 },
+      { text: 'Kapı: ' + state.score + '   Yıldız: ' + state.stars, gap: 44 }
+    ].concat(questLines(view)).concat([
       view.canRestart
         ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden oyna', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
         : { text: ' ', font: '16px system-ui, sans-serif' }
-    ].concat(wallet ? [wallet] : []));
+    ]).concat(wallet ? [wallet] : []));
   } else if (phase === 'over') {
     var lines = [
       { text: 'Oyun bitti', font: 'bold 28px system-ui, sans-serif', gap: 36 },
@@ -757,6 +996,7 @@ function draw(ctx, state, view) {
     ];
     if (view.newBest) lines.push({ text: 'Yeni rekor!', font: 'bold 20px system-ui, sans-serif', color: '#ffd166' });
     lines.push({ text: 'Kapı: ' + state.score + '   Rekor: ' + best, gap: 44 });
+    lines = lines.concat(questLines(view));
     lines.push(view.canRestart
       ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden başla', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
       : { text: ' ', font: '16px system-ui, sans-serif' });
@@ -765,9 +1005,10 @@ function draw(ctx, state, view) {
   }
 }
 
-var RenderAPI = { draw: draw, drawBall: drawBall, drawDeco: drawDeco };
+var RenderAPI = { draw: draw, drawBall: drawBall, drawDeco: drawDeco, DEFAULT_GEO: DEFAULT_GEO };
 if (typeof module !== 'undefined') module.exports = RenderAPI;
 if (typeof window !== 'undefined') window.GameRender = RenderAPI;
+})();
 
 </script>
 <script>
@@ -776,6 +1017,10 @@ if (typeof window !== 'undefined') window.GameRender = RenderAPI;
 // Akış (phase): ready → playing ⇄ paused → over | won → (dokun/R) → playing
 // Mobil: ekranın her yeri dokunma alanıdır; parmak canvas dışına kayınca da bırakma
 // algılanır; sekme arka plana geçince oyun kendiliğinden duraklar.
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
+// fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
+// window.Game* ve module.exports çıkar.
+(function () {
 
 var RESTART_LOCK_MS = 450; // ölümden hemen sonraki dokunuş yanlışlıkla yeniden başlatmasın
 var SHAKE_MS = 180;
@@ -793,6 +1038,21 @@ function bootstrap() {
   canvas.width = Math.round(C.CANVAS_W * dpr);
   canvas.height = Math.round(C.CANVAS_H * dpr);
 
+  // Dikey ekran: görünür alanın oranına göre mantıksal yükseklik (540–1000). Yalnız yeni
+  // oyunda değişir; oyun sürerken ekran dönerse alan sabit kalır, CSS yalnız ölçekler.
+  var HUD_PX = 76; // alttaki ipucu + mağaza düğmesi için ayrılan yer
+  function desiredHeight() {
+    var w = window.innerWidth, h = window.innerHeight;
+    if (!w || !h) return C.CANVAS_H;
+    var availW = Math.min(w * 0.98, 760);
+    var availH = Math.max(200, h - HUD_PX);
+    return Math.round(C.CANVAS_W * availH / availW);
+  }
+  function applyCanvasHeight(H) {
+    canvas.height = Math.round(H * dpr);
+    if (canvas.style && canvas.style.setProperty) canvas.style.setProperty('--h', String(H));
+  }
+
   var touch = false;
   var input = { action: false };
   var muted = false;
@@ -801,7 +1061,24 @@ function bootstrap() {
   var Shop = window.GameShop || null;
   var profile = Shop ? Shop.load(window.localStorage) : null;
   var earned = 0;
+  var settled = false;
   var shopOpen = false;
+  // Günlük görevler ve giriş serisi
+  var Quests = window.GameQuests || null;
+  var daily = Quests && profile ? Quests.load(window.localStorage) : null;
+  var questDone = [];
+  var notice = '';
+  function checkDay() {
+    if (!daily) return;
+    var lr = Quests.ensureDay(daily, Quests.dayKey(new Date()));
+    if (lr.coins > 0) {
+      profile.coins += lr.coins;
+      notice = 'Günlük ödül: +' + lr.coins + ' ★' + (lr.streak > 1 ? '  (' + lr.streak + '. gün üst üste)' : '');
+      Shop.save(window.localStorage, profile);
+    }
+    Quests.save(window.localStorage, daily);
+  }
+  checkDay();
   try {
     var saved = window.localStorage.getItem('sekmeguc-best');
     if (saved) best = parseInt(saved, 10) || 0;
@@ -875,7 +1152,9 @@ function bootstrap() {
 
   function newGame() {
     var seed = Date.now() % 2147483647;
-    return window.GameLogic.createState(seed);
+    var st = window.GameLogic.createState(seed, { height: desiredHeight() });
+    applyCanvasHeight(st.geo.H);
+    return st;
   }
 
   var state = newGame();
@@ -898,6 +1177,10 @@ function bootstrap() {
   }
   function restart() {
     earned = 0;
+    settled = false;
+    questDone = [];
+    notice = '';
+    checkDay();
     state = newGame();
     prevBounces = state.bounces;
     prevScore = state.score;
@@ -970,11 +1253,17 @@ function bootstrap() {
   var shopBtn = document.getElementById('magazaBtn');
   var shopTab = 'ball';
   function settle() {
-    if (profile && earned === 0 && (state.status === 'over' || state.status === 'won')) {
-      earned = Shop.reward(state);
-      profile.coins += earned;
-      Shop.save(window.localStorage, profile);
+    if (!profile || settled || (state.status !== 'over' && state.status !== 'won')) return;
+    settled = true;
+    earned = Shop.reward(state);
+    if (daily) {
+      questDone = Quests.applyRun(daily, state);
+      for (var qi = 0; qi < questDone.length; qi++) earned += questDone[qi].reward;
+      Quests.save(window.localStorage, daily);
+      if (questDone.length) { beep(784, 0.1, 'triangle'); beep(1046, 0.14, 'triangle'); }
     }
+    profile.coins += earned;
+    Shop.save(window.localStorage, profile);
   }
   function preview(item, kind) {
     var cv = document.createElement('canvas');
@@ -985,7 +1274,7 @@ function bootstrap() {
     c2.scale(pr, pr);
     var theme = kind === 'map' ? item : Shop.equippedMap(profile);
     c2.fillStyle = theme.c.bg; c2.fillRect(0, 0, 72, 52);
-    c2.save(); c2.scale(72 / 520, 52 / 540); window.GameRender.drawDeco(c2, theme, 0);
+    c2.save(); c2.scale(72 / 520, 52 / 540); window.GameRender.drawDeco(c2, theme, 0, window.GameRender.DEFAULT_GEO);
     if (kind === 'map') {
       c2.fillStyle = theme.c.wall; c2.fillRect(300, 30, 40, 150); c2.fillRect(300, 330, 40, 150);
       c2.fillStyle = theme.c.edge; c2.fillRect(300, 177, 40, 6); c2.fillRect(300, 330, 40, 6);
@@ -995,6 +1284,35 @@ function bootstrap() {
     c2.save(); c2.translate(kind === 'ball' ? 36 : 22, 26); window.GameRender.drawBall(c2, skin.shape, kind === 'ball' ? 13 : 7, skin.color); c2.restore();
     return cv;
   }
+  function renderQuests(list) {
+    var head = document.createElement('p');
+    head.className = 'seri';
+    head.textContent = daily.streak > 0
+      ? 'Giriş serisi: ' + daily.streak + ' gün · yarın gelirsen +' + Quests.loginRewardFor(daily.streak + 1) + ' ★'
+      : 'Her gün ilk açılışta yıldız kazanırsın.';
+    list.appendChild(head);
+    daily.quests.forEach(function (q) {
+      var row = document.createElement('div');
+      row.className = 'gorev' + (q.done ? ' bitti' : '');
+      var name = document.createElement('span');
+      name.className = 'ad';
+      name.textContent = (q.done ? '✓ ' : '') + Quests.describe(q);
+      var bar = document.createElement('div');
+      bar.className = 'cubuk';
+      var fill = document.createElement('i');
+      fill.style.width = Math.round(100 * q.progress / q.target) + '%';
+      bar.appendChild(fill);
+      var meta = document.createElement('span');
+      meta.className = 'odul';
+      meta.textContent = q.progress + '/' + q.target + ' · ★ ' + q.reward;
+      row.appendChild(name); row.appendChild(meta); row.appendChild(bar);
+      list.appendChild(row);
+    });
+    var foot = document.createElement('p');
+    foot.className = 'not';
+    foot.textContent = 'Görevler her gece yarısı yenilenir. Ödül görev bitince kendiliğinden eklenir.';
+    list.appendChild(foot);
+  }
   function renderShop() {
     if (!shopEl || !profile) return;
     shopEl.querySelector('.cuzdan').textContent = '★ ' + profile.coins;
@@ -1002,6 +1320,7 @@ function bootstrap() {
     for (var t = 0; t < tabs.length; t++) tabs[t].setAttribute('aria-selected', String(tabs[t].getAttribute('data-sekme') === shopTab));
     var list = shopEl.querySelector('.liste');
     list.innerHTML = '';
+    if (shopTab === 'quests') { if (daily) renderQuests(list); return; }
     Shop.CATALOG[shopTab].forEach(function (item) {
       var row = document.createElement('div');
       row.className = 'urun';
@@ -1027,8 +1346,9 @@ function bootstrap() {
       list.appendChild(row);
     });
   }
-  function openShop() {
+  function openShop(tab) {
     if (!shopEl || phase === 'playing') return;
+    if (typeof tab === 'string') shopTab = tab;
     shopOpen = true;
     release();
     shopEl.hidden = false;
@@ -1040,7 +1360,9 @@ function bootstrap() {
     shopEl.hidden = true;
   }
   if (shopEl && shopBtn && profile) {
-    shopBtn.addEventListener('click', openShop);
+    shopBtn.addEventListener('click', function () { openShop(shopTab === 'quests' ? 'ball' : shopTab); });
+    var questBtn = document.getElementById('gorevBtn');
+    if (questBtn) questBtn.addEventListener('click', function () { openShop('quests'); });
     shopEl.querySelector('.kapat').addEventListener('click', closeShop);
     var tabEls = shopEl.querySelectorAll('[data-sekme]');
     for (var ti = 0; ti < tabEls.length; ti++) {
@@ -1062,6 +1384,9 @@ function bootstrap() {
   window.addEventListener('pointercancel', onPointerUp);
   window.addEventListener('blur', function () { release(); pause(); });
   window.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  window.addEventListener('resize', function () {
+    if (phase === 'ready') { state = newGame(); }
+  });
   if (document.addEventListener) {
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) pause();
@@ -1159,14 +1484,26 @@ function bootstrap() {
     if (banner.a > 0 && phase === 'playing') banner.a = Math.max(0, banner.a - frameDt);
 
     settle();
-    if (shopBtn) shopBtn.hidden = shopOpen || !(profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart());
+    var showBtns = !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
+    if (shopBtn) shopBtn.hidden = !showBtns;
+    var qb = document.getElementById('gorevBtn');
+    if (qb) {
+      qb.hidden = !showBtns || !daily;
+      if (daily) {
+        var left = 0;
+        for (var qn = 0; qn < daily.quests.length; qn++) if (!daily.quests[qn].done) left++;
+        qb.textContent = '📋 Görevler' + (left ? ' (' + left + ')' : ' ✓');
+      }
+    }
     window.GameRender.draw(ctx, state, {
       best: best, muted: muted, phase: phase, fx: fx, touch: touch,
       newBest: newBest, canRestart: (phase === 'over' || phase === 'won') && canRestart(),
       banner: banner, levelCount: C.LEVEL_COUNT, gatesPerLevel: C.GATES_PER_LEVEL,
       theme: profile ? Shop.equippedMap(profile) : null, skin: profile ? Shop.equippedBall(profile) : null,
       coins: profile && phase !== 'playing' && phase !== 'paused' ? profile.coins : undefined,
-      earned: phase === 'over' || phase === 'won' ? earned : 0
+      earned: phase === 'over' || phase === 'won' ? earned : 0,
+      questDone: phase === 'over' || phase === 'won' ? questDone : [],
+      notice: phase === 'ready' ? notice : ''
     });
     window.requestAnimationFrame(frame);
   }
@@ -1183,6 +1520,7 @@ if (typeof window !== 'undefined') {
   }
 }
 if (typeof module !== 'undefined') module.exports = { bootstrap: bootstrap };
+})();
 
 </script>
 
