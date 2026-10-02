@@ -37,14 +37,39 @@ var MAPS = [
 
 var CATALOG = { ball: BALLS, map: MAPS };
 
+// Kalıcı güçlendirmeler: yıldızın oyun içi karşılığı. Her basamak bir kez alınır, geri satılmaz.
+// values[seviye] o seviyenin etkisidir; prices[i] i → i+1 geçişinin fiyatı.
+// Bunlar yalnız oynayarak kazanılan yıldızla alınır; gerçek parayla yıldız satılmaz.
+var UPGRADES = [
+  { id: 'kalkan', name: 'Kalkan kapasitesi', prices: [40, 120], values: [1, 2, 3],
+    desc: function (v) { return 'Aynı anda en çok ' + v + ' kalkan'; } },
+  { id: 'baslangic', name: 'Başlangıç kalkanı', prices: [60], values: [0, 1],
+    desc: function (v) { return v ? 'Her koşuya 1 kalkanla başla' : 'Koşuya kalkansız başla'; } },
+  { id: 'sure', name: 'Uzun güçler', prices: [35, 90], values: [1, 1.25, 1.5],
+    desc: function (v) { return v === 1 ? 'Güçler normal süre (4 / 6 sn)' : 'Güçler %' + Math.round((v - 1) * 100) + ' daha uzun'; } },
+  { id: 'miknatis', name: 'Yıldız mıknatısı', prices: [50, 130], values: [1, 1.6, 2.2],
+    desc: function (v) { return v === 1 ? 'Yıldız ve güç normal alanda alınır' : 'Yıldız ve güç ' + String(v).replace('.', ',') + ' kat geniş alandan alınır'; } }
+];
+
+// Ölünce devam: koşu başına en çok REVIVE_MAX kez, fiyat her seferinde ikiye katlanır
+var REVIVE_BASE = 15;
+var REVIVE_MAX = 3;
+
 function find(kind, id) {
   var list = CATALOG[kind] || [];
   for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
   return null;
 }
 
+function findUpgrade(id) {
+  for (var i = 0; i < UPGRADES.length; i++) if (UPGRADES[i].id === id) return UPGRADES[i];
+  return null;
+}
+
 function createProfile() {
-  return { coins: 0, owned: { ball: ['klasik'], map: ['gece'] }, equipped: { ball: 'klasik', map: 'gece' } };
+  var upg = {};
+  UPGRADES.forEach(function (u) { upg[u.id] = 0; });
+  return { coins: 0, owned: { ball: ['klasik'], map: ['gece'] }, equipped: { ball: 'klasik', map: 'gece' }, upg: upg };
 }
 
 // Dışarıdan gelen (localStorage) veriyi doğrular; tanınmayan her şeyi atar.
@@ -60,6 +85,10 @@ function sanitize(raw) {
     });
     var eq = raw.equipped && raw.equipped[kind];
     if (eq && p.owned[kind].indexOf(eq) >= 0) p.equipped[kind] = eq;
+  });
+  UPGRADES.forEach(function (u) {
+    var lv = Math.floor(Number(raw.upg && raw.upg[u.id]));
+    p.upg[u.id] = isFinite(lv) && lv > 0 ? Math.min(lv, u.prices.length) : 0;
   });
   return p;
 }
@@ -108,6 +137,41 @@ function reward(state) {
   return (state.stars || 0) + levelsDone + MILESTONE_BONUS * ms;
 }
 
+// { ok, reason } — reason: 'yok' | 'tamam' (son basamak) | 'yetersiz'
+function buyUpgrade(p, id) {
+  var u = findUpgrade(id);
+  if (!u) return { ok: false, reason: 'yok' };
+  var lv = p.upg[id] || 0;
+  if (lv >= u.prices.length) return { ok: false, reason: 'tamam' };
+  if (p.coins < u.prices[lv]) return { ok: false, reason: 'yetersiz' };
+  p.coins -= u.prices[lv];
+  p.upg[id] = lv + 1;
+  return { ok: true };
+}
+
+function upgradeValue(p, id) {
+  var u = findUpgrade(id);
+  return u.values[Math.min((p && p.upg && p.upg[id]) || 0, u.values.length - 1)];
+}
+
+// logic.createState(..., { mods }) için güçlendirme etkileri
+function mods(p) {
+  return {
+    maxShield: upgradeValue(p, 'kalkan'),
+    startShield: upgradeValue(p, 'baslangic'),
+    powerMul: upgradeValue(p, 'sure'),
+    magnet: upgradeValue(p, 'miknatis')
+  };
+}
+
+function reviveCost(n) { return REVIVE_BASE * Math.pow(2, n || 0); }
+function canRevive(p, n) { return (n || 0) < REVIVE_MAX && p.coins >= reviveCost(n); }
+function payRevive(p, n) {
+  if (!canRevive(p, n)) return false;
+  p.coins -= reviveCost(n);
+  return true;
+}
+
 function equippedBall(p) { return find('ball', p.equipped.ball) || BALLS[0]; }
 function equippedMap(p) { return find('map', p.equipped.map) || MAPS[0]; }
 
@@ -115,7 +179,9 @@ var Shop = {
   STORAGE_KEY: STORAGE_KEY, CATALOG: CATALOG, find: find,
   createProfile: createProfile, sanitize: sanitize, load: load, save: save,
   owns: owns, buy: buy, equip: equip, reward: reward, MILESTONE_BONUS: MILESTONE_BONUS,
-  equippedBall: equippedBall, equippedMap: equippedMap
+  equippedBall: equippedBall, equippedMap: equippedMap,
+  UPGRADES: UPGRADES, findUpgrade: findUpgrade, buyUpgrade: buyUpgrade, upgradeValue: upgradeValue, mods: mods,
+  REVIVE_BASE: REVIVE_BASE, REVIVE_MAX: REVIVE_MAX, reviveCost: reviveCost, canRevive: canRevive, payRevive: payRevive
 };
 if (typeof module !== 'undefined') module.exports = Shop;
 if (typeof window !== 'undefined') window.GameShop = Shop;

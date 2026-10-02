@@ -12,6 +12,7 @@ var RESTART_LOCK_MS = 450; // ölümden hemen sonraki dokunuş yanlışlıkla ye
 var SHAKE_MS = 180;
 var SQUASH_MS = 120;
 var TRAIL_LEN = 6;
+var REVIVE_MS = 5000; // ölünce "★ ile devam" teklifinin süresi
 
 function bootstrap() {
   var canvas = document.getElementById('game');
@@ -186,7 +187,7 @@ function bootstrap() {
 
   function newGame() {
     var seed = Date.now() % 2147483647;
-    var st = window.GameLogic.createState(seed, { height: desiredHeight() });
+    var st = window.GameLogic.createState(seed, { height: desiredHeight(), mods: profile ? Shop.mods(profile) : null });
     applyCanvasHeight(st.geo.H);
     return st;
   }
@@ -212,6 +213,7 @@ function bootstrap() {
     ensureAudio();
   }
   function restart() {
+    settle(true); // devam teklifi açıkken yeniden başlanırsa ödül yine de yazılsın
     earned = 0;
     settled = false;
     questDone = [];
@@ -260,6 +262,9 @@ function bootstrap() {
     } else if (e.code === 'KeyR') {
       e.preventDefault();
       restart(); // R bilinçli bir tuş: kilit uygulanmaz
+    } else if (e.code === 'KeyC' || e.code === 'Enter') {
+      e.preventDefault();
+      doRevive();
     } else if (e.code === 'KeyM') {
       e.preventDefault();
       setSound(muted ? { music: true, sfx: true } : { music: false, sfx: false });
@@ -290,8 +295,29 @@ function bootstrap() {
   var shopEl = document.getElementById('magaza');
   var shopBtn = document.getElementById('magazaBtn');
   var shopTab = 'ball';
-  function settle() {
+  // Ölünce devam hakkı: yıldız yetiyorsa REVIVE_MS boyunca ❤ Devam düğmesi görünür.
+  // Teklif açıkken ödül yazılmaz (koşu sürebilir); süre dolunca ya da yeniden başlayınca yazılır.
+  var devamBtn = document.getElementById('devamBtn');
+  function reviveOpen() {
+    return !!profile && !settled && state.status === 'over' && Shop.canRevive(profile, state.revives) &&
+      nowMs() - overAt < REVIVE_MS;
+  }
+  function doRevive() {
+    if (!reviveOpen() || !Shop.payRevive(profile, state.revives)) return;
+    Shop.save(window.localStorage, profile);
+    window.GameLogic.revive(state);
+    var left = Shop.REVIVE_MAX - state.revives;
+    banner = { title: 'Devam!', sub: left > 0 ? 'Bu koşuda ' + left + ' devam hakkın kaldı' : 'Bu koşudaki son devam hakkı', a: 1.8 };
+    sfx('level');
+    burst(C.BALL_X, state.y, 24, '#ff7a90', 260);
+    input.action = false;
+    acc = 0;
+    phase = 'playing';
+  }
+  if (devamBtn) devamBtn.addEventListener('click', doRevive);
+  function settle(force) {
     if (!profile || settled || (state.status !== 'over' && state.status !== 'won')) return;
+    if (!force && reviveOpen()) return;
     settled = true;
     earned = Shop.reward(state);
     if (daily) {
@@ -351,6 +377,43 @@ function bootstrap() {
     foot.textContent = 'Görevler her gece yarısı yenilenir. Ödül görev bitince kendiliğinden eklenir.';
     list.appendChild(foot);
   }
+  function renderUpgrades(list) {
+    Shop.UPGRADES.forEach(function (u) {
+      var lv = profile.upg[u.id] || 0;
+      var max = u.prices.length;
+      var row = document.createElement('div');
+      row.className = 'urun guc';
+      var pips = document.createElement('span');
+      pips.className = 'basamak';
+      var dots = '';
+      for (var i = 0; i < max; i++) dots += i < lv ? '●' : '○';
+      pips.textContent = dots;
+      var info = document.createElement('div');
+      var name = document.createElement('span');
+      name.className = 'ad';
+      name.textContent = u.name;
+      var now = document.createElement('span');
+      now.className = 'etki';
+      now.textContent = lv < max ? 'Sıradaki: ' + u.desc(u.values[lv + 1]) : u.desc(u.values[lv]) + ' (tam)';
+      info.appendChild(name); info.appendChild(now);
+      var b = document.createElement('button');
+      if (lv >= max) { b.textContent = 'Tam'; b.disabled = true; b.className = 'kusanildi'; }
+      else { b.textContent = '★ ' + u.prices[lv]; b.disabled = profile.coins < u.prices[lv]; b.className = 'al'; }
+      b.addEventListener('click', function () {
+        if (!Shop.buyUpgrade(profile, u.id).ok) return;
+        Shop.save(window.localStorage, profile);
+        sfx('buy');
+        renderShop();
+      });
+      row.appendChild(pips); row.appendChild(info); row.appendChild(b);
+      list.appendChild(row);
+    });
+    var foot = document.createElement('p');
+    foot.className = 'not';
+    foot.textContent = 'Güçlendirmeler kalıcıdır ve bir sonraki koşudan itibaren geçerlidir. Ölünce ★ ' +
+      Shop.reviveCost(0) + ' ile devam edebilirsin (koşu başına en çok ' + Shop.REVIVE_MAX + ', fiyat her seferinde ikiye katlanır).';
+    list.appendChild(foot);
+  }
   function renderShop() {
     if (!shopEl || !profile) return;
     shopEl.querySelector('.cuzdan').textContent = '★ ' + profile.coins;
@@ -359,6 +422,7 @@ function bootstrap() {
     var list = shopEl.querySelector('.liste');
     list.innerHTML = '';
     if (shopTab === 'quests') { if (daily) renderQuests(list); return; }
+    if (shopTab === 'upg') { renderUpgrades(list); return; }
     Shop.CATALOG[shopTab].forEach(function (item) {
       var row = document.createElement('div');
       row.className = 'urun';
@@ -527,7 +591,12 @@ function bootstrap() {
 
     musicTick();
     settle();
-    var showBtns = !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
+    var rOpen = reviveOpen();
+    if (devamBtn) {
+      devamBtn.hidden = !rOpen;
+      if (rOpen) devamBtn.textContent = '❤ Devam  ★ ' + Shop.reviveCost(state.revives) + '  (' + Math.ceil((REVIVE_MS - (nowMs() - overAt)) / 1000) + ')';
+    }
+    var showBtns = !rOpen && !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
     if (shopBtn) shopBtn.hidden = !showBtns;
     var qb = document.getElementById('gorevBtn');
     if (qb) {
@@ -546,7 +615,8 @@ function bootstrap() {
       coins: profile && phase !== 'playing' && phase !== 'paused' ? profile.coins : undefined,
       earned: phase === 'over' || phase === 'won' ? earned : 0,
       questDone: phase === 'over' || phase === 'won' ? questDone : [],
-      notice: phase === 'ready' ? notice : ''
+      notice: phase === 'ready' ? notice : '',
+      revive: rOpen ? { cost: Shop.reviveCost(state.revives), touch: touch } : null
     });
     window.requestAnimationFrame(frame);
   }

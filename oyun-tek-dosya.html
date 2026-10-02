@@ -105,7 +105,7 @@
     font: 600 14px system-ui, sans-serif; color: #e8ecf1;
     background: #1c2a44; border: 1px solid #2c4369; border-radius: 8px; padding: 8px 12px; cursor: pointer;
   }
-  #magaza .sekmeler { display: flex; gap: 6px; }
+  #magaza .sekmeler { display: flex; flex-wrap: wrap; gap: 6px; }
   #magaza [data-sekme][aria-selected="true"] { background: #5ac8fa; color: #05070c; border-color: #5ac8fa; }
   #magaza .liste { overflow-y: auto; touch-action: pan-y; display: flex; flex-direction: column; gap: 8px; }
   #magaza .urun {
@@ -122,6 +122,15 @@
   #magaza .urun button.kusanildi { background: transparent; color: #7c8aa5; border: 1px solid #2c4369; cursor: default; }
   #magaza .urun button:disabled.al { opacity: 0.45; cursor: not-allowed; }
   #magaza .not { font-size: 12px; color: #7c8aa5; margin: 0; }
+  #magaza .guc .basamak { width: 72px; text-align: center; color: #ffd166; font-size: 18px; letter-spacing: 2px; }
+  #magaza .guc .etki { display: block; font-size: 12.5px; color: #9fb3d1; margin-top: 2px; }
+  #devamBtn {
+    font: 700 15px system-ui, sans-serif; color: #fff; background: #e0566b; border: 0; border-radius: 999px;
+    padding: 9px 18px; cursor: pointer; animation: nabiz 1s ease-in-out infinite;
+  }
+  #devamBtn[hidden] { display: none; }
+  @keyframes nabiz { 50% { transform: scale(1.06); } }
+  @media (prefers-reduced-motion: reduce) { #devamBtn { animation: none; } }
   @media (pointer: coarse) {
     #hint .kb { display: none; }
   }
@@ -142,7 +151,7 @@
 <div id="wrap">
   <canvas id="game" width="520" height="540"></canvas>
   <div id="hint">Ekranın herhangi bir yerine basılı tut: yükseklik kazan<span class="kb"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
-  <div class="dugmeler"><button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri">🔊</button></div>
+  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri">🔊</button></div>
 </div>
 <div id="magaza" data-ui hidden role="dialog" aria-label="Mağaza">
   <div class="panel">
@@ -150,6 +159,7 @@
     <div class="sekmeler" role="tablist">
       <button type="button" role="tab" data-sekme="ball" aria-selected="true">Top</button>
       <button type="button" role="tab" data-sekme="map" aria-selected="false">Harita</button>
+      <button type="button" role="tab" data-sekme="upg" aria-selected="false">Güç</button>
       <button type="button" role="tab" data-sekme="quests" aria-selected="false">Görevler</button>
     </div>
     <div class="liste"></div>
@@ -266,9 +276,16 @@ function makeGeo(height) {
 }
 
 // opts.height: mantıksal alan yüksekliği (540–1000); verilmezse 540 (klasik kare alan)
+// opts.mods: mağazadaki kalıcı güçlendirmeler { maxShield, startShield, powerMul, magnet }
 function createState(seed, opts) {
   var g = makeGeo(opts && opts.height);
+  var m = (opts && opts.mods) || {};
+  var maxShield = typeof m.maxShield === 'number' ? m.maxShield : MAX_SHIELD;
   return {
+    maxShield: maxShield,
+    powerMul: m.powerMul || 1,
+    magnet: m.magnet || 1,
+    revives: 0,
     geo: g,
     rngA: (seed || 1) >>> 0,
     y: g.floorY - BALL_R - 60 * g.k,
@@ -283,7 +300,7 @@ function createState(seed, opts) {
     score: 0,
     level: 1,
     stars: 0,
-    shield: 0,
+    shield: Math.min(maxShield, m.startShield || 0),
     shieldUsed: 0,
     movingPassed: 0,
     milestones: 0,
@@ -445,21 +462,24 @@ function step(state, input, dt) {
     if (o.star && !o.star.taken) {
       var sx = o.x + WALL_W / 2;
       var sy = o.gapY + o.gapH / 2;
-      if (Math.abs(sx - BALL_X) < r + STAR_R && Math.abs(sy - state.y) < r + STAR_R) {
+      var pr = r + STAR_R * (state.magnet || 1);
+      if (Math.abs(sx - BALL_X) < pr && Math.abs(sy - state.y) < pr) {
         o.star.taken = true;
         state.stars++;
-        if (state.shield < MAX_SHIELD) state.shield++;
+        var cap = typeof state.maxShield === 'number' ? state.maxShield : MAX_SHIELD;
+        if (state.shield < cap) state.shield++;
       }
     }
     // Güç: yıldızla aynı yerde; alınınca süresi (yeniden) başlar
     if (o.power && !o.power.taken) {
       var px = o.x + WALL_W / 2;
       var py = o.gapY + o.gapH / 2;
-      if (Math.abs(px - BALL_X) < r + STAR_R && Math.abs(py - state.y) < r + STAR_R) {
+      var pr2 = r + STAR_R * (state.magnet || 1);
+      if (Math.abs(px - BALL_X) < pr2 && Math.abs(py - state.y) < pr2) {
         o.power.taken = true;
         state.powers++;
-        if (o.power.kind === 'slow') state.slowT = POWER_SLOW_T;
-        else state.smallT = POWER_SMALL_T;
+        if (o.power.kind === 'slow') state.slowT = POWER_SLOW_T * (state.powerMul || 1);
+        else state.smallT = POWER_SMALL_T * (state.powerMul || 1);
       }
     }
     if (o.spike && !o.spike.passed && o.x + WALL_W + o.spike.dx + o.spike.w < BALL_X - r) {
@@ -502,6 +522,29 @@ function step(state, input, dt) {
   return state;
 }
 
+// Ölünce devam (yıldızla ödenir, ödemeyi main.js/shop.js yapar): top ortaya alınır,
+// önündeki REVIVE_CLEAR px içindeki ve altındaki engeller kaldırılır, yeni duvar biraz gecikir.
+var REVIVE_CLEAR = 300;
+var REVIVE_GRACE = 1.2;
+function revive(state) {
+  if (state.status !== 'over') return false;
+  var g = state.geo || makeGeo(CANVAS_H);
+  var kept = [];
+  for (var i = 0; i < state.obstacles.length; i++) {
+    var o = state.obstacles[i];
+    var tail = o.x + WALL_W + (o.spike ? o.spike.dx + o.spike.w : 0);
+    if (tail < BALL_X - BALL_R - 4 || o.x > BALL_X + REVIVE_CLEAR) kept.push(o);
+  }
+  state.obstacles = kept;
+  state.y = (g.ceilY + g.floorY) / 2;
+  state.vy = 0;
+  state.spawnTimer = Math.max(state.spawnTimer, REVIVE_GRACE);
+  state.status = 'playing';
+  state.overReason = '';
+  state.revives = (state.revives || 0) + 1;
+  return true;
+}
+
 var CONST = {
   CANVAS_W: CANVAS_W, CANVAS_H: CANVAS_H, BALL_X: BALL_X, BALL_R: BALL_R,
   FLOOR_Y: FLOOR_Y, CEIL_Y: CEIL_Y, WALL_W: WALL_W,
@@ -512,9 +555,9 @@ var CONST = {
   ENDLESS_LEVELS: ENDLESS_LEVELS, ENDLESS_SPEED: ENDLESS_SPEED, ENDLESS_GAP: ENDLESS_GAP, ENDLESS_SPAWN_MIN: ENDLESS_SPAWN_MIN,
   PULSE_FROM: PULSE_FROM, POWER_FROM: POWER_FROM, SPIKE_FROM: SPIKE_FROM, PULSE_MIN: PULSE_MIN,
   POWER_SLOW_F: POWER_SLOW_F, POWER_SLOW_T: POWER_SLOW_T, POWER_SMALL_F: POWER_SMALL_F, POWER_SMALL_T: POWER_SMALL_T,
-  SPIKE_DX: SPIKE_DX, SPIKE_W: SPIKE_W
+  SPIKE_DX: SPIKE_DX, SPIKE_W: SPIKE_W, MAX_SHIELD: MAX_SHIELD, REVIVE_CLEAR: REVIVE_CLEAR
 };
-var API = { createState: createState, step: step, difficulty: difficulty, endless: endless, makeGeo: makeGeo, radius: radius, CONST: CONST };
+var API = { createState: createState, step: step, difficulty: difficulty, endless: endless, revive: revive, makeGeo: makeGeo, radius: radius, CONST: CONST };
 if (typeof module !== 'undefined') module.exports = API;
 if (typeof window !== 'undefined') window.GameLogic = API;
 })();
@@ -560,14 +603,39 @@ var MAPS = [
 
 var CATALOG = { ball: BALLS, map: MAPS };
 
+// Kalıcı güçlendirmeler: yıldızın oyun içi karşılığı. Her basamak bir kez alınır, geri satılmaz.
+// values[seviye] o seviyenin etkisidir; prices[i] i → i+1 geçişinin fiyatı.
+// Bunlar yalnız oynayarak kazanılan yıldızla alınır; gerçek parayla yıldız satılmaz.
+var UPGRADES = [
+  { id: 'kalkan', name: 'Kalkan kapasitesi', prices: [40, 120], values: [1, 2, 3],
+    desc: function (v) { return 'Aynı anda en çok ' + v + ' kalkan'; } },
+  { id: 'baslangic', name: 'Başlangıç kalkanı', prices: [60], values: [0, 1],
+    desc: function (v) { return v ? 'Her koşuya 1 kalkanla başla' : 'Koşuya kalkansız başla'; } },
+  { id: 'sure', name: 'Uzun güçler', prices: [35, 90], values: [1, 1.25, 1.5],
+    desc: function (v) { return v === 1 ? 'Güçler normal süre (4 / 6 sn)' : 'Güçler %' + Math.round((v - 1) * 100) + ' daha uzun'; } },
+  { id: 'miknatis', name: 'Yıldız mıknatısı', prices: [50, 130], values: [1, 1.6, 2.2],
+    desc: function (v) { return v === 1 ? 'Yıldız ve güç normal alanda alınır' : 'Yıldız ve güç ' + String(v).replace('.', ',') + ' kat geniş alandan alınır'; } }
+];
+
+// Ölünce devam: koşu başına en çok REVIVE_MAX kez, fiyat her seferinde ikiye katlanır
+var REVIVE_BASE = 15;
+var REVIVE_MAX = 3;
+
 function find(kind, id) {
   var list = CATALOG[kind] || [];
   for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
   return null;
 }
 
+function findUpgrade(id) {
+  for (var i = 0; i < UPGRADES.length; i++) if (UPGRADES[i].id === id) return UPGRADES[i];
+  return null;
+}
+
 function createProfile() {
-  return { coins: 0, owned: { ball: ['klasik'], map: ['gece'] }, equipped: { ball: 'klasik', map: 'gece' } };
+  var upg = {};
+  UPGRADES.forEach(function (u) { upg[u.id] = 0; });
+  return { coins: 0, owned: { ball: ['klasik'], map: ['gece'] }, equipped: { ball: 'klasik', map: 'gece' }, upg: upg };
 }
 
 // Dışarıdan gelen (localStorage) veriyi doğrular; tanınmayan her şeyi atar.
@@ -583,6 +651,10 @@ function sanitize(raw) {
     });
     var eq = raw.equipped && raw.equipped[kind];
     if (eq && p.owned[kind].indexOf(eq) >= 0) p.equipped[kind] = eq;
+  });
+  UPGRADES.forEach(function (u) {
+    var lv = Math.floor(Number(raw.upg && raw.upg[u.id]));
+    p.upg[u.id] = isFinite(lv) && lv > 0 ? Math.min(lv, u.prices.length) : 0;
   });
   return p;
 }
@@ -631,6 +703,41 @@ function reward(state) {
   return (state.stars || 0) + levelsDone + MILESTONE_BONUS * ms;
 }
 
+// { ok, reason } — reason: 'yok' | 'tamam' (son basamak) | 'yetersiz'
+function buyUpgrade(p, id) {
+  var u = findUpgrade(id);
+  if (!u) return { ok: false, reason: 'yok' };
+  var lv = p.upg[id] || 0;
+  if (lv >= u.prices.length) return { ok: false, reason: 'tamam' };
+  if (p.coins < u.prices[lv]) return { ok: false, reason: 'yetersiz' };
+  p.coins -= u.prices[lv];
+  p.upg[id] = lv + 1;
+  return { ok: true };
+}
+
+function upgradeValue(p, id) {
+  var u = findUpgrade(id);
+  return u.values[Math.min((p && p.upg && p.upg[id]) || 0, u.values.length - 1)];
+}
+
+// logic.createState(..., { mods }) için güçlendirme etkileri
+function mods(p) {
+  return {
+    maxShield: upgradeValue(p, 'kalkan'),
+    startShield: upgradeValue(p, 'baslangic'),
+    powerMul: upgradeValue(p, 'sure'),
+    magnet: upgradeValue(p, 'miknatis')
+  };
+}
+
+function reviveCost(n) { return REVIVE_BASE * Math.pow(2, n || 0); }
+function canRevive(p, n) { return (n || 0) < REVIVE_MAX && p.coins >= reviveCost(n); }
+function payRevive(p, n) {
+  if (!canRevive(p, n)) return false;
+  p.coins -= reviveCost(n);
+  return true;
+}
+
 function equippedBall(p) { return find('ball', p.equipped.ball) || BALLS[0]; }
 function equippedMap(p) { return find('map', p.equipped.map) || MAPS[0]; }
 
@@ -638,7 +745,9 @@ var Shop = {
   STORAGE_KEY: STORAGE_KEY, CATALOG: CATALOG, find: find,
   createProfile: createProfile, sanitize: sanitize, load: load, save: save,
   owns: owns, buy: buy, equip: equip, reward: reward, MILESTONE_BONUS: MILESTONE_BONUS,
-  equippedBall: equippedBall, equippedMap: equippedMap
+  equippedBall: equippedBall, equippedMap: equippedMap,
+  UPGRADES: UPGRADES, findUpgrade: findUpgrade, buyUpgrade: buyUpgrade, upgradeValue: upgradeValue, mods: mods,
+  REVIVE_BASE: REVIVE_BASE, REVIVE_MAX: REVIVE_MAX, reviveCost: reviveCost, canRevive: canRevive, payRevive: payRevive
 };
 if (typeof module !== 'undefined') module.exports = Shop;
 if (typeof window !== 'undefined') window.GameShop = Shop;
@@ -1271,9 +1380,10 @@ function draw(ctx, state, view) {
   ctx.font = '18px system-ui, sans-serif';
   ctx.fillText('Rekor: ' + best, W0 - 14, 24);
   ctx.textAlign = 'left';
-  if (state.shield > 0) starShape(ctx, W0 - 24, FLOOR_Y + 24, 8, '#ffd166');
+  // Kalkanlar (kapasite güçlendirmesiyle 3'e kadar): sağ altta birer yıldız
+  for (var sh = 0; sh < (state.shield || 0); sh++) starShape(ctx, W0 - 24 - sh * 20, FLOOR_Y + 24, 8, '#ffd166');
   // Etkin güçler ve kalan süre (zeminin altında, sağda)
-  var hx = W0 - 52;
+  var hx = W0 - 52 - Math.max(0, (state.shield || 0) - 1) * 20;
   [['slow', state.slowT], ['small', state.smallT]].forEach(function (pw) {
     if (!(pw[1] > 0)) return;
     powerIcon(ctx, pw[0], hx, FLOOR_Y + 24, 9);
@@ -1309,7 +1419,7 @@ function draw(ctx, state, view) {
 
   var tapWord = view.touch ? 'Dokun' : 'Boşluk / dokun';
   var wallet = typeof view.coins === 'number'
-    ? { text: '★ ' + view.coins + (view.earned ? '  (+' + view.earned + ')' : '') + '  ·  Mağaza: aşağıdaki düğme', font: '15px system-ui, sans-serif', color: '#ffd166' }
+    ? { text: '★ ' + view.coins + (view.earned ? '  (+' + view.earned + ')' : '') + (view.revive ? '' : '  ·  Mağaza: aşağıdaki düğme'), font: '15px system-ui, sans-serif', color: '#ffd166' }
     : null;
   if (phase === 'ready') {
     overlay(ctx, [
@@ -1334,6 +1444,9 @@ function draw(ctx, state, view) {
     if (view.newBest) lines.push({ text: 'Yeni rekor!', font: 'bold 20px system-ui, sans-serif', color: '#ffd166' });
     lines.push({ text: 'Kapı: ' + state.score + '   Rekor: ' + best, gap: 44 });
     lines = lines.concat(questLines(view));
+    if (view.revive) {
+      lines.push({ text: '❤ Devam etmek için aşağıdaki düğme (★ ' + view.revive.cost + ')' + (view.touch ? '' : ' · C'), font: 'bold 17px system-ui, sans-serif', color: '#ff7a90', gap: 30 });
+    }
     lines.push(view.canRestart
       ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden başla', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
       : { text: ' ', font: '16px system-ui, sans-serif' });
@@ -1363,6 +1476,7 @@ var RESTART_LOCK_MS = 450; // ölümden hemen sonraki dokunuş yanlışlıkla ye
 var SHAKE_MS = 180;
 var SQUASH_MS = 120;
 var TRAIL_LEN = 6;
+var REVIVE_MS = 5000; // ölünce "★ ile devam" teklifinin süresi
 
 function bootstrap() {
   var canvas = document.getElementById('game');
@@ -1537,7 +1651,7 @@ function bootstrap() {
 
   function newGame() {
     var seed = Date.now() % 2147483647;
-    var st = window.GameLogic.createState(seed, { height: desiredHeight() });
+    var st = window.GameLogic.createState(seed, { height: desiredHeight(), mods: profile ? Shop.mods(profile) : null });
     applyCanvasHeight(st.geo.H);
     return st;
   }
@@ -1563,6 +1677,7 @@ function bootstrap() {
     ensureAudio();
   }
   function restart() {
+    settle(true); // devam teklifi açıkken yeniden başlanırsa ödül yine de yazılsın
     earned = 0;
     settled = false;
     questDone = [];
@@ -1611,6 +1726,9 @@ function bootstrap() {
     } else if (e.code === 'KeyR') {
       e.preventDefault();
       restart(); // R bilinçli bir tuş: kilit uygulanmaz
+    } else if (e.code === 'KeyC' || e.code === 'Enter') {
+      e.preventDefault();
+      doRevive();
     } else if (e.code === 'KeyM') {
       e.preventDefault();
       setSound(muted ? { music: true, sfx: true } : { music: false, sfx: false });
@@ -1641,8 +1759,29 @@ function bootstrap() {
   var shopEl = document.getElementById('magaza');
   var shopBtn = document.getElementById('magazaBtn');
   var shopTab = 'ball';
-  function settle() {
+  // Ölünce devam hakkı: yıldız yetiyorsa REVIVE_MS boyunca ❤ Devam düğmesi görünür.
+  // Teklif açıkken ödül yazılmaz (koşu sürebilir); süre dolunca ya da yeniden başlayınca yazılır.
+  var devamBtn = document.getElementById('devamBtn');
+  function reviveOpen() {
+    return !!profile && !settled && state.status === 'over' && Shop.canRevive(profile, state.revives) &&
+      nowMs() - overAt < REVIVE_MS;
+  }
+  function doRevive() {
+    if (!reviveOpen() || !Shop.payRevive(profile, state.revives)) return;
+    Shop.save(window.localStorage, profile);
+    window.GameLogic.revive(state);
+    var left = Shop.REVIVE_MAX - state.revives;
+    banner = { title: 'Devam!', sub: left > 0 ? 'Bu koşuda ' + left + ' devam hakkın kaldı' : 'Bu koşudaki son devam hakkı', a: 1.8 };
+    sfx('level');
+    burst(C.BALL_X, state.y, 24, '#ff7a90', 260);
+    input.action = false;
+    acc = 0;
+    phase = 'playing';
+  }
+  if (devamBtn) devamBtn.addEventListener('click', doRevive);
+  function settle(force) {
     if (!profile || settled || (state.status !== 'over' && state.status !== 'won')) return;
+    if (!force && reviveOpen()) return;
     settled = true;
     earned = Shop.reward(state);
     if (daily) {
@@ -1702,6 +1841,43 @@ function bootstrap() {
     foot.textContent = 'Görevler her gece yarısı yenilenir. Ödül görev bitince kendiliğinden eklenir.';
     list.appendChild(foot);
   }
+  function renderUpgrades(list) {
+    Shop.UPGRADES.forEach(function (u) {
+      var lv = profile.upg[u.id] || 0;
+      var max = u.prices.length;
+      var row = document.createElement('div');
+      row.className = 'urun guc';
+      var pips = document.createElement('span');
+      pips.className = 'basamak';
+      var dots = '';
+      for (var i = 0; i < max; i++) dots += i < lv ? '●' : '○';
+      pips.textContent = dots;
+      var info = document.createElement('div');
+      var name = document.createElement('span');
+      name.className = 'ad';
+      name.textContent = u.name;
+      var now = document.createElement('span');
+      now.className = 'etki';
+      now.textContent = lv < max ? 'Sıradaki: ' + u.desc(u.values[lv + 1]) : u.desc(u.values[lv]) + ' (tam)';
+      info.appendChild(name); info.appendChild(now);
+      var b = document.createElement('button');
+      if (lv >= max) { b.textContent = 'Tam'; b.disabled = true; b.className = 'kusanildi'; }
+      else { b.textContent = '★ ' + u.prices[lv]; b.disabled = profile.coins < u.prices[lv]; b.className = 'al'; }
+      b.addEventListener('click', function () {
+        if (!Shop.buyUpgrade(profile, u.id).ok) return;
+        Shop.save(window.localStorage, profile);
+        sfx('buy');
+        renderShop();
+      });
+      row.appendChild(pips); row.appendChild(info); row.appendChild(b);
+      list.appendChild(row);
+    });
+    var foot = document.createElement('p');
+    foot.className = 'not';
+    foot.textContent = 'Güçlendirmeler kalıcıdır ve bir sonraki koşudan itibaren geçerlidir. Ölünce ★ ' +
+      Shop.reviveCost(0) + ' ile devam edebilirsin (koşu başına en çok ' + Shop.REVIVE_MAX + ', fiyat her seferinde ikiye katlanır).';
+    list.appendChild(foot);
+  }
   function renderShop() {
     if (!shopEl || !profile) return;
     shopEl.querySelector('.cuzdan').textContent = '★ ' + profile.coins;
@@ -1710,6 +1886,7 @@ function bootstrap() {
     var list = shopEl.querySelector('.liste');
     list.innerHTML = '';
     if (shopTab === 'quests') { if (daily) renderQuests(list); return; }
+    if (shopTab === 'upg') { renderUpgrades(list); return; }
     Shop.CATALOG[shopTab].forEach(function (item) {
       var row = document.createElement('div');
       row.className = 'urun';
@@ -1878,7 +2055,12 @@ function bootstrap() {
 
     musicTick();
     settle();
-    var showBtns = !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
+    var rOpen = reviveOpen();
+    if (devamBtn) {
+      devamBtn.hidden = !rOpen;
+      if (rOpen) devamBtn.textContent = '❤ Devam  ★ ' + Shop.reviveCost(state.revives) + '  (' + Math.ceil((REVIVE_MS - (nowMs() - overAt)) / 1000) + ')';
+    }
+    var showBtns = !rOpen && !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
     if (shopBtn) shopBtn.hidden = !showBtns;
     var qb = document.getElementById('gorevBtn');
     if (qb) {
@@ -1897,7 +2079,8 @@ function bootstrap() {
       coins: profile && phase !== 'playing' && phase !== 'paused' ? profile.coins : undefined,
       earned: phase === 'over' || phase === 'won' ? earned : 0,
       questDone: phase === 'over' || phase === 'won' ? questDone : [],
-      notice: phase === 'ready' ? notice : ''
+      notice: phase === 'ready' ? notice : '',
+      revive: rOpen ? { cost: Shop.reviveCost(state.revives), touch: touch } : null
     });
     window.requestAnimationFrame(frame);
   }

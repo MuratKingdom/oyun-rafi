@@ -213,14 +213,59 @@ function firePointer(type) {
   for (var i = 0; i < 300 && !over; i++) { pumpFrames(1); if (lastState.status === 'over') over = true; }
   fireKey('keyup', 'ArrowUp');
   pumpFrames(10);
+  // cüzdanda ★ 30 var: 5 sn "★ ile devam" teklifi açık, ödül bu sürede yazılmamalı
+  var coinsDuring = JSON.parse(global.localStorage.getItem('sekmeguc-profil')).coins;
+  pumpFrames(320); // ~5,1 sn: teklif kapanır, ödül yazılır
   var coins1 = JSON.parse(global.localStorage.getItem('sekmeguc-profil')).coins;
   var expected = 7;
   pumpFrames(30); // tekrar tekrar eklenmemeli
   var coins2 = JSON.parse(global.localStorage.getItem('sekmeguc-profil')).coins;
   global.window.GameRender.draw = prevDraw;
   global.window.GameShop.reward = realReward;
-  report('T5g ödül cüzdana bir kez yazılır, tema uygulanır', themed && over && coins1 === coins0 + expected && coins2 === coins1 && calls === 1,
-    'tema=' + (lastView && lastView.theme && lastView.theme.id) + ' cüzdan ' + coins0 + '→' + coins1 + '→' + coins2 + ' (ödül ' + expected + ', hesaplama ' + calls + ' kez)');
+  report('T5g ödül cüzdana bir kez yazılır, tema uygulanır', themed && over && coinsDuring === coins0 && coins1 === coins0 + expected && coins2 === coins1 && calls === 1,
+    'tema=' + (lastView && lastView.theme && lastView.theme.id) + ' cüzdan ' + coins0 + '→(teklif sırasında ' + coinsDuring + ')→' + coins1 + '→' + coins2 + ' (ödül ' + expected + ', hesaplama ' + calls + ' kez)');
+})();
+
+// T5j — ölünce ★ ile devam: düğme görünür, ödeme alınır, oyun sürer; ikinci ölümde teklif süresi dolunca ödül bir kez yazılır
+(function t5j() {
+  rafQueue.length = 0;
+  listeners.keydown.length = 0; listeners.keyup.length = 0;
+  listeners.pointerdown.length = 0; listeners.pointerup.length = 0;
+  var Sh = global.window.GameShop;
+  var P = Sh.createProfile(); P.coins = 40; Sh.save(global.localStorage, P);
+  var btn = { hidden: true, textContent: '', handlers: [], addEventListener: function (t, f) { if (t === 'click') this.handlers.push(f); } };
+  var oldGet = global.document.getElementById;
+  global.document.getElementById = function (id) { return id === 'devamBtn' ? btn : oldGet(id); };
+  var lastView = null, prevDraw = global.window.GameRender.draw;
+  global.window.GameRender.draw = function (ctx, st, view) { lastView = view; return prevDraw(ctx, st, view); };
+  require('./main.js').bootstrap();
+  pumpFrames(2);
+  function dieByCeiling() {
+    fireKey('keydown', 'ArrowUp');
+    var over = false;
+    for (var i = 0; i < 400 && !over; i++) { pumpFrames(1); if (lastState.status === 'over') over = true; }
+    fireKey('keyup', 'ArrowUp');
+    pumpFrames(3);
+    return over;
+  }
+  var died1 = dieByCeiling();
+  var offered = !btn.hidden && /15/.test(btn.textContent) && lastView.revive && lastView.revive.cost === 15;
+  btn.handlers.forEach(function (f) { f(); });
+  pumpFrames(2);
+  var coinsAfterPay = JSON.parse(global.localStorage.getItem('sekmeguc-profil')).coins;
+  var resumed = lastState.status === 'playing' && lastState.revives === 1 && btn.hidden;
+  var died2 = dieByCeiling();
+  // ★ 25 kaldı, ikinci devam ★ 30: yetmez → teklif yok, ödül hemen yazılır
+  var offered2 = !btn.hidden;
+  pumpFrames(3);
+  var finalCoins = JSON.parse(global.localStorage.getItem('sekmeguc-profil')).coins;
+  var expect = 25 + Sh.reward(lastState);
+  pumpFrames(60);
+  var stable = JSON.parse(global.localStorage.getItem('sekmeguc-profil')).coins === finalCoins;
+  global.document.getElementById = oldGet;
+  global.window.GameRender.draw = prevDraw;
+  report('T5j ölünce yıldızla devam', died1 && offered && coinsAfterPay === 25 && resumed && died2 && !offered2 && finalCoins === expect && stable,
+    'teklif=' + offered + ' ödeme sonrası=' + coinsAfterPay + ' sürdü=' + resumed + ' ikinci teklif=' + offered2 + ' son cüzdan=' + finalCoins + ' (beklenen ' + expect + ')');
 })();
 
 // T5h — günlük ödül ilk açılışta bir kez verilir; oyun sonunda görev ilerlemesi kaydedilir

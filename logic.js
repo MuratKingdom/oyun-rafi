@@ -107,9 +107,16 @@ function makeGeo(height) {
 }
 
 // opts.height: mantıksal alan yüksekliği (540–1000); verilmezse 540 (klasik kare alan)
+// opts.mods: mağazadaki kalıcı güçlendirmeler { maxShield, startShield, powerMul, magnet }
 function createState(seed, opts) {
   var g = makeGeo(opts && opts.height);
+  var m = (opts && opts.mods) || {};
+  var maxShield = typeof m.maxShield === 'number' ? m.maxShield : MAX_SHIELD;
   return {
+    maxShield: maxShield,
+    powerMul: m.powerMul || 1,
+    magnet: m.magnet || 1,
+    revives: 0,
     geo: g,
     rngA: (seed || 1) >>> 0,
     y: g.floorY - BALL_R - 60 * g.k,
@@ -124,7 +131,7 @@ function createState(seed, opts) {
     score: 0,
     level: 1,
     stars: 0,
-    shield: 0,
+    shield: Math.min(maxShield, m.startShield || 0),
     shieldUsed: 0,
     movingPassed: 0,
     milestones: 0,
@@ -286,21 +293,24 @@ function step(state, input, dt) {
     if (o.star && !o.star.taken) {
       var sx = o.x + WALL_W / 2;
       var sy = o.gapY + o.gapH / 2;
-      if (Math.abs(sx - BALL_X) < r + STAR_R && Math.abs(sy - state.y) < r + STAR_R) {
+      var pr = r + STAR_R * (state.magnet || 1);
+      if (Math.abs(sx - BALL_X) < pr && Math.abs(sy - state.y) < pr) {
         o.star.taken = true;
         state.stars++;
-        if (state.shield < MAX_SHIELD) state.shield++;
+        var cap = typeof state.maxShield === 'number' ? state.maxShield : MAX_SHIELD;
+        if (state.shield < cap) state.shield++;
       }
     }
     // Güç: yıldızla aynı yerde; alınınca süresi (yeniden) başlar
     if (o.power && !o.power.taken) {
       var px = o.x + WALL_W / 2;
       var py = o.gapY + o.gapH / 2;
-      if (Math.abs(px - BALL_X) < r + STAR_R && Math.abs(py - state.y) < r + STAR_R) {
+      var pr2 = r + STAR_R * (state.magnet || 1);
+      if (Math.abs(px - BALL_X) < pr2 && Math.abs(py - state.y) < pr2) {
         o.power.taken = true;
         state.powers++;
-        if (o.power.kind === 'slow') state.slowT = POWER_SLOW_T;
-        else state.smallT = POWER_SMALL_T;
+        if (o.power.kind === 'slow') state.slowT = POWER_SLOW_T * (state.powerMul || 1);
+        else state.smallT = POWER_SMALL_T * (state.powerMul || 1);
       }
     }
     if (o.spike && !o.spike.passed && o.x + WALL_W + o.spike.dx + o.spike.w < BALL_X - r) {
@@ -343,6 +353,29 @@ function step(state, input, dt) {
   return state;
 }
 
+// Ölünce devam (yıldızla ödenir, ödemeyi main.js/shop.js yapar): top ortaya alınır,
+// önündeki REVIVE_CLEAR px içindeki ve altındaki engeller kaldırılır, yeni duvar biraz gecikir.
+var REVIVE_CLEAR = 300;
+var REVIVE_GRACE = 1.2;
+function revive(state) {
+  if (state.status !== 'over') return false;
+  var g = state.geo || makeGeo(CANVAS_H);
+  var kept = [];
+  for (var i = 0; i < state.obstacles.length; i++) {
+    var o = state.obstacles[i];
+    var tail = o.x + WALL_W + (o.spike ? o.spike.dx + o.spike.w : 0);
+    if (tail < BALL_X - BALL_R - 4 || o.x > BALL_X + REVIVE_CLEAR) kept.push(o);
+  }
+  state.obstacles = kept;
+  state.y = (g.ceilY + g.floorY) / 2;
+  state.vy = 0;
+  state.spawnTimer = Math.max(state.spawnTimer, REVIVE_GRACE);
+  state.status = 'playing';
+  state.overReason = '';
+  state.revives = (state.revives || 0) + 1;
+  return true;
+}
+
 var CONST = {
   CANVAS_W: CANVAS_W, CANVAS_H: CANVAS_H, BALL_X: BALL_X, BALL_R: BALL_R,
   FLOOR_Y: FLOOR_Y, CEIL_Y: CEIL_Y, WALL_W: WALL_W,
@@ -353,9 +386,9 @@ var CONST = {
   ENDLESS_LEVELS: ENDLESS_LEVELS, ENDLESS_SPEED: ENDLESS_SPEED, ENDLESS_GAP: ENDLESS_GAP, ENDLESS_SPAWN_MIN: ENDLESS_SPAWN_MIN,
   PULSE_FROM: PULSE_FROM, POWER_FROM: POWER_FROM, SPIKE_FROM: SPIKE_FROM, PULSE_MIN: PULSE_MIN,
   POWER_SLOW_F: POWER_SLOW_F, POWER_SLOW_T: POWER_SLOW_T, POWER_SMALL_F: POWER_SMALL_F, POWER_SMALL_T: POWER_SMALL_T,
-  SPIKE_DX: SPIKE_DX, SPIKE_W: SPIKE_W
+  SPIKE_DX: SPIKE_DX, SPIKE_W: SPIKE_W, MAX_SHIELD: MAX_SHIELD, REVIVE_CLEAR: REVIVE_CLEAR
 };
-var API = { createState: createState, step: step, difficulty: difficulty, endless: endless, makeGeo: makeGeo, radius: radius, CONST: CONST };
+var API = { createState: createState, step: step, difficulty: difficulty, endless: endless, revive: revive, makeGeo: makeGeo, radius: radius, CONST: CONST };
 if (typeof module !== 'undefined') module.exports = API;
 if (typeof window !== 'undefined') window.GameLogic = API;
 })();

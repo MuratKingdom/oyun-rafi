@@ -53,6 +53,23 @@ boyu, salınım genliği, sıçrama sınırı. Oyun geometrik olarak aynı kalı
 ekranda geçerlidir (T16 eşdeğerlik, T17 H=900'de kazanılabilirlik). Yükseklik yalnız yeni oyunda
 değişir; oyun sürerken ekran dönerse alan sabit kalır.
 
+## Yıldızın anlamı: güçlendirmeler ve devam (2 Ekim 2026)
+Yıldız yalnız görünüm almaz. Mağazanın **Güç** sekmesinde kalıcı güçlendirmeler var (bir sonraki
+koşudan itibaren geçerli, geri satılmaz):
+
+| Güçlendirme | Basamaklar | Fiyat |
+|---|---|---|
+| Kalkan kapasitesi | 1 → 2 → 3 kalkan | ★ 40, ★ 120 |
+| Başlangıç kalkanı | her koşuya 1 kalkanla başla | ★ 60 |
+| Uzun güçler | güç süresi ×1,25 → ×1,5 | ★ 35, ★ 90 |
+| Yıldız mıknatısı | yıldız/güç alma alanı ×1,6 → ×2,2 | ★ 50, ★ 130 |
+
+**Ölünce devam:** yıldız yetiyorsa 5 sn boyunca **❤ Devam** düğmesi çıkar (klavyede C / Enter).
+Bedeli koşu başına ★ 15 → 30 → 60, en çok 3 kez. Top ortaya alınır, önündeki engeller temizlenir,
+yeni duvar 1,2 sn gecikir. Teklif açıkken koşunun ödülü yazılmaz; süre dolunca ya da yeniden
+başlayınca yazılır. Hepsinin toplamı ~★ 525 (görünümler ~★ 475): birkaç günlük oyunla dolar.
+Yıldız gerçek parayla satılmaz; güçlendirmeler bu yüzden adil kalır.
+
 ## Ses ve müzik (2 Ekim 2026)
 Müzik ses dosyası değildir; `audio.js` her harita için kendi tonunda (Gece la minör, Gün Batımı
 do majör, Orman re dorian, Neon sol minör, Buz mi pentatonik) 4 ölçülük bir döngü üretir:
@@ -140,6 +157,11 @@ serisi, ay/yıl geçişi, gün atlama), T20 (ilerleme ve ödülün tek seferliğ
 kayıt), T22 (betikler ortak tarayıcı kapsamında birbirini ezmiyor); `test-dom.js` T5h (giriş ödülü
 günde bir kez, ilerleme kaydedilir) — hepsi PASS. Pixel 7 boyutunda Görevler sekmesi açıldı,
 konsol hatası 0.
+**Güçlendirme ve devam:** `test.js` T33 (basamaklı satın alma, kurcalanmış/eski kayıt), T34
+(kapasite 3, başlangıç kalkanı, güç süresi ×1,5, mıknatıs alanı), T35 (devam yalnız ölüyken, engel
+temizliği, fiyat 15/30/60, en çok 3); `test-dom.js` T5g (teklif süresince ödül bekler, sonra bir
+kez yazılır), T5j (düğme görünür, ödeme alınır, oyun sürer; yıldız yetmezse teklif çıkmaz) — PASS.
+Pixel 7'de Güç sekmesi, satın alma, ölüm → ❤ Devam → oyunun sürmesi denendi; konsol hatası 0.
 **Sonsuz mod:** `test.js` T8 (10. ve 20. bölüm sonunda oyun bitmez, eşik sayılır), T31 (sonsuz
 zorluk eğrisi ilk eşikte başlar, 30. bölümde tavana oturur; en dar kapı top çapının 4 katından
 geniş, sıçrama sınırı aynı), T32 (bot tavana ulaşıp 32. bölümü bitiriyor) — PASS. Bot ölçümü
