@@ -261,5 +261,36 @@ var Shop = require('./shop.js');
     'status=' + r.status + ' skor=' + r.score + ' bölüm=' + r.level);
 })();
 
+// T22 — tarayıcıdaki gibi tek ortak kapsam: betikler birbirinin değişkenlerini ezmemeli.
+// (Node'da her dosya kendi modül kapsamında çalıştığı için bu hata yalnız tarayıcıda görünürdü:
+//  render.js'in FLOOR_Y'si logic.js'inkini, ileride quests.js'in load/save'i shop.js'inkini eziyordu.)
+(function t22() {
+  var vm = require('vm'), fs = require('fs'), path = require('path');
+  var store = {};
+  var ctx = { console: console, Math: Math, JSON: JSON, Date: Date,
+    localStorage: { getItem: function (k) { return store[k] === undefined ? null : store[k]; }, setItem: function (k, v) { store[k] = String(v); } } };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  ['logic.js', 'shop.js', 'quests.js', 'render.js'].forEach(function (f) {
+    var file = path.join(__dirname, f);
+    if (fs.existsSync(file)) vm.runInContext(fs.readFileSync(file, 'utf8'), ctx, { filename: f });
+  });
+  var L = ctx.GameLogic, R = ctx.GameRender, S = ctx.GameShop;
+  var noop = function () {};
+  var fake = { canvas: { width: 520, height: 900 }, fillRect: noop, strokeRect: noop, beginPath: noop, moveTo: noop, lineTo: noop,
+    stroke: noop, fill: noop, arc: noop, fillText: noop, rect: noop, closePath: noop, save: noop, restore: noop,
+    translate: noop, setTransform: noop, scale: noop };
+  // uzun alanla bir kare çiz (render kendi geometrisini ayarlar), sonra yeni oyunun geometrisine bak
+  R.draw(fake, L.createState(1, { height: 900 }), {});
+  var g1 = L.createState(2, { height: 900 }).geo;
+  R.draw(fake, L.createState(3, { height: 1000 }), {});
+  var g2 = L.createState(4, { height: 540 }).geo;
+  S.save(ctx.localStorage, S.createProfile());
+  var prof = S.load(ctx.localStorage);
+  var ok = g1.floorY === 840 && g2.floorY === 480 && g2.k === 1 && prof.equipped && prof.equipped.map === 'gece';
+  report('T22 ortak kapsamda betikler birbirini ezmiyor', ok,
+    'H900 zemin=' + g1.floorY + ' (840) · H540 zemin=' + g2.floorY + ' (480) · mağaza profili=' + (prof.equipped ? 'sağlam' : 'BOZUK'));
+})();
+
 console.log('--- özet: ' + (fails === 0 ? 'tüm testler PASS' : fails + ' test FAIL'));
 process.exit(fails === 0 ? 0 : 1);

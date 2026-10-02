@@ -3,6 +3,10 @@
 // Para birimi yıldızdır. Oyun sonunda kazanılan: o koşuda toplanan yıldızlar
 // + geçilen her bölüm için 1 + kazanınca 10. Gerçek para yok.
 // Profil tarayıcıda localStorage'da tutulur; bozuk/eksik veri sessizce varsayılana döner.
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
+// fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
+// window.Game* ve module.exports çıkar.
+(function () {
 
 var STORAGE_KEY = 'sekmeguc-profil';
 
@@ -112,3 +116,4 @@ var Shop = {
 };
 if (typeof module !== 'undefined') module.exports = Shop;
 if (typeof window !== 'undefined') window.GameShop = Shop;
+})();
