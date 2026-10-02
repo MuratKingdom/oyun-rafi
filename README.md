@@ -67,6 +67,16 @@ Satın alınan ürün hemen kuşanılır; sahip olunanlar arasında istediğin a
 Cüzdan ve görünümler tarayıcıda (`localStorage`, `sekmeguc-profil`) saklanır; bozuk ya da
 elle değiştirilmiş kayıt güvenli varsayılana döner. Katalog `shop.js`'te.
 
+## Günlük görev ve giriş ödülü (2 Ekim 2026)
+**📋 Görevler** düğmesi (ya da mağazadaki *Görevler* sekmesi) o günün 3 görevini gösterir.
+Görevler her gece yarısı (cihaz saati) yenilenir; gün tarihinden belirlenimli seçilir, 8 türden
+3 farklısı: bir koşuda yıldız / kapı, bölüme ulaş, gün içinde toplam kapı / oyun / kalkan
+kullanımı / hareketli kapı, oyunu kazan. Biten görevin ödülü (★ 5–25) oyun sonunda kendiliğinden
+cüzdana eklenir ve oyun sonu ekranında gösterilir. **Giriş ödülü:** günün ilk açılışında
+★ (2 + seri), en çok ★ 7; bir gün atlanırsa seri 1'e döner. Kayıt `localStorage`
+(`sekmeguc-gunluk`); kurcalanmış kayıtta görevler ve ödüller tarihten yeniden üretilir,
+ilerleme sınırlanır. Mantık `quests.js`'te.
+
 ## NE ÇALIŞIYOR
 - Zıplama fiziği, basılı-tutma ile yükseklik kontrolü, kapı/duvar çarpışması ve kayıp sebebi gösterimi (kanıt: T1, T2, T3, T5c, tarayıcı)
 - Artan zorluk (hız + daralan kapı) ve kapı geçme skoru (kanıt: T1, T3, W3)
@@ -88,6 +98,11 @@ T15 (ödül hesabı ve fiyat dengesi: bir kazanma koşusu en pahalı ürünün d
 fazlasını getirir); `test-dom.js` T5g (oyun sonunda ödül cüzdana tam bir kez yazılır, kuşanılan
 tema çizime gider) — hepsi PASS. Headless Chromium'da Pixel 7 boyutunda mağaza açıldı, bir top
 ve bir harita satın alındı, profil kaydı ve oyun içi görünüm doğrulandı; konsol hatası 0.
+**Günlük görevler:** `test.js` T18 (belirlenimli seçim, 30 günde 30 farklı set), T19 (giriş
+serisi, ay/yıl geçişi, gün atlama), T20 (ilerleme ve ödülün tek seferliği), T21 (bozuk/kurcalanmış
+kayıt), T22 (betikler ortak tarayıcı kapsamında birbirini ezmiyor); `test-dom.js` T5h (giriş ödülü
+günde bir kez, ilerleme kaydedilir) — hepsi PASS. Pixel 7 boyutunda Görevler sekmesi açıldı,
+konsol hatası 0.
 **Bölümler (2. adım):** `test.js` T7 (bölüm atlama), T8 (kazanma), T9 (yıldız → kalkan →
 çarpma yutulur, aynı duvar ikinci kez öldürmez, kalkansız ölüm), T10 (hareketli kapı alan
 içinde), T11 (sıçrama ≤ 150 px, öğeler doğru bölümde açılıyor), T12 (bot tohum 1'de 10

@@ -223,5 +223,35 @@ function firePointer(type) {
     'tema=' + (lastView && lastView.theme && lastView.theme.id) + ' cüzdan ' + coins0 + '→' + coins1 + '→' + coins2 + ' (ödül ' + expected + ', hesaplama ' + calls + ' kez)');
 })();
 
+// T5h — günlük ödül ilk açılışta bir kez verilir; oyun sonunda görev ilerlemesi kaydedilir
+(function t5h() {
+  rafQueue.length = 0;
+  listeners.keydown.length = 0; listeners.keyup.length = 0;
+  listeners.pointerdown.length = 0; listeners.pointerup.length = 0;
+  require('./quests.js');
+  global.localStorage.setItem('sekmeguc-gunluk', '');
+  global.localStorage.setItem('sekmeguc-profil', JSON.stringify({ coins: 0 }));
+  require('./main.js').bootstrap();
+  pumpFrames(2);
+  var c1 = JSON.parse(global.localStorage.getItem('sekmeguc-profil')).coins;
+  var dly = JSON.parse(global.localStorage.getItem('sekmeguc-gunluk'));
+  rafQueue.length = 0;
+  require('./main.js').bootstrap(); // aynı gün ikinci açılış
+  pumpFrames(2);
+  var c2 = JSON.parse(global.localStorage.getItem('sekmeguc-profil')).coins;
+  var runsBefore = JSON.parse(global.localStorage.getItem('sekmeguc-gunluk')).quests.map(function (q) { return q.progress; }).join(',');
+  fireKey('keydown', 'ArrowUp');
+  var over = false;
+  for (var i = 0; i < 300 && !over; i++) { pumpFrames(1); if (lastState.status === 'over') over = true; }
+  fireKey('keyup', 'ArrowUp');
+  pumpFrames(5);
+  var after = JSON.parse(global.localStorage.getItem('sekmeguc-gunluk'));
+  var hasRunQuest = after.quests.some(function (q) { return q.kind === 'day_runs'; });
+  var runQ = after.quests.filter(function (q) { return q.kind === 'day_runs' || q.kind === 'reach_level'; });
+  var progressed = runQ.length === 0 || runQ.some(function (q) { return q.progress >= 1; });
+  report('T5h günlük ödül bir kez, görev ilerlemesi kaydedilir', c1 === 3 && c2 === 3 && dly.quests.length === 3 && dly.streak === 1 && over && progressed,
+    'ilk açılış=' + c1 + ' ikinci açılış=' + c2 + ' seri=' + dly.streak + ' ilerleme ' + runsBefore + ' → ' + after.quests.map(function (q) { return q.kind + ':' + q.progress; }).join(',') + (hasRunQuest ? '' : ' (bugün day_runs yok)'));
+})();
+
 console.log('--- özet: ' + (fails === 0 ? 'tüm testler PASS' : fails + ' test FAIL'));
 process.exit(fails === 0 ? 0 : 1);

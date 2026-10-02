@@ -47,7 +47,24 @@ function bootstrap() {
   var Shop = window.GameShop || null;
   var profile = Shop ? Shop.load(window.localStorage) : null;
   var earned = 0;
+  var settled = false;
   var shopOpen = false;
+  // Günlük görevler ve giriş serisi
+  var Quests = window.GameQuests || null;
+  var daily = Quests && profile ? Quests.load(window.localStorage) : null;
+  var questDone = [];
+  var notice = '';
+  function checkDay() {
+    if (!daily) return;
+    var lr = Quests.ensureDay(daily, Quests.dayKey(new Date()));
+    if (lr.coins > 0) {
+      profile.coins += lr.coins;
+      notice = 'Günlük ödül: +' + lr.coins + ' ★' + (lr.streak > 1 ? '  (' + lr.streak + '. gün üst üste)' : '');
+      Shop.save(window.localStorage, profile);
+    }
+    Quests.save(window.localStorage, daily);
+  }
+  checkDay();
   try {
     var saved = window.localStorage.getItem('sekmeguc-best');
     if (saved) best = parseInt(saved, 10) || 0;
@@ -146,6 +163,10 @@ function bootstrap() {
   }
   function restart() {
     earned = 0;
+    settled = false;
+    questDone = [];
+    notice = '';
+    checkDay();
     state = newGame();
     prevBounces = state.bounces;
     prevScore = state.score;
@@ -218,11 +239,17 @@ function bootstrap() {
   var shopBtn = document.getElementById('magazaBtn');
   var shopTab = 'ball';
   function settle() {
-    if (profile && earned === 0 && (state.status === 'over' || state.status === 'won')) {
-      earned = Shop.reward(state);
-      profile.coins += earned;
-      Shop.save(window.localStorage, profile);
+    if (!profile || settled || (state.status !== 'over' && state.status !== 'won')) return;
+    settled = true;
+    earned = Shop.reward(state);
+    if (daily) {
+      questDone = Quests.applyRun(daily, state);
+      for (var qi = 0; qi < questDone.length; qi++) earned += questDone[qi].reward;
+      Quests.save(window.localStorage, daily);
+      if (questDone.length) { beep(784, 0.1, 'triangle'); beep(1046, 0.14, 'triangle'); }
     }
+    profile.coins += earned;
+    Shop.save(window.localStorage, profile);
   }
   function preview(item, kind) {
     var cv = document.createElement('canvas');
@@ -243,6 +270,35 @@ function bootstrap() {
     c2.save(); c2.translate(kind === 'ball' ? 36 : 22, 26); window.GameRender.drawBall(c2, skin.shape, kind === 'ball' ? 13 : 7, skin.color); c2.restore();
     return cv;
   }
+  function renderQuests(list) {
+    var head = document.createElement('p');
+    head.className = 'seri';
+    head.textContent = daily.streak > 0
+      ? 'Giriş serisi: ' + daily.streak + ' gün · yarın gelirsen +' + Quests.loginRewardFor(daily.streak + 1) + ' ★'
+      : 'Her gün ilk açılışta yıldız kazanırsın.';
+    list.appendChild(head);
+    daily.quests.forEach(function (q) {
+      var row = document.createElement('div');
+      row.className = 'gorev' + (q.done ? ' bitti' : '');
+      var name = document.createElement('span');
+      name.className = 'ad';
+      name.textContent = (q.done ? '✓ ' : '') + Quests.describe(q);
+      var bar = document.createElement('div');
+      bar.className = 'cubuk';
+      var fill = document.createElement('i');
+      fill.style.width = Math.round(100 * q.progress / q.target) + '%';
+      bar.appendChild(fill);
+      var meta = document.createElement('span');
+      meta.className = 'odul';
+      meta.textContent = q.progress + '/' + q.target + ' · ★ ' + q.reward;
+      row.appendChild(name); row.appendChild(meta); row.appendChild(bar);
+      list.appendChild(row);
+    });
+    var foot = document.createElement('p');
+    foot.className = 'not';
+    foot.textContent = 'Görevler her gece yarısı yenilenir. Ödül görev bitince kendiliğinden eklenir.';
+    list.appendChild(foot);
+  }
   function renderShop() {
     if (!shopEl || !profile) return;
     shopEl.querySelector('.cuzdan').textContent = '★ ' + profile.coins;
@@ -250,6 +306,7 @@ function bootstrap() {
     for (var t = 0; t < tabs.length; t++) tabs[t].setAttribute('aria-selected', String(tabs[t].getAttribute('data-sekme') === shopTab));
     var list = shopEl.querySelector('.liste');
     list.innerHTML = '';
+    if (shopTab === 'quests') { if (daily) renderQuests(list); return; }
     Shop.CATALOG[shopTab].forEach(function (item) {
       var row = document.createElement('div');
       row.className = 'urun';
@@ -275,8 +332,9 @@ function bootstrap() {
       list.appendChild(row);
     });
   }
-  function openShop() {
+  function openShop(tab) {
     if (!shopEl || phase === 'playing') return;
+    if (typeof tab === 'string') shopTab = tab;
     shopOpen = true;
     release();
     shopEl.hidden = false;
@@ -288,7 +346,9 @@ function bootstrap() {
     shopEl.hidden = true;
   }
   if (shopEl && shopBtn && profile) {
-    shopBtn.addEventListener('click', openShop);
+    shopBtn.addEventListener('click', function () { openShop(shopTab === 'quests' ? 'ball' : shopTab); });
+    var questBtn = document.getElementById('gorevBtn');
+    if (questBtn) questBtn.addEventListener('click', function () { openShop('quests'); });
     shopEl.querySelector('.kapat').addEventListener('click', closeShop);
     var tabEls = shopEl.querySelectorAll('[data-sekme]');
     for (var ti = 0; ti < tabEls.length; ti++) {
@@ -410,14 +470,26 @@ function bootstrap() {
     if (banner.a > 0 && phase === 'playing') banner.a = Math.max(0, banner.a - frameDt);
 
     settle();
-    if (shopBtn) shopBtn.hidden = shopOpen || !(profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart());
+    var showBtns = !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
+    if (shopBtn) shopBtn.hidden = !showBtns;
+    var qb = document.getElementById('gorevBtn');
+    if (qb) {
+      qb.hidden = !showBtns || !daily;
+      if (daily) {
+        var left = 0;
+        for (var qn = 0; qn < daily.quests.length; qn++) if (!daily.quests[qn].done) left++;
+        qb.textContent = '📋 Görevler' + (left ? ' (' + left + ')' : ' ✓');
+      }
+    }
     window.GameRender.draw(ctx, state, {
       best: best, muted: muted, phase: phase, fx: fx, touch: touch,
       newBest: newBest, canRestart: (phase === 'over' || phase === 'won') && canRestart(),
       banner: banner, levelCount: C.LEVEL_COUNT, gatesPerLevel: C.GATES_PER_LEVEL,
       theme: profile ? Shop.equippedMap(profile) : null, skin: profile ? Shop.equippedBall(profile) : null,
       coins: profile && phase !== 'playing' && phase !== 'paused' ? profile.coins : undefined,
-      earned: phase === 'over' || phase === 'won' ? earned : 0
+      earned: phase === 'over' || phase === 'won' ? earned : 0,
+      questDone: phase === 'over' || phase === 'won' ? questDone : [],
+      notice: phase === 'ready' ? notice : ''
     });
     window.requestAnimationFrame(frame);
   }

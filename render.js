@@ -126,6 +126,16 @@ function drawDeco(ctx, theme, dist, geo) {
   }
 }
 
+function questLines(view) {
+  var q = view.questDone || [];
+  var out = [];
+  for (var i = 0; i < q.length && i < 3; i++) {
+    out.push({ text: '✓ Görev: ' + q[i].text + '  +' + q[i].reward + ' ★', font: '15px system-ui, sans-serif', color: '#46d39a', gap: 26 });
+  }
+  if (out.length) out[out.length - 1].gap = 40;
+  return out;
+}
+
 function draw(ctx, state, view) {
   view = view || {};
   var fx = view.fx || {};
@@ -276,7 +286,7 @@ function draw(ctx, state, view) {
       { text: 'Basılı tut: top yükselir · bırak: düşer' },
       { text: 'Kapıları ıskalama, tavana değme', gap: 44 },
       { text: tapWord + ' ve başla', font: 'bold 20px system-ui, sans-serif', color: '#5ac8fa', gap: 40 }
-    ].concat(wallet ? [wallet] : []));
+    ].concat(wallet ? [wallet] : []).concat(view.notice ? [{ text: view.notice, font: 'bold 16px system-ui, sans-serif', color: '#46d39a' }] : []));
   } else if (phase === 'paused') {
     overlay(ctx, [
       { text: 'Duraklatıldı', font: 'bold 26px system-ui, sans-serif', gap: 40 },
@@ -286,11 +296,12 @@ function draw(ctx, state, view) {
     overlay(ctx, [
       { text: 'Kazandın!', font: 'bold 32px system-ui, sans-serif', color: '#ffd166', gap: 40 },
       { text: state.overReason },
-      { text: 'Kapı: ' + state.score + '   Yıldız: ' + state.stars, gap: 44 },
+      { text: 'Kapı: ' + state.score + '   Yıldız: ' + state.stars, gap: 44 }
+    ].concat(questLines(view)).concat([
       view.canRestart
         ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden oyna', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
         : { text: ' ', font: '16px system-ui, sans-serif' }
-    ].concat(wallet ? [wallet] : []));
+    ]).concat(wallet ? [wallet] : []));
   } else if (phase === 'over') {
     var lines = [
       { text: 'Oyun bitti', font: 'bold 28px system-ui, sans-serif', gap: 36 },
@@ -299,6 +310,7 @@ function draw(ctx, state, view) {
     ];
     if (view.newBest) lines.push({ text: 'Yeni rekor!', font: 'bold 20px system-ui, sans-serif', color: '#ffd166' });
     lines.push({ text: 'Kapı: ' + state.score + '   Rekor: ' + best, gap: 44 });
+    lines = lines.concat(questLines(view));
     lines.push(view.canRestart
       ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden başla', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
       : { text: ' ', font: '16px system-ui, sans-serif' });

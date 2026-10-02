@@ -98,6 +98,7 @@ function createState(seed, opts) {
     stars: 0,
     shield: 0,
     shieldUsed: 0,
+    movingPassed: 0,
     distance: 0,
     status: 'playing',
     overReason: ''
@@ -208,6 +209,7 @@ function step(state, input, dt) {
     if (!o.passed && o.x + WALL_W < BALL_X) {
       o.passed = true;
       state.score++;
+      if (o.move) state.movingPassed++;
       if (state.score % GATES_PER_LEVEL === 0) {
         if (state.level >= LEVEL_COUNT) {
           state.status = 'won';
