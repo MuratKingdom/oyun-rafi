@@ -103,7 +103,7 @@ function quiet(s) { s.spawnTimer = 999; return s; } // testte rastgele duvar do�
     'level=' + s.level + ' score=' + s.score + ' status=' + s.status);
 })();
 
-// T8 — kazanma: son bölümün son kapısı geçilince status 'won'
+// T8 — sonsuzluk: 10. bölümün son kapısında oyun bitmez; 11. bölüme geçilir ve bir eşik sayılır
 (function t8() {
   var s = quiet(createState(3));
   s.level = C2.LEVEL_COUNT;
@@ -111,7 +111,16 @@ function quiet(s) { s.spawnTimer = 999; return s; } // testte rastgele duvar do�
   s.y = 250; s.vy = 0;
   s.obstacles = [wallAt(C2.BALL_X - C2.WALL_W - 1, 150, 200)];
   s = step(s, { action: false }, DT);
-  report('T8 kazanma koşulu', s.status === 'won' && s.overReason.length > 0, 'status=' + s.status + ' reason="' + s.overReason + '"');
+  var first = s.status === 'playing' && s.level === C2.LEVEL_COUNT + 1 && s.milestones === 1;
+  // 20. bölümün sonunda ikinci eşik
+  s.level = 2 * C2.LEVEL_COUNT;
+  s.score = 2 * C2.LEVEL_COUNT * C2.GATES_PER_LEVEL - 1;
+  s.obstacles = [wallAt(C2.BALL_X - C2.WALL_W - 1, 150, 200)];
+  s.y = 250; s.vy = 0;
+  s = step(s, { action: false }, DT);
+  var second = s.status === 'playing' && s.level === 2 * C2.LEVEL_COUNT + 1 && s.milestones === 2;
+  report('T8 oyun sonsuz, her 10 bölüm bir eşik', first && second,
+    'bölüm 10 sonrası=' + (first ? '11, eşik 1' : 'HATA') + ' bölüm 20 sonrası=' + (second ? '21, eşik 2' : 'HATA') + ' status=' + s.status);
 })();
 
 // T9 — yıldız kalkan verir; kalkan bir duvar çarpmasını yutar, ikincisinde ölünür
@@ -178,12 +187,12 @@ function quiet(s) { s.spawnTimer = 999; return s; } // testte rastgele duvar do�
     'en büyük sıçrama=' + maxJump.toFixed(1) + '/' + C2.MAX_JUMP + ' hareketli=' + seen.move + ' yıldız=' + seen.star + ' çift=' + seen.double + ' erken=' + early);
 })();
 
-// T12 — kazanılabilirlik: ileriyi simüle eden bir bot 10 bölümü bitirebiliyor
+// T12 — geçilebilirlik: ileriyi simüle eden bir bot ilk 10 bölümü (ilk eşiği) bitirebiliyor
 // (insan oynanışının kanıtı değil; dizilimlerin fiziksel olarak geçilebilir olduğunun kanıtı)
 (function t12() {
   var Bot = require('./tools/kazanilabilirlik.js');
   var r = Bot.play(1, { shield: true });
-  report('T12 oyun kazanılabilir (bot, tohum 1)', r.status === 'won',
+  report('T12 ilk eşik geçilebilir (bot, tohum 1)', r.reached && r.status === 'playing',
     'status=' + r.status + ' skor=' + r.score + ' bölüm=' + r.level + ' süre=' + r.t.toFixed(0) + 's');
 })();
 
@@ -294,6 +303,33 @@ function quiet(s) { s.spawnTimer = 999; return s; } // testte rastgele duvar do�
     'nefes=' + seen.pulse + ' yavaşlat=' + seen.slow + ' küçül=' + seen.small + ' diken=' + seen.spike + ' erken=' + early + ' kural dışı=' + bad);
 })();
 
+// T31 — sonsuz bölgede zorluk adil bir tavana çıkar: ilk eşiğe kadar değişmez, 30. bölümden sonra sabit
+(function t31() {
+  var e = [1, 10, 11, 20, 30, 31, 100].map(Logic.endless);
+  var shape = e[0] === 0 && e[1] === 0 && e[2] > 0 && e[3] > e[2] && e[4] === 1 && e[5] === 1 && e[6] === 1;
+  function settle(level) {
+    var s = quiet(createState(5));
+    s.level = level; s.t = 10000; s.y = 250; s.vy = 0;
+    s = step(s, { action: false }, DT);
+    return s;
+  }
+  var a = settle(10), b = settle(30), c = settle(200);
+  var gapOk = Math.abs(a.gapH - C2.GAP_MIN) < 0.01 && Math.abs(b.gapH - (C2.GAP_MIN - C2.ENDLESS_GAP)) < 0.01 && Math.abs(c.gapH - b.gapH) < 1e-9;
+  var spOk = Math.abs(a.speed - C2.SPEED_MAX) < 0.01 && Math.abs(b.speed - (C2.SPEED_MAX + C2.ENDLESS_SPEED)) < 0.01 && c.speed === b.speed;
+  // en dar kapı topun çapının 4 katından geniş kalmalı ve sıçrama sınırı değişmemeli
+  var fair = b.gapH > 4 * 2 * C2.BALL_R && C2.MAX_JUMP === 150;
+  report('T31 sonsuz zorluk tavanlı ve adil', shape && gapOk && spOk && fair,
+    'eğri=' + e.map(function (x) { return x.toFixed(2); }).join(',') + ' kapı ' + a.gapH.toFixed(0) + '→' + b.gapH.toFixed(0) + ' hız ' + a.speed.toFixed(0) + '→' + b.speed.toFixed(0));
+})();
+
+// T32 — tavandaki zorluk geçilebilir: bot zorluk tavanına (30. bölüm) ulaşıp geçebiliyor
+(function t32() {
+  var Bot = require('./tools/kazanilabilirlik.js');
+  var r = Bot.play(4, { shield: true, target: 32 });
+  report('T32 zorluk tavanı geçilebilir (bot, tohum 4, 32. bölüm)', r.reached,
+    'bölüm=' + r.level + ' kapı=' + r.score + ' eşik=' + r.milestones + ' süre=' + r.t.toFixed(0) + 's' + (r.reached ? '' : ' · ' + r.overReason));
+})();
+
 // --- Mağaza (3. tur: görünümler) ---------------------------------------------
 var Shop = require('./shop.js');
 
@@ -327,17 +363,18 @@ var Shop = require('./shop.js');
   report('T14 kayıt doğrulama', ok, 'bozuk→' + a.coins + ' kurcalanmış→coins=' + b.coins + ',kuşanılan=' + b.equipped.ball + ' gidiş-dönüş=' + d.coins + '/' + d.equipped.ball);
 })();
 
-// T15 — ödül: yıldız + geçilen bölüm başına 1 + kazanınca 10; katalog fiyatları erişilebilir
+// T15 — ödül: yıldız + geçilen bölüm başına 1 + her eşik için 10; katalog fiyatları erişilebilir
 (function t15() {
   var r1 = Shop.reward({ stars: 3, level: 4, status: 'over' });
-  var r2 = Shop.reward({ stars: 20, level: 10, status: 'won' });
+  var r2 = Shop.reward({ stars: 20, level: 11, milestones: 1, status: 'over' });
   var r3 = Shop.reward({ stars: 0, level: 1, status: 'over' });
   var maxPrice = 0;
   ['ball', 'map'].forEach(function (k) { Shop.CATALOG[k].forEach(function (it) { maxPrice = Math.max(maxPrice, it.price); }); });
   var freeDefaults = Shop.find('ball', 'klasik').price === 0 && Shop.find('map', 'gece').price === 0;
-  // bir kazanma koşusu (~20 yıldız) en pahalı ürünün en az dörtte birini getirmeli
-  var ok = r1 === 6 && r2 === 39 && r3 === 0 && freeDefaults && r2 * 4 >= maxPrice;
-  report('T15 ödül ve fiyat dengesi', ok, 'ödüller=' + r1 + '/' + r2 + '/' + r3 + ' en pahalı=' + maxPrice);
+  // ilk eşiği geçen bir koşu (~20 yıldız) en pahalı ürünün en az dörtte birini getirmeli
+  var r4 = Shop.reward({ stars: 0, level: 21 }); // eski kayıt: eşik sayısı bölümden hesaplanır
+  var ok = r1 === 6 && r2 === 40 && r3 === 0 && r4 === 40 && freeDefaults && r2 * 4 >= maxPrice;
+  report('T15 ödül ve fiyat dengesi', ok, 'ödüller=' + r1 + '/' + r2 + '/' + r3 + '/' + r4 + ' en pahalı=' + maxPrice);
 })();
 
 // --- Dikey ekran (uzun alan) ---------------------------------------------------
@@ -364,7 +401,7 @@ var Shop = require('./shop.js');
 (function t17() {
   var Bot = require('./tools/kazanilabilirlik.js');
   var r = Bot.play(1, { shield: true, height: 900 });
-  report('T17 uzun alanda kazanılabilir (bot, tohum 1, H=900)', r.status === 'won',
+  report('T17 uzun alanda ilk eşik geçilebilir (bot, tohum 1, H=900)', r.reached && r.status === 'playing',
     'status=' + r.status + ' skor=' + r.score + ' bölüm=' + r.level);
 })();
 
@@ -438,8 +475,8 @@ var Q = require('./quests.js');
   var r1 = Q.applyRun(d, { stars: 3, score: 25, level: 4, status: 'over' });
   var p1 = d.quests.map(function (q) { return q.progress; }).join(',');
   var r2 = Q.applyRun(d, { stars: 6, score: 20, level: 3, status: 'over' });
-  var r3 = Q.applyRun(d, { stars: 9, score: 80, level: 10, status: 'won' });
-  var r4 = Q.applyRun(d, { stars: 9, score: 80, level: 10, status: 'won' });
+  var r3 = Q.applyRun(d, { stars: 9, score: 81, level: 11, status: 'over' }); // ilk eşik geçildi
+  var r4 = Q.applyRun(d, { stars: 9, score: 81, level: 11, status: 'over' });
   var ok = r1.length === 0 && p1 === '3,25,0' &&
     r2.length === 2 && r2[0].reward === 12 && r2[1].reward === 12 &&
     r3.length === 1 && r3[0].reward === 25 && r4.length === 0;

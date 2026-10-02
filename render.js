@@ -296,9 +296,8 @@ function draw(ctx, state, view) {
   ctx.textAlign = 'center';
   ctx.font = '16px system-ui, sans-serif';
   ctx.fillStyle = textDim;
-  var lvCount = view.levelCount || 10;
   var per = view.gatesPerLevel || 8;
-  ctx.fillText('Bölüm ' + state.level + '/' + lvCount + '  ·  ' + (state.score % per) + '/' + per, W0 / 2, 23);
+  ctx.fillText('Bölüm ' + state.level + '  ·  ' + (state.score % per) + '/' + per, W0 / 2, 23);
   ctx.textAlign = 'right';
   ctx.fillStyle = textCol;
   ctx.font = '18px system-ui, sans-serif';
@@ -356,21 +355,13 @@ function draw(ctx, state, view) {
       { text: 'Duraklatıldı', font: 'bold 26px system-ui, sans-serif', gap: 40 },
       { text: tapWord + ' ve devam et', color: '#5ac8fa' }
     ]);
-  } else if (phase === 'won') {
-    overlay(ctx, [
-      { text: 'Kazandın!', font: 'bold 32px system-ui, sans-serif', color: '#ffd166', gap: 40 },
-      { text: state.overReason },
-      { text: 'Kapı: ' + state.score + '   Yıldız: ' + state.stars, gap: 44 }
-    ].concat(questLines(view)).concat([
-      view.canRestart
-        ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden oyna', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
-        : { text: ' ', font: '16px system-ui, sans-serif' }
-    ]).concat(wallet ? [wallet] : []));
-  } else if (phase === 'over') {
+  } else if (phase === 'over' || phase === 'won') {
+    // Oyun sonsuz: tek bitiş ekranı. 'won' yalnız eski durumlar için aynı ekrana düşer.
+    var ms = state.milestones || 0;
     var lines = [
       { text: 'Oyun bitti', font: 'bold 28px system-ui, sans-serif', gap: 36 },
       { text: state.overReason },
-      { text: 'Bölüm ' + state.level + '’e kadar geldin', font: '16px system-ui, sans-serif', color: '#9fb3d1' }
+      { text: 'Bölüm ' + state.level + '’e kadar geldin' + (ms ? '  ·  ' + ms + ' eşik geçildi' : ''), font: '16px system-ui, sans-serif', color: ms ? '#ffd166' : '#9fb3d1' }
     ];
     if (view.newBest) lines.push({ text: 'Yeni rekor!', font: 'bold 20px system-ui, sans-serif', color: '#ffd166' });
     lines.push({ text: 'Kapı: ' + state.score + '   Rekor: ' + best, gap: 44 });

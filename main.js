@@ -1,6 +1,6 @@
 // Sekme Gücü — döngü, girdi, ses, efektler; logic + render'ı bağlar
 //
-// Akış (phase): ready → playing ⇄ paused → over | won → (dokun/R) → playing
+// Akış (phase): ready → playing ⇄ paused → over → (dokun/R) → playing  (oyun sonsuz; kazanma yok)
 // Mobil: ekranın her yeri dokunma alanıdır; parmak canvas dışına kayınca da bırakma
 // algılanır; sekme arka plana geçince oyun kendiliğinden duraklar.
 // Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
@@ -201,6 +201,7 @@ function bootstrap() {
   var prevStars = state.stars;
   var prevShieldUsed = state.shieldUsed;
   var prevPowers = state.powers;
+  var prevMilestones = state.milestones;
   var banner = { title: 'Bölüm 1', sub: '', a: 0 };
 
   function nowMs() { return Date.now(); }
@@ -223,6 +224,7 @@ function bootstrap() {
     prevStars = state.stars;
     prevShieldUsed = state.shieldUsed;
     prevPowers = state.powers;
+    prevMilestones = state.milestones;
     banner = { title: 'Bölüm 1', sub: '', a: 1.4 };
     newBest = false;
     fx.particles = [];
@@ -484,24 +486,19 @@ function bootstrap() {
             : state.level === C.POWER_FROM ? 'Güçler: ⏱ dünyayı yavaşlatır, pembe top küçültür'
             : state.level === C.DOUBLE_FROM ? 'Çift duvarlar geliyor'
             : state.level === C.SPIKE_FROM ? 'Kırmızı dikenlere sekme: basılı tut, havada kal' : '';
-          banner = { title: 'Bölüm ' + state.level, sub: sub, a: sub ? 2.2 : 1.4 };
-          sfx('level');
-          prevLevel = state.level;
-        }
-        if (state.status === 'won') {
-          sfx('win');
-          buzz(40);
-          burst(C.BALL_X, state.y, 40, '#ffd166', 360);
-          if (state.score > best) {
-            best = state.score;
-            newBest = true;
-            try { window.localStorage.setItem('sekmeguc-best', String(best)); } catch (e) {}
+          var milestone = state.milestones !== prevMilestones;
+          if (milestone) {
+            // Her 10 bölümde bir eşik: büyük kutlama, ödülde +10
+            sub = 'Eşik ' + state.milestones + ' geçildi! +' + (Shop ? Shop.MILESTONE_BONUS : 10) + ' ★' + (state.milestones === 1 ? ' · artık sonsuz: zorluk yavaşça artar' : '');
+            prevMilestones = state.milestones;
+            sfx('win');
+            buzz(40);
+            burst(C.BALL_X, state.y, 40, '#ffd166', 360);
+          } else {
+            sfx('level');
           }
-          phase = 'won';
-          overAt = nowMs();
-          input.action = false;
-          acc = 0;
-          break;
+          banner = { title: 'Bölüm ' + state.level, sub: sub, a: milestone ? 3 : sub ? 2.2 : 1.4 };
+          prevLevel = state.level;
         }
         if (state.status === 'over') {
           sfx('over');

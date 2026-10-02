@@ -1,7 +1,7 @@
 // Sekme Gücü — mağaza: katalog, cüzdan, satın alma, kuşanma (saf mantık; DOM yok)
 //
 // Para birimi yıldızdır. Oyun sonunda kazanılan: o koşuda toplanan yıldızlar
-// + geçilen her bölüm için 1 + kazanınca 10. Gerçek para yok.
+// + geçilen her bölüm için 1 + her 10 bölümlük eşik için 10. Gerçek para yok.
 // Profil tarayıcıda localStorage'da tutulur; bozuk/eksik veri sessizce varsayılana döner.
 // Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
 // fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
@@ -99,10 +99,13 @@ function equip(p, kind, id) {
   return true;
 }
 
-// Bir koşunun ödülü: toplanan yıldız + geçilen bölüm başına 1 + kazanma bonusu 10
+// Bir koşunun ödülü: toplanan yıldız + geçilen bölüm başına 1 + geçilen her eşik (10 bölüm) için 10.
+// Oyun sonsuzdur; eşik sayısı state.milestones'ta, eski kayıtlar için bölümden de hesaplanır.
+var MILESTONE_BONUS = 10;
 function reward(state) {
   var levelsDone = Math.max(0, (state.level || 1) - 1);
-  return (state.stars || 0) + levelsDone + (state.status === 'won' ? 10 : 0);
+  var ms = typeof state.milestones === 'number' ? state.milestones : Math.floor(levelsDone / 10);
+  return (state.stars || 0) + levelsDone + MILESTONE_BONUS * ms;
 }
 
 function equippedBall(p) { return find('ball', p.equipped.ball) || BALLS[0]; }
@@ -111,7 +114,7 @@ function equippedMap(p) { return find('map', p.equipped.map) || MAPS[0]; }
 var Shop = {
   STORAGE_KEY: STORAGE_KEY, CATALOG: CATALOG, find: find,
   createProfile: createProfile, sanitize: sanitize, load: load, save: save,
-  owns: owns, buy: buy, equip: equip, reward: reward,
+  owns: owns, buy: buy, equip: equip, reward: reward, MILESTONE_BONUS: MILESTONE_BONUS,
   equippedBall: equippedBall, equippedMap: equippedMap
 };
 if (typeof module !== 'undefined') module.exports = Shop;
