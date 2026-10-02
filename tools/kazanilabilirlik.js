@@ -9,6 +9,7 @@
 //   node tools/kazanilabilirlik.js                 # 8 tohum, kalkan açık
 //   node tools/kazanilabilirlik.js --kalkansiz 1,2  # kalkan kapalı (daha sert ölçüt)
 //   node tools/kazanilabilirlik.js --guclu 4        # daha derin arama (yavaş)
+//   node tools/kazanilabilirlik.js --yukseklik 900  # uzun (dikey telefon) alan
 var path = require('path');
 
 function load(noShield) {
@@ -50,10 +51,10 @@ function play(seed, opts) {
     for (var k = 0; k < c.obstacles.length; k++) {
       if (c.obstacles[k].x + 28 > 148) { tgt = c.obstacles[k]; break; }
     }
-    var mid = tgt ? tgt.gapY + tgt.gapH / 2 : 300;
-    return c.score * 1000 + c.shield * 300 - Math.abs(c.y - mid) * 0.5;
+    var mid = tgt ? tgt.gapY + tgt.gapH / 2 : (c.geo.ceilY + c.geo.floorY) / 2;
+    return c.score * 1000 + c.shield * 300 - Math.abs(c.y - mid) * 0.5 / c.geo.k;
   }
-  var s = L.createState(seed), best = [];
+  var s = L.createState(seed, { height: opts.height }), best = [];
   for (var i = 0; i < DEPTH; i++) best.push(false);
   while (s.status === 'playing' && s.t < 600) {
     var cands = [best.slice(1).concat([false]), best.slice(1).concat([true])];
@@ -80,7 +81,9 @@ if (require.main === module) {
   var args = process.argv.slice(2);
   var opts = { shield: args.indexOf('--kalkansiz') < 0 };
   if (args.indexOf('--guclu') >= 0) { opts.depth = 36; opts.n = 300; }
-  var list = args.filter(function (x) { return /^[\d,]+$/.test(x); })[0] || '1,2,3,4,5,42,99,1234';
+  var hi = args.indexOf('--yukseklik');
+  if (hi >= 0) opts.height = Number(args[hi + 1]);
+  var list = args.filter(function (x, i) { return /^[\d,]+$/.test(x) && args[i - 1] !== '--yukseklik'; })[0] || '1,2,3,4,5,42,99,1234';
   var seeds = list.split(',').map(Number), wins = 0;
   seeds.forEach(function (sd) {
     var s = play(sd, opts);

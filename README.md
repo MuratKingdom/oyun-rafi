@@ -42,6 +42,14 @@ zeminden sekerek yükselir); çift duvardan sonraki duvar normal aralıkla gelir
 geçtikçe duvarlar hızlanır ve kapılar daralır. Her oyun farklı bir tohumla (seed) başlar,
 bu yüzden kapı dizilimi her seferinde değişir.
 
+## Dikey ekran (2 Ekim 2026)
+Oyun alanının mantıksal yüksekliği ekranın oranına göre 540–1000 arasında seçilir (genişlik 520
+sabit); uzun telefonda alan ekranı dikey doldurur. Top yalnız zeminden sekerek yükseldiği için
+alan büyürken dikey fizik de aynı oranda (`k`) ölçeklenir: yerçekimi, itiş, sekme hızı, kapı
+boyu, salınım genliği, sıçrama sınırı. Oyun geometrik olarak aynı kalır; botla ölçülen denge her
+ekranda geçerlidir (T16 eşdeğerlik, T17 H=900'de kazanılabilirlik). Yükseklik yalnız yeni oyunda
+değişir; oyun sürerken ekran dönerse alan sabit kalır.
+
 ## Mağaza (2 Ekim 2026)
 Başlangıç ve oyun sonu ekranındaki **🛒 Mağaza** düğmesiyle açılır. Para birimi **yıldız**dır:
 oyunda topladığın yıldızlar + geçtiğin her bölüm için 1 + kazanırsan 10. Gerçek para yok.
@@ -70,7 +78,6 @@ elle değiştirilmiş kayıt güvenli varsayılana döner. Katalog `shop.js`'te.
 ## NE EKSİK / İSKELE
 - Görsel tema tek renk; arka plan/tema çeşitliliği yok.
 - Zorluk eğrisi sabitleri (`SPEED_MAX`, `GAP_MIN`, `DIFF_TAU`) insan oynanışına göre ayarlanmadı.
-- Uzun (dikey) telefon ekranlarında oyun alanı kare kaldığı için üstte/altta boşluk kalıyor.
 - Gerçek bir telefonda elle denenmedi (titreşim ve dokunma hissi dahil).
 
 - Denge bir botla ölçüldü (aşağıda), insan oynanışıyla ayarlanmadı; 10 bölüm botun hızıyla ~105 sn sürüyor.

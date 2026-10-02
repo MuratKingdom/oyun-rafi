@@ -4,9 +4,15 @@
 //   fx: { particles: [{x,y,life,max,color}], shake: 0..1, squash: 0..1, trail: [{x,y}] }
 
 var W0 = 520;
+// Dikey ölçüler oyun durumunun geometrisinden gelir (uzun telefonda alan uzar); setGeo ayarlar.
+var DEFAULT_GEO = { H: 540, ceilY: 30, floorY: 480 };
 var H0 = 540;
 var FLOOR_Y = 480;
 var CEIL_Y = 30;
+function setGeo(g) {
+  g = g || DEFAULT_GEO;
+  H0 = g.H; FLOOR_Y = g.floorY; CEIL_Y = g.ceilY;
+}
 var BALL_X = 160;
 var BALL_R = 12;
 var WALL_W = 28;
@@ -75,7 +81,8 @@ function drawBall(ctx, shape, r, color) {
 }
 
 // Arka plan süsü: kaymalı (paralaks) ama deterministik; dist = katedilen yol.
-function drawDeco(ctx, theme, dist) {
+function drawDeco(ctx, theme, dist, geo) {
+  if (geo) setGeo(geo);
   var col = theme.c.deco;
   var d = dist || 0;
   ctx.fillStyle = col;
@@ -120,6 +127,7 @@ function draw(ctx, state, view) {
   var fx = view.fx || {};
   var best = view.best || 0;
   var phase = view.phase || state.status;
+  setGeo(state.geo);
   // Canvas piksel boyutu main.js'de DPR'ye göre ayarlanır; burada mantıksal 520x540 ile çizilir.
   var scale = ctx.canvas.width / W0;
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
@@ -295,6 +303,6 @@ function draw(ctx, state, view) {
   }
 }
 
-var RenderAPI = { draw: draw, drawBall: drawBall, drawDeco: drawDeco };
+var RenderAPI = { draw: draw, drawBall: drawBall, drawDeco: drawDeco, DEFAULT_GEO: DEFAULT_GEO };
 if (typeof module !== 'undefined') module.exports = RenderAPI;
 if (typeof window !== 'undefined') window.GameRender = RenderAPI;
