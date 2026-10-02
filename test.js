@@ -233,5 +233,33 @@ var Shop = require('./shop.js');
   report('T15 ödül ve fiyat dengesi', ok, 'ödüller=' + r1 + '/' + r2 + '/' + r3 + ' en pahalı=' + maxPrice);
 })();
 
+// --- Dikey ekran (uzun alan) ---------------------------------------------------
+// T16 — ölçek eşdeğerliği: uzun alanda top, kare alandakiyle normalize edildiğinde birebir aynı hareket eder
+(function t16() {
+  var a = createState(9), b = createState(9, { height: 900 });
+  a.spawnTimer = b.spawnTimer = 999;
+  var maxErr = 0, ga = a.geo, gb = b.geo;
+  for (var i = 0; i < 600; i++) {
+    var inp = { action: (i % 50) < 18 };
+    a = step(a, inp, DT); b = step(b, inp, DT);
+    var na = (a.y - ga.ceilY) / ga.k, nb = (b.y - gb.ceilY) / gb.k;
+    // top yarıçapı ölçeklenmez; zemin çarpışma noktası BALL_R*(1-1/k) kadar kayar
+    maxErr = Math.max(maxErr, Math.abs(na - nb));
+    if (a.status !== b.status) break;
+  }
+  var tolerance = C2.BALL_R; // yarıçapın ölçeklenmemesinden gelen fark
+  var bad = b.geo.H !== 900 || b.geo.k <= 1 || createState(1, { height: 5000 }).geo.H !== C2.MAX_H || createState(1, { height: 10 }).geo.H !== C2.MIN_H;
+  report('T16 uzun alan ölçek eşdeğerliği', !bad && a.status === b.status && maxErr <= tolerance,
+    'H=' + b.geo.H + ' k=' + b.geo.k.toFixed(3) + ' en büyük normalize fark=' + maxErr.toFixed(2) + 'px (sınır ' + tolerance + ')');
+})();
+
+// T17 — uzun alanda da oyun kazanılabilir (bot, tohum 1, H=900)
+(function t17() {
+  var Bot = require('./tools/kazanilabilirlik.js');
+  var r = Bot.play(1, { shield: true, height: 900 });
+  report('T17 uzun alanda kazanılabilir (bot, tohum 1, H=900)', r.status === 'won',
+    'status=' + r.status + ' skor=' + r.score + ' bölüm=' + r.level);
+})();
+
 console.log('--- özet: ' + (fails === 0 ? 'tüm testler PASS' : fails + ' test FAIL'));
 process.exit(fails === 0 ? 0 : 1);

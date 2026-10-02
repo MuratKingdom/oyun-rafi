@@ -20,6 +20,21 @@ function bootstrap() {
   canvas.width = Math.round(C.CANVAS_W * dpr);
   canvas.height = Math.round(C.CANVAS_H * dpr);
 
+  // Dikey ekran: görünür alanın oranına göre mantıksal yükseklik (540–1000). Yalnız yeni
+  // oyunda değişir; oyun sürerken ekran dönerse alan sabit kalır, CSS yalnız ölçekler.
+  var HUD_PX = 76; // alttaki ipucu + mağaza düğmesi için ayrılan yer
+  function desiredHeight() {
+    var w = window.innerWidth, h = window.innerHeight;
+    if (!w || !h) return C.CANVAS_H;
+    var availW = Math.min(w * 0.98, 760);
+    var availH = Math.max(200, h - HUD_PX);
+    return Math.round(C.CANVAS_W * availH / availW);
+  }
+  function applyCanvasHeight(H) {
+    canvas.height = Math.round(H * dpr);
+    if (canvas.style && canvas.style.setProperty) canvas.style.setProperty('--h', String(H));
+  }
+
   var touch = false;
   var input = { action: false };
   var muted = false;
@@ -102,7 +117,9 @@ function bootstrap() {
 
   function newGame() {
     var seed = Date.now() % 2147483647;
-    return window.GameLogic.createState(seed);
+    var st = window.GameLogic.createState(seed, { height: desiredHeight() });
+    applyCanvasHeight(st.geo.H);
+    return st;
   }
 
   var state = newGame();
@@ -212,7 +229,7 @@ function bootstrap() {
     c2.scale(pr, pr);
     var theme = kind === 'map' ? item : Shop.equippedMap(profile);
     c2.fillStyle = theme.c.bg; c2.fillRect(0, 0, 72, 52);
-    c2.save(); c2.scale(72 / 520, 52 / 540); window.GameRender.drawDeco(c2, theme, 0);
+    c2.save(); c2.scale(72 / 520, 52 / 540); window.GameRender.drawDeco(c2, theme, 0, window.GameRender.DEFAULT_GEO);
     if (kind === 'map') {
       c2.fillStyle = theme.c.wall; c2.fillRect(300, 30, 40, 150); c2.fillRect(300, 330, 40, 150);
       c2.fillStyle = theme.c.edge; c2.fillRect(300, 177, 40, 6); c2.fillRect(300, 330, 40, 6);
@@ -289,6 +306,9 @@ function bootstrap() {
   window.addEventListener('pointercancel', onPointerUp);
   window.addEventListener('blur', function () { release(); pause(); });
   window.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  window.addEventListener('resize', function () {
+    if (phase === 'ready') { state = newGame(); }
+  });
   if (document.addEventListener) {
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) pause();

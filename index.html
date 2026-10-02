@@ -40,13 +40,15 @@
     background: #0b1220;
     border: 2px solid #223;
     border-radius: 6px;
-    /* 520x540 oranını koruyarak ekrana sığ: genişlik ya da yükseklik hangisi darsa */
-    width: min(98vw, calc((100dvh - 40px) * 520 / 540));
-    aspect-ratio: 520 / 540;
+    /* Mantıksal alan 520 x --h (main.js ayarlar: 540–1000). Oranı koruyarak ekrana sığ;
+       uzun telefonda alan da uzadığı için üstte/altta boşluk kalmaz. */
+    --h: 540;
+    width: min(98vw, 760px, calc((100dvh - 76px) * 520 / var(--h)));
+    aspect-ratio: 520 / var(--h);
     height: auto;
   }
   @supports not (height: 100dvh) {
-    canvas { width: min(98vw, calc((100vh - 40px) * 520 / 540)); }
+    canvas { width: min(98vw, 760px, calc((100vh - 76px) * 520 / var(--h))); }
   }
   #hint {
     font-size: 12px;
