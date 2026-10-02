@@ -25,12 +25,13 @@ function makeCtx() {
     fillRect: function () {}, strokeRect: function () {}, beginPath: function () {},
     moveTo: function () {}, lineTo: function () {}, stroke: function () {}, fill: function () {},
     arc: function () {}, fillText: function () {}, measureText: function () { return { width: 10 }; },
-    save: function () {}, restore: function () {}, translate: function () {}
+    save: function () {}, restore: function () {}, translate: function () {},
+    setTransform: function () {}, scale: function () {}
   };
   return new Proxy(base, handler);
 }
 
-var listeners = { keydown: [], keyup: [] };
+var listeners = { keydown: [], keyup: [], pointerdown: [], pointerup: [] };
 var canvasListeners = { pointerdown: [], pointerup: [], pointercancel: [] };
 
 var fakeCanvas = {
@@ -141,6 +142,50 @@ function fireKey(type, code) {
   pumpFrames(3);
   var ok = reachedOver && statusOver === 'over' && lastState.status === 'playing';
   report('T5d restart bağlı (R sonrası status playing)', ok, 'over-ulaşıldı=' + reachedOver + ' R-öncesi=' + statusOver + ' R-sonrası=' + lastState.status);
+})();
+
+function firePointer(type) {
+  var evt = { pointerType: 'touch', cancelable: true, preventDefault: function () {} };
+  var arr = listeners[type] || [];
+  for (var i = 0; i < arr.length; i++) arr[i](evt);
+}
+
+// T5e — başlangıç ekranı: dokunmadan oyun ilerlemiyor (mobilde ilk anda ölmesin)
+(function t5e() {
+  var savedRaf = rafQueue.slice();
+  rafQueue.length = 0;
+  listeners.keydown.length = 0; listeners.keyup.length = 0;
+  listeners.pointerdown.length = 0; listeners.pointerup.length = 0;
+  require('./main.js').bootstrap();
+  pumpFrames(2);
+  var y0 = lastState.y;
+  pumpFrames(120);
+  var waited = lastState.y === y0 && lastState.t === 0;
+  firePointer('pointerdown');
+  pumpFrames(30);
+  firePointer('pointerup');
+  var started = lastState.t > 0;
+  report('T5e başlangıç ekranı dokunuşu bekliyor', waited && started, 'bekledi=' + waited + ' dokununca-başladı=' + started);
+  void savedRaf;
+})();
+
+// T5f — ölümden hemen sonraki dokunuş yeniden başlatmıyor, kısa kilitten sonra başlatıyor
+(function t5f() {
+  firePointer('pointerdown'); // basılı tut → tavana çarp
+  var over = false;
+  for (var i = 0; i < 300 && !over; i++) { pumpFrames(1); if (lastState.status === 'over') over = true; }
+  firePointer('pointerup');
+  firePointer('pointerdown');
+  pumpFrames(2);
+  var stillOver = lastState.status === 'over';
+  firePointer('pointerup');
+  pumpFrames(35); // ~560 ms
+  firePointer('pointerdown');
+  pumpFrames(2);
+  firePointer('pointerup');
+  var restarted = lastState.status === 'playing';
+  report('T5f yeniden başlatma kilidi', over && stillOver && restarted,
+    'öldü=' + over + ' hemen-dokunuş-sonrası=' + (stillOver ? 'over' : 'playing') + ' kilitten-sonra=' + lastState.status);
 })();
 
 console.log('--- özet: ' + (fails === 0 ? 'tüm testler PASS' : fails + ' test FAIL'));

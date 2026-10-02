@@ -64,5 +64,24 @@ function report(name, ok, detail) {
   report('T4 yeniden başlatma temiz', ok, 'aynı=' + same + ' status=' + a.status);
 })();
 
+// T6 — zorluk eğrisi sınırlı ve tekdüze (hız artar, kapı daralır, tavanı aşmaz)
+(function t6() {
+  var C = Logic.CONST;
+  var d0 = Logic.difficulty(0);
+  var ok = d0 === 0;
+  var prev = -1;
+  for (var t = 0; t <= 1200; t += 5) {
+    var d = Logic.difficulty(t);
+    if (!(d >= prev && d >= 0 && d < 1)) ok = false;
+    prev = d;
+  }
+  var s = createState(5);
+  s.t = 10000;
+  s = step(s, { action: false }, DT);
+  var bounded = s.speed <= C.SPEED_MAX + 1e-9 && s.gapH >= C.GAP_MIN - 1e-9;
+  report('T6 zorluk eğrisi sınırlı ve tekdüze', ok && bounded,
+    'd(0)=' + d0 + ' d(60)=' + Logic.difficulty(60).toFixed(3) + ' tavan hız=' + s.speed.toFixed(1) + ' en dar kapı=' + s.gapH.toFixed(1));
+})();
+
 console.log('--- özet: ' + (fails === 0 ? 'tüm testler PASS' : fails + ' test FAIL'));
 process.exit(fails === 0 ? 0 : 1);
