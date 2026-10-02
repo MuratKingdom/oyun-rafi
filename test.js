@@ -187,6 +187,113 @@ function quiet(s) { s.spawnTimer = 999; return s; } // testte rastgele duvar do�
     'status=' + r.status + ' skor=' + r.score + ' bölüm=' + r.level + ' süre=' + r.t.toFixed(0) + 's');
 })();
 
+// --- Yeni güçler ve engeller ---------------------------------------------------
+// T23 — nefes alan kapı: ağız ortası sabit, boy [PULSE_MIN·boy, boy] aralığında gerçekten değişir
+(function t23() {
+  var s = quiet(createState(3));
+  var w = wallAt(500, 180, 150, { baseH: 150, pulse: { freq: 2, phase: 0 } });
+  s.obstacles = [w];
+  var lo = Infinity, hi = -Infinity, centerOk = true;
+  for (var i = 0; i < 240; i++) {
+    s.obstacles[0].x = 500;
+    s.y = 420; s.vy = 0;
+    s = step(s, { action: false }, DT);
+    var o = s.obstacles[0];
+    lo = Math.min(lo, o.gapH); hi = Math.max(hi, o.gapH);
+    if (Math.abs(o.gapY + o.gapH / 2 - (180 + 75)) > 1e-6) centerOk = false;
+  }
+  var ok = centerOk && lo >= 150 * C2.PULSE_MIN - 1e-6 && hi <= 150 + 1e-6 && hi - lo > 30;
+  report('T23 nefes alan kapı', ok, 'boy ' + lo.toFixed(0) + '..' + hi.toFixed(0) + ' orta sabit=' + centerOk);
+})();
+
+// T24 — yavaşlatma: alınca süre başlar, duvarlar POWER_SLOW_F hızında kayar, süre bitince normale döner
+(function t24() {
+  var s = quiet(createState(3));
+  s.y = 250; s.vy = 0;
+  s.obstacles = [wallAt(C2.BALL_X - C2.WALL_W / 2, 190, 120, { power: { kind: 'slow', taken: false } })];
+  s = step(s, { action: false }, DT);
+  var taken = s.powers === 1 && s.slowT === C2.POWER_SLOW_T;
+  var far = wallAt(500, 100, 300);
+  s.obstacles = [far];
+  var x0 = far.x, sp = s.speed;
+  s.y = 250; s.vy = 0;
+  s = step(s, { action: false }, DT);
+  var slowMove = x0 - s.obstacles[0].x;
+  var ratioOk = Math.abs(slowMove / (s.speed * DT) - C2.POWER_SLOW_F) < 0.02;
+  for (var i = 0; i < 260; i++) { s.obstacles[0].x = 500; s.y = 250; s.vy = 0; s = step(s, { action: false }, DT); }
+  var x1 = s.obstacles[0].x;
+  s = step(s, { action: false }, DT);
+  var normalOk = s.slowT === 0 && Math.abs((x1 - s.obstacles[0].x) - s.speed * DT) < 1e-6;
+  report('T24 yavaşlatma gücü', taken && ratioOk && normalOk,
+    'alındı=' + taken + ' oran=' + (slowMove / (sp * DT)).toFixed(2) + ' süre bitince normal=' + normalOk);
+})();
+
+// T25 — küçülme: top yarıçapı küçülür; normal topun sığmadığı ağızdan küçük top geçer
+(function t25() {
+  function tryGap(small) {
+    var s = quiet(createState(3));
+    s.smallT = small ? C2.POWER_SMALL_T : 0;
+    s.y = 250; s.vy = 0;
+    var gh = 2 * C2.BALL_R * 0.85; // normal topa dar, küçük topa geniş
+    s.obstacles = [wallAt(C2.BALL_X + 20, 250 - gh / 2, gh)];
+    for (var i = 0; i < 30 && s.status === 'playing'; i++) { s.y = 250; s.vy = 0; s = step(s, { action: false }, DT); }
+    return s;
+  }
+  var a = tryGap(false), b = tryGap(true);
+  var rOk = Logic.radius({ smallT: 1 }) === C2.BALL_R * C2.POWER_SMALL_F && Logic.radius({ smallT: 0 }) === C2.BALL_R;
+  report('T25 küçülme gücü', a.status === 'over' && b.status === 'playing' && rOk,
+    'normal=' + a.status + ' küçük=' + b.status + ' yarıçap=' + rOk);
+})();
+
+// T26 — zemin dikeni: üstüne sekmek öldürür, kalkan bir kez yutar, havada geçilirse sayılır
+(function t26() {
+  function onSpike(shield) {
+    var s = quiet(createState(3));
+    s.shield = shield;
+    var w = wallAt(C2.BALL_X - C2.WALL_W - C2.SPIKE_DX - 20, 100, 300, { spike: { dx: C2.SPIKE_DX, w: C2.SPIKE_W, hit: false, passed: false } });
+    w.passed = true;
+    s.obstacles = [w];
+    s.y = C2.FLOOR_Y - C2.BALL_R - 1; s.vy = 200; // bir sonraki adımda zemine değer
+    return step(s, { action: false }, DT);
+  }
+  var dead = onSpike(0), saved = onSpike(1);
+  var killOk = dead.status === 'over' && /Diken/.test(dead.overReason);
+  var shieldOk = saved.status === 'playing' && saved.shield === 0 && saved.obstacles[0].spike.hit;
+  // Havada geçiş: şeridin üstünde top yüksekte; şerit topun arkasına geçince sayılır
+  var s = quiet(createState(3));
+  var w = wallAt(C2.BALL_X - C2.WALL_W - C2.SPIKE_DX - C2.SPIKE_W + 2, 100, 300, { spike: { dx: C2.SPIKE_DX, w: C2.SPIKE_W, hit: false, passed: false } });
+  w.passed = true;
+  s.obstacles = [w];
+  for (var i = 0; i < 20; i++) { s.y = 250; s.vy = 0; s = step(s, { action: false }, DT); }
+  var passOk = s.status === 'playing' && s.spikesPassed === 1;
+  report('T26 zemin dikeni', killOk && shieldOk && passOk,
+    'kalkansız=' + dead.status + ' (' + dead.overReason + ') kalkanla=' + saved.status + ' havada geçiş sayıldı=' + passOk);
+})();
+
+// T27 — yeni öğeler doğru bölümde açılır; çift duvarın ikincisinde nefes/diken yok, hareketli kapı nefes almaz
+(function t27() {
+  var s = createState(91);
+  var seen = { pulse: 0, power: 0, spike: 0, slow: 0, small: 0 }, early = 0, bad = 0;
+  for (var lv = 1; lv <= C2.LEVEL_COUNT; lv++) {
+    s.level = lv;
+    for (var n = 0; n < 60; n++) {
+      s.obstacles = []; s.spawnTimer = 0; s.y = 420; s.vy = 0; s.status = 'playing';
+      s = step(s, { action: false }, DT);
+      var ws = s.obstacles;
+      for (var k = 0; k < ws.length; k++) {
+        var w = ws[k];
+        if (w.pulse) { seen.pulse++; if (lv < C2.PULSE_FROM) early++; if (w.move) bad++; }
+        if (w.power) { seen.power++; seen[w.power.kind]++; if (lv < C2.POWER_FROM) early++; if (w.star) bad++; }
+        if (w.spike) { seen.spike++; if (lv < C2.SPIKE_FROM) early++; }
+      }
+      if (ws.length > 1 && (ws[0].spike || ws[1].spike || ws[1].pulse)) bad++;
+    }
+  }
+  var ok = early === 0 && bad === 0 && seen.pulse > 0 && seen.slow > 0 && seen.small > 0 && seen.spike > 0;
+  report('T27 yeni öğeler bölümle açılır, adil birleşir', ok,
+    'nefes=' + seen.pulse + ' yavaşlat=' + seen.slow + ' küçül=' + seen.small + ' diken=' + seen.spike + ' erken=' + early + ' kural dışı=' + bad);
+})();
+
 // --- Mağaza (3. tur: görünümler) ---------------------------------------------
 var Shop = require('./shop.js');
 

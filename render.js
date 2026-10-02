@@ -20,6 +20,46 @@ function setGeo(g) {
 var BALL_X = 160;
 var BALL_R = 12;
 var WALL_W = 28;
+var SMALL_F = 0.6; // logic.js POWER_SMALL_F ile aynı
+var PULSE_EDGE = '#7dffb0';
+var SPIKE_COL = '#ff5d6c';
+
+function ballR(state) { return state.smallT > 0 ? BALL_R * SMALL_F : BALL_R; }
+
+// Güç simgesi: yavaşlatma = saat, küçülme = içe bakan oklar
+function powerIcon(ctx, kind, cx, cy, r) {
+  ctx.save();
+  ctx.lineWidth = 2;
+  if (kind === 'slow') {
+    ctx.fillStyle = '#1b3a52';
+    ctx.strokeStyle = '#6fe0ff';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - r * 0.65);
+    ctx.moveTo(cx, cy); ctx.lineTo(cx + r * 0.5, cy + r * 0.2);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#3d1f45';
+    ctx.strokeStyle = '#ff9df0';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ff9df0';
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.35, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function spikes(ctx, x0, w, y) {
+  var n = Math.max(3, Math.round(w / 12));
+  var tw = w / n;
+  ctx.fillStyle = SPIKE_COL;
+  ctx.beginPath();
+  for (var i = 0; i < n; i++) {
+    ctx.moveTo(x0 + i * tw, y);
+    ctx.lineTo(x0 + i * tw + tw / 2, y - 11);
+    ctx.lineTo(x0 + (i + 1) * tw, y);
+  }
+  ctx.fill();
+}
 
 function overlay(ctx, lines) {
   ctx.fillStyle = 'rgba(5,7,12,0.72)';
@@ -181,10 +221,16 @@ function draw(ctx, state, view) {
     ctx.fillRect(o.x, CEIL_Y, WALL_W, o.gapY - CEIL_Y);
     ctx.fillRect(o.x, o.gapY + o.gapH, WALL_W, FLOOR_Y - (o.gapY + o.gapH));
     // Kapı ağzını belirginleştiren ince kenar
-    ctx.fillStyle = o.passed ? tc.line : (o.move ? tc.edgeMove : tc.edge);
+    // Nefes alan kapının ağzı yeşil
+    ctx.fillStyle = o.passed ? tc.line : (o.move ? tc.edgeMove : (o.pulse ? PULSE_EDGE : tc.edge));
     ctx.fillRect(o.x, o.gapY - 3, WALL_W, 3);
     ctx.fillRect(o.x, o.gapY + o.gapH, WALL_W, 3);
     ctx.globalAlpha = 1;
+    if (o.spike) {
+      ctx.globalAlpha = o.spike.hit ? 0.3 : 1;
+      spikes(ctx, o.x + WALL_W + o.spike.dx, o.spike.w, FLOOR_Y);
+      ctx.globalAlpha = 1;
+    }
   }
 
   // Yıldızlar (kapı ortasında; toplanınca kalkan)
@@ -193,6 +239,12 @@ function draw(ctx, state, view) {
     if (!so.star || so.star.taken) continue;
     starShape(ctx, so.x + WALL_W / 2, so.gapY + so.gapH / 2, 9, '#ffd166');
   }
+  for (var pi = 0; pi < state.obstacles.length; pi++) {
+    var po = state.obstacles[pi];
+    if (!po.power || po.power.taken) continue;
+    powerIcon(ctx, po.power.kind, po.x + WALL_W / 2, po.gapY + po.gapH / 2, 10);
+  }
+  var R0 = ballR(state);
 
   // İz
   var trail = fx.trail || [];
@@ -201,7 +253,7 @@ function draw(ctx, state, view) {
     ctx.globalAlpha = 0.25 * a;
     ctx.fillStyle = skin.color;
     ctx.beginPath();
-    ctx.arc(trail[t].x, trail[t].y, BALL_R * (0.4 + 0.5 * a), 0, Math.PI * 2);
+    ctx.arc(trail[t].x, trail[t].y, R0 * (0.4 + 0.5 * a), 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
   }
@@ -211,9 +263,9 @@ function draw(ctx, state, view) {
   var sx = 1 + 0.35 * sq;
   var sy = 1 - 0.3 * sq;
   ctx.save();
-  ctx.translate(BALL_X, state.y + BALL_R * (1 - sy));
+  ctx.translate(BALL_X, state.y + R0 * (1 - sy));
   ctx.scale(sx, sy);
-  drawBall(ctx, skin.shape, BALL_R, state.status === 'over' ? '#e05656' : skin.color);
+  drawBall(ctx, skin.shape, R0, state.status === 'over' ? '#e05656' : skin.color);
   ctx.restore();
 
   // Kalkan halkası
@@ -221,7 +273,7 @@ function draw(ctx, state, view) {
     ctx.strokeStyle = 'rgba(255,209,102,0.85)';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.arc(BALL_X, state.y, BALL_R + 6, 0, Math.PI * 2);
+    ctx.arc(BALL_X, state.y, R0 + 6, 0, Math.PI * 2);
     ctx.stroke();
   }
 
@@ -253,6 +305,18 @@ function draw(ctx, state, view) {
   ctx.fillText('Rekor: ' + best, W0 - 14, 24);
   ctx.textAlign = 'left';
   if (state.shield > 0) starShape(ctx, W0 - 24, FLOOR_Y + 24, 8, '#ffd166');
+  // Etkin güçler ve kalan süre (zeminin altında, sağda)
+  var hx = W0 - 52;
+  [['slow', state.slowT], ['small', state.smallT]].forEach(function (pw) {
+    if (!(pw[1] > 0)) return;
+    powerIcon(ctx, pw[0], hx, FLOOR_Y + 24, 9);
+    ctx.fillStyle = textDim;
+    ctx.font = '13px system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.ceil(pw[1]) + 's', hx - 13, FLOOR_Y + 29);
+    ctx.textAlign = 'left';
+    hx -= 56;
+  });
 
   // Bölüm geçişi yazısı (main.js süreyi tutar)
   if (view.banner && view.banner.a > 0) {

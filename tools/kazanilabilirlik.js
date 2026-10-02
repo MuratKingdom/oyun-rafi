@@ -34,6 +34,8 @@ function play(seed, opts) {
     c.obstacles = s.obstacles.map(function (o) {
       var w = Object.assign({}, o);
       if (o.star) w.star = { taken: o.star.taken };
+      if (o.power) w.power = { kind: o.power.kind, taken: o.power.taken };
+      if (o.spike) w.spike = Object.assign({}, o.spike);
       return w;
     });
     return c;
@@ -89,7 +91,8 @@ if (require.main === module) {
     var s = play(sd, opts);
     if (s.status === 'won') wins++;
     console.log('tohum ' + sd + ': ' + s.status + ' · kapı ' + s.score + ' · bölüm ' + s.level +
-      ' · yıldız ' + s.stars + ' · kalkan kullanımı ' + s.shieldUsed + ' · ' + s.t.toFixed(0) + ' sn' +
+      ' · yıldız ' + s.stars + ' · güç ' + s.powers + ' · diken ' + s.spikesPassed +
+      ' · kalkan kullanımı ' + s.shieldUsed + ' · ' + s.t.toFixed(0) + ' sn' +
       (s.status === 'over' ? ' · ' + s.overReason : ''));
   });
   console.log('kazanılan: ' + wins + '/' + seeds.length + (opts.shield ? '' : ' (kalkansız)'));
