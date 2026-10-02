@@ -57,13 +57,19 @@
     max-width: 500px;
     padding: 0 8px;
   }
-  .dugmeler { display: flex; gap: 8px; justify-content: center; min-height: 0; }
+  .dugmeler { display: flex; gap: 8px; justify-content: center; min-height: 0; padding: 0 8px; box-sizing: border-box; max-width: 100%; }
+  .dugmeler button { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #gorevBtn {
     font: 600 15px system-ui, sans-serif;
     color: #e8ecf1; background: #1c2a44; border: 1px solid #2c4369; border-radius: 999px;
     padding: 9px 16px; cursor: pointer;
   }
   #gorevBtn[hidden] { display: none; }
+  #muzikBtn, #sesBtn {
+    font: inherit; font-size: 18px; min-width: 44px; padding: 6px 8px; border-radius: 10px;
+    border: 1px solid #2c3d5c; background: #16233b; color: #e8ecf1; cursor: pointer;
+  }
+  #muzikBtn.kapali { opacity: 0.45; text-decoration: line-through; }
   #magaza .seri { margin: 2px 0 4px; color: #ffd166; font-weight: 600; font-size: 14px; }
   #magaza .gorev {
     display: grid; grid-template-columns: 1fr auto; gap: 6px 10px;
@@ -119,13 +125,24 @@
   @media (pointer: coarse) {
     #hint .kb { display: none; }
   }
+  /* Dar telefon: dört düğme tek satıra sığsın (ayrıntılı kurallardan sonra gelmeli) */
+  @media (max-width: 440px) {
+    .dugmeler { gap: 6px; }
+    #magazaBtn, #gorevBtn { padding: 8px 10px; font-size: 13px; }
+    #muzikBtn, #sesBtn { min-width: 36px; padding: 5px; font-size: 16px; }
+  }
+  @media (max-width: 340px) {
+    .dugmeler { gap: 4px; padding: 0 4px; }
+    #magazaBtn, #gorevBtn { padding: 7px 7px; font-size: 12px; }
+    #muzikBtn, #sesBtn { min-width: 32px; padding: 4px; font-size: 14px; }
+  }
 </style>
 </head>
 <body>
 <div id="wrap">
   <canvas id="game" width="520" height="540"></canvas>
   <div id="hint">Ekranın herhangi bir yerine basılı tut: yükseklik kazan<span class="kb"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
-  <div class="dugmeler"><button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button></div>
+  <div class="dugmeler"><button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri">🔊</button></div>
 </div>
 <div id="magaza" data-ui hidden role="dialog" aria-label="Mağaza">
   <div class="panel">
@@ -188,13 +205,28 @@ function difficulty(t) {
 // Yeni öğeler bölümle açılır:
 //   2+  yıldız: kapının ortasında durur; toplanınca bir kalkan verir (en çok 1)
 //   3+  hareketli kapı: boşluk yukarı-aşağı salınır, genliği bölümle büyür
+//   4+  nefes alan kapı: ağız ortası sabit kalır, boyu daralıp genişler (hareketliyle birleşmez)
+//   5+  güç: kapının ortasında yıldız yerine çıkabilir —
+//         ⏱ yavaşlatma (dünya POWER_SLOW_F hızında akar) ya da küçülme (top yarıçapı POWER_SMALL_F)
 //   6+  çift duvar: art arda iki duvar, boşlukları birbirine kaydırılmış
-// Kalkan, bir duvar çarpmasını yutar (tavanı değil).
+//   7+  zemin dikeni: duvarın hemen ardında zeminde dikenli şerit; üstüne sekmek öldürür,
+//       basılı tutup havada kalarak geçilir
+// Kalkan, bir duvar ya da diken çarpmasını yutar (tavanı değil).
 var LEVEL_COUNT = 10;
 var GATES_PER_LEVEL = 8;
 var STAR_FROM = 2;
 var MOVE_FROM = 3;
 var DOUBLE_FROM = 6;
+var PULSE_FROM = 4;
+var POWER_FROM = 5;
+var SPIKE_FROM = 7;
+var POWER_SLOW_F = 0.65;
+var POWER_SLOW_T = 4;
+var POWER_SMALL_F = 0.6;
+var POWER_SMALL_T = 6;
+var PULSE_MIN = 0.72; // nefes alan kapı en dar halinde normal boyun bu oranı
+var SPIKE_DX = 30;    // duvarın arka kenarından şeridin başına
+var SPIKE_W = 70;
 var STAR_R = 9;
 var MAX_SHIELD = 1;
 var DOUBLE_DX = 96;
@@ -241,6 +273,10 @@ function createState(seed, opts) {
     shield: 0,
     shieldUsed: 0,
     movingPassed: 0,
+    slowT: 0,
+    smallT: 0,
+    powers: 0,
+    spikesPassed: 0,
     distance: 0,
     status: 'playing',
     overReason: ''
@@ -256,7 +292,8 @@ function clampGapY(g, gapY, gapH) {
 
 function makeWall(state, x, baseY, gapH) {
   var lv = state.level;
-  var w = { x: x, baseY: baseY, gapY: baseY, gapH: gapH, passed: false, hit: false, move: null, star: null };
+  var w = { x: x, baseY: baseY, gapY: baseY, gapH: gapH, baseH: gapH, passed: false, hit: false,
+    move: null, star: null, pulse: null, power: null, spike: null };
   if (lv >= MOVE_FROM && nextRand(state) < Math.min(0.7, 0.18 * (lv - MOVE_FROM + 1))) {
     w.move = {
       amp: Math.min(48, 22 + 4 * (lv - MOVE_FROM)) * state.geo.k,
@@ -264,7 +301,17 @@ function makeWall(state, x, baseY, gapH) {
       phase: nextRand(state) * Math.PI * 2
     };
   }
-  if (lv >= STAR_FROM && nextRand(state) < 0.4) w.star = { taken: false };
+  if (!w.move && lv >= PULSE_FROM && nextRand(state) < Math.min(0.45, 0.15 * (lv - PULSE_FROM + 1))) {
+    w.pulse = { freq: 1.6 + nextRand(state) * 0.8, phase: nextRand(state) * Math.PI * 2 };
+  }
+  if (lv >= POWER_FROM && nextRand(state) < 0.16) {
+    w.power = { kind: nextRand(state) < 0.5 ? 'slow' : 'small', taken: false };
+  } else if (lv >= STAR_FROM && nextRand(state) < 0.4) {
+    w.star = { taken: false };
+  }
+  if (lv >= SPIKE_FROM && nextRand(state) < Math.min(0.4, 0.2 + 0.07 * (lv - SPIKE_FROM))) {
+    w.spike = { dx: SPIKE_DX, w: SPIKE_W, hit: false, passed: false };
+  }
   return w;
 }
 
@@ -286,6 +333,9 @@ function spawn(state) {
     var shift = (nextRand(state) < 0.5 ? -1 : 1) * DOUBLE_SHIFT * g.k;
     var second = makeWall(state, CANVAS_W + WALL_W + DOUBLE_DX, clampGapY(g, gapY + shift, gapH), gapH);
     second.move = null; // çift duvarın ikincisi sabit: iki hareketli üst üste adil değil
+    second.pulse = null;
+    second.spike = null; // iki duvarın arasına diken koyma: yer yok
+    if (state.obstacles[state.obstacles.length - 1].spike) state.obstacles[state.obstacles.length - 1].spike = null;
     state.obstacles.push(second);
     state.lastGapY = second.gapY;
     return DOUBLE_DX / state.speed; // sonraki duvar ikinci parçaya normal aralıkla gelsin
@@ -293,10 +343,28 @@ function spawn(state) {
   return 0;
 }
 
+// Topun anlık yarıçapı (küçülme gücü açıkken daha küçük)
+function radius(state) {
+  return state.smallT > 0 ? BALL_R * POWER_SMALL_F : BALL_R;
+}
+
+// Engelin altındaki diken şeridi topun x'ini örtüyor mu
+function spikeUnderBall(o, r) {
+  if (!o.spike || o.spike.hit) return false;
+  var x0 = o.x + WALL_W + o.spike.dx;
+  return x0 < BALL_X + r && x0 + o.spike.w > BALL_X - r;
+}
+
 function step(state, input, dt) {
   if (state.status !== 'playing') return state;
 
   var g = state.geo || (state.geo = makeGeo(CANVAS_H));
+  if (state.slowT > 0) state.slowT = Math.max(0, state.slowT - dt);
+  if (state.smallT > 0) state.smallT = Math.max(0, state.smallT - dt);
+  var r = radius(state);
+  // Yavaşlatma yalnız dünyayı (duvarların kayması, doğma sıklığı) etkiler; topun
+  // düşüşü aynı kalır ki kontrol hissi değişmesin.
+  var wf = state.slowT > 0 ? POWER_SLOW_F : 1;
   var accel = GRAVITY * g.k;
   if (input.action) accel += THRUST * g.k;
   state.vy += accel * dt;
@@ -305,13 +373,26 @@ function step(state, input, dt) {
   if (state.vy < -maxVy) state.vy = -maxVy;
   state.y += state.vy * dt;
 
-  if (state.y + BALL_R >= g.floorY) {
-    state.y = g.floorY - BALL_R;
+  if (state.y + r >= g.floorY) {
+    state.y = g.floorY - r;
     state.vy = BOUNCE_V * g.k;
     state.bounces++;
+    for (var si = 0; si < state.obstacles.length; si++) {
+      var so = state.obstacles[si];
+      if (!spikeUnderBall(so, r)) continue;
+      if (state.shield > 0) {
+        state.shield--;
+        state.shieldUsed++;
+        so.spike.hit = true;
+      } else {
+        state.status = 'over';
+        state.overReason = 'Dikene düştün';
+        return state;
+      }
+    }
   }
 
-  if (state.y - BALL_R <= g.ceilY) {
+  if (state.y - r <= g.ceilY) {
     state.status = 'over';
     state.overReason = 'Tavana çarptın';
     return state;
@@ -322,7 +403,7 @@ function step(state, input, dt) {
   state.speed = SPEED0 + (SPEED_MAX - SPEED0) * d;
   state.gapH = (GAP_H0 - (GAP_H0 - GAP_MIN) * d) * g.k;
 
-  state.spawnTimer -= dt;
+  state.spawnTimer -= dt * wf;
   if (state.spawnTimer <= 0) {
     var extra = spawn(state);
     var interval = SPAWN_INTERVAL_MAX - state.t * SPAWN_RAMP;
@@ -332,20 +413,42 @@ function step(state, input, dt) {
 
   for (var i = 0; i < state.obstacles.length; i++) {
     var o = state.obstacles[i];
-    o.x -= state.speed * dt;
+    o.x -= state.speed * wf * dt;
     if (o.move) {
       o.gapY = clampGapY(g, o.baseY + o.move.amp * Math.sin(o.move.phase + state.t * o.move.freq), o.gapH);
+    }
+    if (o.pulse) {
+      // 0..1 arası nefes; ağız ortası sabit
+      var b = 0.5 + 0.5 * Math.sin(o.pulse.phase + state.t * o.pulse.freq);
+      var bh = o.baseH || o.gapH;
+      o.gapH = bh * (PULSE_MIN + (1 - PULSE_MIN) * b);
+      o.gapY = o.baseY + (bh - o.gapH) / 2;
     }
 
     // Yıldız: kapının ortasında
     if (o.star && !o.star.taken) {
       var sx = o.x + WALL_W / 2;
       var sy = o.gapY + o.gapH / 2;
-      if (Math.abs(sx - BALL_X) < BALL_R + STAR_R && Math.abs(sy - state.y) < BALL_R + STAR_R) {
+      if (Math.abs(sx - BALL_X) < r + STAR_R && Math.abs(sy - state.y) < r + STAR_R) {
         o.star.taken = true;
         state.stars++;
         if (state.shield < MAX_SHIELD) state.shield++;
       }
+    }
+    // Güç: yıldızla aynı yerde; alınınca süresi (yeniden) başlar
+    if (o.power && !o.power.taken) {
+      var px = o.x + WALL_W / 2;
+      var py = o.gapY + o.gapH / 2;
+      if (Math.abs(px - BALL_X) < r + STAR_R && Math.abs(py - state.y) < r + STAR_R) {
+        o.power.taken = true;
+        state.powers++;
+        if (o.power.kind === 'slow') state.slowT = POWER_SLOW_T;
+        else state.smallT = POWER_SMALL_T;
+      }
+    }
+    if (o.spike && !o.spike.passed && o.x + WALL_W + o.spike.dx + o.spike.w < BALL_X - r) {
+      o.spike.passed = true;
+      if (!o.spike.hit) state.spikesPassed++;
     }
 
     if (!o.passed && o.x + WALL_W < BALL_X) {
@@ -361,8 +464,8 @@ function step(state, input, dt) {
         state.level++;
       }
     }
-    if (!o.hit && o.x < BALL_X + BALL_R && o.x + WALL_W > BALL_X - BALL_R) {
-      if (state.y - BALL_R < o.gapY || state.y + BALL_R > o.gapY + o.gapH) {
+    if (!o.hit && o.x < BALL_X + r && o.x + WALL_W > BALL_X - r) {
+      if (state.y - r < o.gapY || state.y + r > o.gapY + o.gapH) {
         if (state.shield > 0) {
           state.shield--;
           state.shieldUsed++;
@@ -377,11 +480,13 @@ function step(state, input, dt) {
   }
   var kept = [];
   for (var j = 0; j < state.obstacles.length; j++) {
-    if (state.obstacles[j].x + WALL_W > -10) kept.push(state.obstacles[j]);
+    var oj = state.obstacles[j];
+    var tail = oj.spike ? WALL_W + oj.spike.dx + oj.spike.w : WALL_W;
+    if (oj.x + tail > -10) kept.push(oj);
   }
   state.obstacles = kept;
 
-  state.distance += state.speed * dt;
+  state.distance += state.speed * wf * dt;
   return state;
 }
 
@@ -391,9 +496,12 @@ var CONST = {
   SPEED0: SPEED0, SPEED_MAX: SPEED_MAX, GAP_H0: GAP_H0, GAP_MIN: GAP_MIN,
   LEVEL_COUNT: LEVEL_COUNT, GATES_PER_LEVEL: GATES_PER_LEVEL, STAR_R: STAR_R,
   STAR_FROM: STAR_FROM, MOVE_FROM: MOVE_FROM, DOUBLE_FROM: DOUBLE_FROM, MAX_JUMP: MAX_JUMP,
-  MIN_H: MIN_H, MAX_H: MAX_H
+  MIN_H: MIN_H, MAX_H: MAX_H,
+  PULSE_FROM: PULSE_FROM, POWER_FROM: POWER_FROM, SPIKE_FROM: SPIKE_FROM, PULSE_MIN: PULSE_MIN,
+  POWER_SLOW_F: POWER_SLOW_F, POWER_SLOW_T: POWER_SLOW_T, POWER_SMALL_F: POWER_SMALL_F, POWER_SMALL_T: POWER_SMALL_T,
+  SPIKE_DX: SPIKE_DX, SPIKE_W: SPIKE_W
 };
-var API = { createState: createState, step: step, difficulty: difficulty, makeGeo: makeGeo, CONST: CONST };
+var API = { createState: createState, step: step, difficulty: difficulty, makeGeo: makeGeo, radius: radius, CONST: CONST };
 if (typeof module !== 'undefined') module.exports = API;
 if (typeof window !== 'undefined') window.GameLogic = API;
 })();
@@ -684,6 +792,163 @@ if (typeof window !== 'undefined') window.GameQuests = Quests;
 
 </script>
 <script>
+// Sekme Gücü — ses ve müzik: ayarlar, efekt tablosu, prosedürel müzik (saf mantık; WebAudio yok)
+//
+// Müzik dosya değildir: her harita kendi tonu ve dizisiyle 4 ölçülük bir döngü çalar
+// (bas + arpej + ezgi). Ezgi harita adından belirlenimli üretilir; tempo bölümle hızlanır.
+// Çalma işini main.js yapar; burada yalnız "hangi nota, ne zaman" hesaplanır ki test edilebilsin.
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
+// fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
+// window.Game* ve module.exports çıkar.
+(function () {
+
+var SETTINGS_KEY = 'sekmeguc-ses';
+var STEPS_PER_BAR = 16;
+var BARS = 4;
+var BPM0 = 100;
+var BPM_STEP = 4;
+var BPM_MAX = 136;
+
+// --- Ayarlar ---------------------------------------------------------------
+function defaults() { return { music: true, sfx: true }; }
+function sanitize(raw) {
+  var s = defaults();
+  if (raw && typeof raw === 'object') {
+    if (raw.music === false) s.music = false;
+    if (raw.sfx === false) s.sfx = false;
+  }
+  return s;
+}
+function load(storage) {
+  try {
+    var t = storage && storage.getItem(SETTINGS_KEY);
+    return sanitize(t ? JSON.parse(t) : null);
+  } catch (e) { return defaults(); }
+}
+function save(storage, s) {
+  try { if (storage) storage.setItem(SETTINGS_KEY, JSON.stringify(sanitize(s))); } catch (e) {}
+}
+
+// --- Nota yardımcıları -----------------------------------------------------
+function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+var MINOR = [0, 2, 3, 5, 7, 8, 10];
+var MAJOR = [0, 2, 4, 5, 7, 9, 11];
+var DORIAN = [0, 2, 3, 5, 7, 9, 10];
+var PENTA = [0, 2, 4, 7, 9, 12, 14];
+
+// Harita → ton (MIDI kök), dizi, akor dizisi (dizi derecesi), dalga biçimi
+var TUNES = {
+  gece: { root: 57, scale: MINOR, prog: [0, 5, 2, 6], lead: 'triangle' },      // La minör
+  gunbatimi: { root: 60, scale: MAJOR, prog: [0, 4, 5, 3], lead: 'sine' },     // Do majör
+  orman: { root: 62, scale: DORIAN, prog: [0, 3, 0, 4], lead: 'triangle' },    // Re dorian
+  neon: { root: 55, scale: MINOR, prog: [0, 6, 5, 4], lead: 'square' },        // Sol minör
+  buz: { root: 64, scale: PENTA, prog: [0, 3, 4, 2], lead: 'sine' }            // Mi pentatonik
+};
+
+function tune(mapId) { return TUNES[mapId] || TUNES.gece; }
+
+function hash(str) {
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+// Dizi derecesinden MIDI (oktav taşmalarını sarar)
+function degree(t, d, octave) {
+  var n = t.scale.length;
+  var o = Math.floor(d / n);
+  var i = ((d % n) + n) % n;
+  return t.root + t.scale[i] + 12 * (o + (octave || 0));
+}
+
+function bpm(level) {
+  return Math.min(BPM_MAX, BPM0 + BPM_STEP * Math.max(0, (level || 1) - 1));
+}
+function stepDur(level) { return 60 / bpm(level) / 4; } // 16'lık nota süresi (sn)
+
+// Bir ölçünün notaları: [{ step, ch: 'bass'|'arp'|'lead', freq, len (adım), type }]
+// level ilerledikçe katmanlar eklenir: 1–2 bas+arpej, 3+ ezgi, 6+ bas sekizliğe çıkar.
+function bar(mapId, barIndex, level) {
+  var t = tune(mapId);
+  var chord = t.prog[((barIndex % BARS) + BARS) % BARS];
+  var notes = [];
+  var bassEvery = level >= 6 ? 2 : 4;
+  for (var s = 0; s < STEPS_PER_BAR; s += bassEvery) {
+    var bd = chord + ((s / bassEvery) % 2 === 1 && bassEvery === 4 ? 4 : 0);
+    notes.push({ step: s, ch: 'bass', freq: midiToFreq(degree(t, bd, -2)), len: bassEvery === 2 ? 1.5 : 3, type: 'triangle' });
+  }
+  var arp = [0, 2, 4, 2];
+  for (var a = 0; a < STEPS_PER_BAR; a += 2) {
+    notes.push({ step: a, ch: 'arp', freq: midiToFreq(degree(t, chord + arp[(a / 2) % 4], 0)), len: 1, type: 'square' });
+  }
+  if (level >= 3) {
+    // Ezgi: harita + ölçüden belirlenimli; akor tonlarına yakın, ara sıra sus
+    var h = hash(mapId + ':' + (((barIndex % BARS) + BARS) % BARS));
+    for (var m = 0; m < STEPS_PER_BAR; m += 4) {
+      h = (Math.imul(h, 1103515245) + 12345) >>> 0;
+      if ((h >>> 8) % 5 === 0) continue;
+      var off = [0, 2, 4, 5, 7][(h >>> 12) % 5];
+      notes.push({ step: m + ((h >>> 20) % 2) * 2, ch: 'lead', freq: midiToFreq(degree(t, chord + off, 1)), len: 2, type: t.lead });
+    }
+  }
+  notes.sort(function (x, y) { return x.step - y.step; });
+  return notes;
+}
+
+// İleriye bakan sıralayıcı: her çağrıda [now, now + horizon) aralığına düşen adımları
+// play(note, time) ile bir kez verir. Tempo değişirse sonraki adımdan itibaren uygulanır.
+function createSequencer(startTime) {
+  return { next: startTime || 0, step: 0, bar: 0 };
+}
+function pump(seq, now, horizon, mapId, level, play) {
+  if (seq.next < now - 0.25) seq.next = now; // sekme arkaplandaydı: geri kalanı atla
+  var count = 0;
+  while (seq.next < now + horizon && count < 64) {
+    var notes = bar(mapId, seq.bar, level);
+    var sd = stepDur(level);
+    for (var i = 0; i < notes.length; i++) {
+      if (notes[i].step === seq.step) play(notes[i], seq.next, notes[i].len * sd);
+    }
+    seq.next += sd;
+    seq.step++;
+    if (seq.step >= STEPS_PER_BAR) { seq.step = 0; seq.bar = (seq.bar + 1) % BARS; }
+    count++;
+  }
+  return count;
+}
+
+// --- Efektler -------------------------------------------------------------
+// Her efekt notalar dizisi: { f: Hz, d: sn, at: başlangıç gecikmesi, type, to?: Hz (kayma) }
+var SFX = {
+  bounce: [{ f: 180, to: 120, d: 0.07, at: 0, type: 'square' }],
+  gate: [{ f: 660, d: 0.08, at: 0, type: 'sine' }],
+  star: [{ f: 990, d: 0.07, at: 0, type: 'triangle' }, { f: 1320, d: 0.09, at: 0.06, type: 'triangle' }],
+  slow: [{ f: 880, to: 330, d: 0.28, at: 0, type: 'sine' }],
+  small: [{ f: 600, to: 1500, d: 0.2, at: 0, type: 'sine' }],
+  shield: [{ f: 300, to: 180, d: 0.14, at: 0, type: 'square' }],
+  level: [{ f: 523, d: 0.08, at: 0, type: 'sine' }, { f: 784, d: 0.12, at: 0.08, type: 'sine' }],
+  win: [{ f: 523, d: 0.1, at: 0, type: 'sine' }, { f: 659, d: 0.1, at: 0.1, type: 'sine' }, { f: 784, d: 0.1, at: 0.2, type: 'sine' }, { f: 1046, d: 0.3, at: 0.3, type: 'triangle' }],
+  over: [{ f: 220, to: 70, d: 0.4, at: 0, type: 'sawtooth' }],
+  buy: [{ f: 880, d: 0.06, at: 0, type: 'triangle' }, { f: 1175, d: 0.08, at: 0.05, type: 'triangle' }],
+  quest: [{ f: 784, d: 0.1, at: 0, type: 'triangle' }, { f: 1046, d: 0.14, at: 0.09, type: 'triangle' }]
+};
+
+// Kapı sesi skorla hafifçe yükselir (tavanlı)
+function gateFreq(score) { return 660 + Math.min(score, 30) * 12; }
+
+var AudioAPI = {
+  SETTINGS_KEY: SETTINGS_KEY, STEPS_PER_BAR: STEPS_PER_BAR, BARS: BARS, BPM_MAX: BPM_MAX,
+  defaults: defaults, sanitize: sanitize, load: load, save: save,
+  midiToFreq: midiToFreq, tune: tune, TUNES: TUNES, bpm: bpm, stepDur: stepDur, bar: bar,
+  createSequencer: createSequencer, pump: pump, SFX: SFX, gateFreq: gateFreq
+};
+if (typeof module !== 'undefined') module.exports = AudioAPI;
+if (typeof window !== 'undefined') window.GameAudio = AudioAPI;
+})();
+
+</script>
+<script>
 // Sekme Gücü — yalnızca çizim, state değiştirmez
 // view: { best, muted, phase: 'ready'|'playing'|'paused'|'over'|'won', fx, touch, newBest, canRestart,
 //         theme: {deco, c:{...}}, skin: {shape, color}, coins, earned }  (theme/skin: shop.js kataloğu)
@@ -706,6 +971,46 @@ function setGeo(g) {
 var BALL_X = 160;
 var BALL_R = 12;
 var WALL_W = 28;
+var SMALL_F = 0.6; // logic.js POWER_SMALL_F ile aynı
+var PULSE_EDGE = '#7dffb0';
+var SPIKE_COL = '#ff5d6c';
+
+function ballR(state) { return state.smallT > 0 ? BALL_R * SMALL_F : BALL_R; }
+
+// Güç simgesi: yavaşlatma = saat, küçülme = içe bakan oklar
+function powerIcon(ctx, kind, cx, cy, r) {
+  ctx.save();
+  ctx.lineWidth = 2;
+  if (kind === 'slow') {
+    ctx.fillStyle = '#1b3a52';
+    ctx.strokeStyle = '#6fe0ff';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - r * 0.65);
+    ctx.moveTo(cx, cy); ctx.lineTo(cx + r * 0.5, cy + r * 0.2);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#3d1f45';
+    ctx.strokeStyle = '#ff9df0';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ff9df0';
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.35, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function spikes(ctx, x0, w, y) {
+  var n = Math.max(3, Math.round(w / 12));
+  var tw = w / n;
+  ctx.fillStyle = SPIKE_COL;
+  ctx.beginPath();
+  for (var i = 0; i < n; i++) {
+    ctx.moveTo(x0 + i * tw, y);
+    ctx.lineTo(x0 + i * tw + tw / 2, y - 11);
+    ctx.lineTo(x0 + (i + 1) * tw, y);
+  }
+  ctx.fill();
+}
 
 function overlay(ctx, lines) {
   ctx.fillStyle = 'rgba(5,7,12,0.72)';
@@ -867,10 +1172,16 @@ function draw(ctx, state, view) {
     ctx.fillRect(o.x, CEIL_Y, WALL_W, o.gapY - CEIL_Y);
     ctx.fillRect(o.x, o.gapY + o.gapH, WALL_W, FLOOR_Y - (o.gapY + o.gapH));
     // Kapı ağzını belirginleştiren ince kenar
-    ctx.fillStyle = o.passed ? tc.line : (o.move ? tc.edgeMove : tc.edge);
+    // Nefes alan kapının ağzı yeşil
+    ctx.fillStyle = o.passed ? tc.line : (o.move ? tc.edgeMove : (o.pulse ? PULSE_EDGE : tc.edge));
     ctx.fillRect(o.x, o.gapY - 3, WALL_W, 3);
     ctx.fillRect(o.x, o.gapY + o.gapH, WALL_W, 3);
     ctx.globalAlpha = 1;
+    if (o.spike) {
+      ctx.globalAlpha = o.spike.hit ? 0.3 : 1;
+      spikes(ctx, o.x + WALL_W + o.spike.dx, o.spike.w, FLOOR_Y);
+      ctx.globalAlpha = 1;
+    }
   }
 
   // Yıldızlar (kapı ortasında; toplanınca kalkan)
@@ -879,6 +1190,12 @@ function draw(ctx, state, view) {
     if (!so.star || so.star.taken) continue;
     starShape(ctx, so.x + WALL_W / 2, so.gapY + so.gapH / 2, 9, '#ffd166');
   }
+  for (var pi = 0; pi < state.obstacles.length; pi++) {
+    var po = state.obstacles[pi];
+    if (!po.power || po.power.taken) continue;
+    powerIcon(ctx, po.power.kind, po.x + WALL_W / 2, po.gapY + po.gapH / 2, 10);
+  }
+  var R0 = ballR(state);
 
   // İz
   var trail = fx.trail || [];
@@ -887,7 +1204,7 @@ function draw(ctx, state, view) {
     ctx.globalAlpha = 0.25 * a;
     ctx.fillStyle = skin.color;
     ctx.beginPath();
-    ctx.arc(trail[t].x, trail[t].y, BALL_R * (0.4 + 0.5 * a), 0, Math.PI * 2);
+    ctx.arc(trail[t].x, trail[t].y, R0 * (0.4 + 0.5 * a), 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
   }
@@ -897,9 +1214,9 @@ function draw(ctx, state, view) {
   var sx = 1 + 0.35 * sq;
   var sy = 1 - 0.3 * sq;
   ctx.save();
-  ctx.translate(BALL_X, state.y + BALL_R * (1 - sy));
+  ctx.translate(BALL_X, state.y + R0 * (1 - sy));
   ctx.scale(sx, sy);
-  drawBall(ctx, skin.shape, BALL_R, state.status === 'over' ? '#e05656' : skin.color);
+  drawBall(ctx, skin.shape, R0, state.status === 'over' ? '#e05656' : skin.color);
   ctx.restore();
 
   // Kalkan halkası
@@ -907,7 +1224,7 @@ function draw(ctx, state, view) {
     ctx.strokeStyle = 'rgba(255,209,102,0.85)';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.arc(BALL_X, state.y, BALL_R + 6, 0, Math.PI * 2);
+    ctx.arc(BALL_X, state.y, R0 + 6, 0, Math.PI * 2);
     ctx.stroke();
   }
 
@@ -939,6 +1256,18 @@ function draw(ctx, state, view) {
   ctx.fillText('Rekor: ' + best, W0 - 14, 24);
   ctx.textAlign = 'left';
   if (state.shield > 0) starShape(ctx, W0 - 24, FLOOR_Y + 24, 8, '#ffd166');
+  // Etkin güçler ve kalan süre (zeminin altında, sağda)
+  var hx = W0 - 52;
+  [['slow', state.slowT], ['small', state.smallT]].forEach(function (pw) {
+    if (!(pw[1] > 0)) return;
+    powerIcon(ctx, pw[0], hx, FLOOR_Y + 24, 9);
+    ctx.fillStyle = textDim;
+    ctx.font = '13px system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.ceil(pw[1]) + 's', hx - 13, FLOOR_Y + 29);
+    ctx.textAlign = 'left';
+    hx -= 56;
+  });
 
   // Bölüm geçişi yazısı (main.js süreyi tutar)
   if (view.banner && view.banner.a > 0) {
@@ -1055,7 +1384,10 @@ function bootstrap() {
 
   var touch = false;
   var input = { action: false };
-  var muted = false;
+  // Ses ayarları (müzik / efekt ayrı; M ikisini birden açar-kapatır)
+  var Snd = window.GameAudio || null;
+  var sound = Snd ? Snd.load(window.localStorage) : { music: true, sfx: true };
+  var muted = !sound.sfx && !sound.music;
   var best = 0;
   // Mağaza profili (cüzdan + sahip olunan/kuşanılan görünümler)
   var Shop = window.GameShop || null;
@@ -1095,24 +1427,69 @@ function bootstrap() {
     }
     return audioCtx;
   }
-  function beep(freq, dur, type) {
-    if (muted) return;
+  // Tek nota: when (AudioContext zamanı) anında başlar, dur saniyede söner; to verilirse frekans kayar
+  function tone(freq, dur, type, when, vol, to) {
     var ac = ensureAudio();
     if (!ac) return;
     try {
       if (ac.state === 'suspended' && ac.resume) ac.resume();
+      var t0 = Math.max(ac.currentTime, when || 0);
       var osc = ac.createOscillator();
       var gain = ac.createGain();
       osc.type = type || 'sine';
-      osc.frequency.value = freq;
-      gain.gain.value = 0.08;
+      osc.frequency.setValueAtTime(freq, t0);
+      if (to) osc.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+      gain.gain.setValueAtTime(vol || 0.08, t0);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
       osc.connect(gain);
       gain.connect(ac.destination);
-      osc.start();
-      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
-      osc.stop(ac.currentTime + dur);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.02);
     } catch (e) {}
   }
+  function beep(freq, dur, type) {
+    if (!sound.sfx) return;
+    tone(freq, dur, type, 0, 0.08);
+  }
+  // audio.js efekt tablosundan bir efekt çal
+  function sfx(name) {
+    if (!sound.sfx || !Snd || !Snd.SFX[name]) return;
+    var ac = ensureAudio();
+    if (!ac) return;
+    var list = Snd.SFX[name];
+    for (var i = 0; i < list.length; i++) {
+      var n = list[i];
+      tone(n.f, n.d, n.type, ac.currentTime + n.at, 0.08, n.to);
+    }
+  }
+  // Müzik: oyun sürerken ileriye bakan sıralayıcı ~150 ms önden nota kurar
+  var MUSIC_VOL = { bass: 0.05, arp: 0.018, lead: 0.035 };
+  var seq = null;
+  function musicTick() {
+    var ac = audioCtx;
+    if (!Snd || !ac || !sound.music || phase !== 'playing' || ac.state !== 'running') { seq = null; return; }
+    if (!seq) seq = Snd.createSequencer(ac.currentTime + 0.05);
+    var mapId = profile ? profile.equipped.map : 'gece';
+    Snd.pump(seq, ac.currentTime, 0.15, mapId, state.level, function (n, t, d) {
+      tone(n.freq, Math.max(0.05, d * 0.9), n.type, t, MUSIC_VOL[n.ch] || 0.03);
+    });
+  }
+  function setSound(next) {
+    sound = next;
+    muted = !sound.sfx && !sound.music;
+    if (Snd) Snd.save(window.localStorage, sound);
+    if (!sound.music) seq = null;
+    updateSoundBtns();
+  }
+  var sesBtn = document.getElementById('sesBtn');
+  var muzikBtn = document.getElementById('muzikBtn');
+  function updateSoundBtns() {
+    if (sesBtn) { sesBtn.textContent = sound.sfx ? '🔊' : '🔇'; sesBtn.setAttribute('aria-pressed', String(sound.sfx)); sesBtn.title = 'Efekt sesleri: ' + (sound.sfx ? 'açık' : 'kapalı'); }
+    if (muzikBtn) { muzikBtn.textContent = '🎵'; muzikBtn.className = sound.music ? '' : 'kapali'; muzikBtn.setAttribute('aria-pressed', String(sound.music)); muzikBtn.title = 'Müzik: ' + (sound.music ? 'açık' : 'kapalı'); }
+  }
+  if (sesBtn) sesBtn.addEventListener('click', function () { ensureAudio(); setSound({ music: sound.music, sfx: !sound.sfx }); sfx('buy'); });
+  if (muzikBtn) muzikBtn.addEventListener('click', function () { ensureAudio(); setSound({ music: !sound.music, sfx: sound.sfx }); });
+  updateSoundBtns();
   function buzz(ms) {
     if (muted) return;
     try {
@@ -1166,6 +1543,7 @@ function bootstrap() {
   var prevLevel = state.level;
   var prevStars = state.stars;
   var prevShieldUsed = state.shieldUsed;
+  var prevPowers = state.powers;
   var banner = { title: 'Bölüm 1', sub: '', a: 0 };
 
   function nowMs() { return Date.now(); }
@@ -1187,6 +1565,7 @@ function bootstrap() {
     prevLevel = state.level;
     prevStars = state.stars;
     prevShieldUsed = state.shieldUsed;
+    prevPowers = state.powers;
     banner = { title: 'Bölüm 1', sub: '', a: 1.4 };
     newBest = false;
     fx.particles = [];
@@ -1224,7 +1603,7 @@ function bootstrap() {
       restart(); // R bilinçli bir tuş: kilit uygulanmaz
     } else if (e.code === 'KeyM') {
       e.preventDefault();
-      muted = !muted;
+      setSound(muted ? { music: true, sfx: true } : { music: false, sfx: false });
     } else if (e.code === 'KeyP' || e.code === 'Escape') {
       e.preventDefault();
       if (phase === 'playing') pause();
@@ -1260,7 +1639,7 @@ function bootstrap() {
       questDone = Quests.applyRun(daily, state);
       for (var qi = 0; qi < questDone.length; qi++) earned += questDone[qi].reward;
       Quests.save(window.localStorage, daily);
-      if (questDone.length) { beep(784, 0.1, 'triangle'); beep(1046, 0.14, 'triangle'); }
+      if (questDone.length) sfx('quest');
     }
     profile.coins += earned;
     Shop.save(window.localStorage, profile);
@@ -1339,7 +1718,7 @@ function bootstrap() {
         if (Shop.owns(profile, shopTab, item.id)) Shop.equip(profile, shopTab, item.id);
         else if (!Shop.buy(profile, shopTab, item.id).ok) return;
         Shop.save(window.localStorage, profile);
-        beep(880, 0.06, 'triangle');
+        sfx('buy');
         renderShop();
       });
       row.appendChild(b);
@@ -1411,25 +1790,31 @@ function bootstrap() {
         steps++;
 
         if (state.bounces !== prevBounces) {
-          beep(220, 0.06, 'square');
+          sfx('bounce');
           squashLeft = SQUASH_MS;
           burst(C.BALL_X, C.FLOOR_Y, 4, '#2f4a73', 120);
           prevBounces = state.bounces;
         }
         if (state.score !== prevScore) {
-          beep(660 + Math.min(state.score, 30) * 12, 0.08, 'sine');
+          beep(Snd ? Snd.gateFreq(state.score) : 660, 0.08, 'sine');
           buzz(8);
           burst(C.BALL_X, state.y, 10, '#5ac8fa', 220);
           prevScore = state.score;
         }
         if (state.stars !== prevStars) {
-          beep(990, 0.07, 'triangle');
-          beep(1320, 0.09, 'triangle');
+          sfx('star');
           burst(C.BALL_X, state.y, 12, '#ffd166', 200);
           prevStars = state.stars;
         }
+        if (state.powers !== prevPowers) {
+          var slowNow = state.slowT === C.POWER_SLOW_T; // bu adımda alındıysa süre tam dolu
+          sfx(slowNow ? 'slow' : 'small');
+          buzz(12);
+          burst(C.BALL_X, state.y, 14, slowNow ? '#6fe0ff' : '#ff9df0', 220);
+          prevPowers = state.powers;
+        }
         if (state.shieldUsed !== prevShieldUsed) {
-          beep(300, 0.12, 'square');
+          sfx('shield');
           buzz(30);
           shakeLeft = SHAKE_MS * 0.6;
           burst(C.BALL_X + 14, state.y, 16, '#ffd166', 260);
@@ -1438,13 +1823,16 @@ function bootstrap() {
         if (state.level !== prevLevel) {
           var sub = state.level === C.STAR_FROM ? 'Yıldız topla: bir çarpmayı affeder'
             : state.level === C.MOVE_FROM ? 'Mor kapılar hareket eder'
-            : state.level === C.DOUBLE_FROM ? 'Çift duvarlar geliyor' : '';
+            : state.level === C.PULSE_FROM ? 'Yeşil kapılar daralıp genişler'
+            : state.level === C.POWER_FROM ? 'Güçler: ⏱ dünyayı yavaşlatır, pembe top küçültür'
+            : state.level === C.DOUBLE_FROM ? 'Çift duvarlar geliyor'
+            : state.level === C.SPIKE_FROM ? 'Kırmızı dikenlere sekme: basılı tut, havada kal' : '';
           banner = { title: 'Bölüm ' + state.level, sub: sub, a: sub ? 2.2 : 1.4 };
-          beep(523, 0.08, 'sine'); beep(784, 0.12, 'sine');
+          sfx('level');
           prevLevel = state.level;
         }
         if (state.status === 'won') {
-          beep(523, 0.1, 'sine'); beep(659, 0.1, 'sine'); beep(784, 0.2, 'sine');
+          sfx('win');
           buzz(40);
           burst(C.BALL_X, state.y, 40, '#ffd166', 360);
           if (state.score > best) {
@@ -1459,7 +1847,7 @@ function bootstrap() {
           break;
         }
         if (state.status === 'over') {
-          beep(110, 0.25, 'sawtooth');
+          sfx('over');
           buzz(60);
           shakeLeft = SHAKE_MS;
           burst(C.BALL_X, state.y, 24, '#e05656', 320);
@@ -1483,6 +1871,7 @@ function bootstrap() {
     updateFx(frameDt);
     if (banner.a > 0 && phase === 'playing') banner.a = Math.max(0, banner.a - frameDt);
 
+    musicTick();
     settle();
     var showBtns = !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
     if (shopBtn) shopBtn.hidden = !showBtns;
