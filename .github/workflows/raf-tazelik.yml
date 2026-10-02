@@ -1,10 +1,10 @@
 # Rafın (main) oyun dallarıyla tutarlı kalıp kalmadığını denetler.
 #
-# Gamer rutini ayda iki kez yeni bir `oyun/<ad>` dalı açar ve katalog
+# Gamer rutini haftada iki kez yeni bir `oyun/<ad>` dalı açar ve katalog
 # issue'sunu günceller — ama main'i hiç bilmez. Bu iş, main'deki oynanabilir
 # kopyaların ve index.html'in sessizce eskimesini bir CI hatasına çevirir.
 #
-# Zamanlama: rutin ayın 1'i ve 15'i 09:07 UTC'de koşuyor. Bu denetim ertesi
+# Zamanlama: rutin pazartesi ve perşembe 09:07 UTC'de koşuyor. Bu denetim ertesi
 # gün 09:37'de koşar ki yeni oyun eklendiyse "raf güncellenmedi" hatası
 # Murat'ın önüne düşsün. main'e her push'ta da koşar.
 name: Raf tazelik
@@ -18,7 +18,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: '37 9 2,16 * *'
+    - cron: '37 9 * * 2,5'
   workflow_dispatch:
 
 concurrency:

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tohum Payı</title>
+<style>
+  html, body { margin: 0; background: #0a1409; color: #e8f3d0; font-family: system-ui, sans-serif; height: 100%;
+    display: flex; align-items: center; justify-content: center; }
+  #wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  canvas { border: 2px solid #22331c; max-width: 96vw; height: auto; touch-action: manipulation; }
+  #hint { font-size: 12px; color: #8fa87a; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="640" height="400"></canvas>
+  <div id="hint">Ek veya hasat için 1-6 tuşları ya da tarlaya tıkla · R: yeniden başla · M: sesi kapat</div>
+</div>
+<script>
+(function () {
+  var GROW = 5, SPOIL = 4, DAY_LEN = 12, WIN_DAY = 15, PLOTS = 6, START_GRAIN = 4;
+
+  function rand(s) { // mulberry32, durum s.rs içinde
+    s.rs = (s.rs + 0x6D2B79F5) | 0;
+    var t = Math.imul(s.rs ^ (s.rs >>> 15), 1 | s.rs);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  function needFor(day) { return 2 + day; }
+
+  function createState(seed) {
+    var plots = [];
+    for (var i = 0; i < PLOTS; i++) plots.push({ s: 0, t: 0, y: 0 });
+    return {
+      status: 'playing', overReason: '', seed: seed, rs: seed | 0,
+      day: 1, dayT: 0, dayLen: DAY_LEN, grain: START_GRAIN, need: needFor(1),
+      plots: plots, score: 0, winDay: WIN_DAY, grow: GROW, spoil: SPOIL, events: []
+    };
+  }
+
+  function act(s, i) {
+    var p = s.plots[i];
+    if (!p) return;
+    if (p.s === 0) {
+      if (s.grain < 1) { s.events.push({ k: 'deny', i: i }); return; }
+      s.grain -= 1; p.s = 1; p.t = 0; p.y = 2 + Math.floor(rand(s) * 3); // 2..4
+      s.events.push({ k: 'plant', i: i });
+    } else if (p.s === 2) {
+      s.grain += p.y; s.events.push({ k: 'harvest', i: i, n: p.y });
+      p.s = 0; p.t = 0; p.y = 0;
+    }
+  }
+
+  function step(s, input, dt) {
+    if (s.status !== 'playing') return s;
+    s.events = [];
+    if (input && typeof input.plot === 'number' && input.plot >= 0) act(s, input.plot);
+    for (var i = 0; i < s.plots.length; i++) {
+      var p = s.plots[i];
+      if (p.s === 1) { p.t += dt; if (p.t >= s.grow) { p.s = 2; p.t = 0; s.events.push({ k: 'ripe', i: i }); } }
+      else if (p.s === 2) { p.t += dt; if (p.t >= s.spoil) { p.s = 0; p.t = 0; p.y = 0; s.events.push({ k: 'spoil', i: i }); } }
+    }
+    s.dayT += dt;
+    if (s.dayT >= s.dayLen) {
+      s.dayT -= s.dayLen;
+      if (s.grain < s.need) {
+        s.status = 'over';
+        s.overReason = 'Kıtlık: gün ' + s.day + ' sonunda ' + s.need + ' tahıl gerekti, ' + s.grain + ' vardı';
+        s.events.push({ k: 'over' });
+        return s;
+      }
+      s.grain -= s.need; s.score = s.day; s.day += 1; s.need = needFor(s.day);
+      s.events.push({ k: 'eat' });
+      if (s.day > s.winDay) { s.status = 'won'; s.events.push({ k: 'won' }); }
+    }
+    return s;
+  }
+
+  if (typeof module !== 'undefined') module.exports = { createState: createState, step: step };
+  if (typeof window !== 'undefined') window.GameLogic = { createState: createState, step: step };
+})();
+
+</script>
+<script>
+(function () {
+  var W = 640, H = 400, COLS = 3, PW = 170, PH = 110, GX = 20, X0 = 55, Y0 = 120;
+  function rect(i) {
+    var c = i % COLS, r = Math.floor(i / COLS);
+    return { x: X0 + c * (PW + GX), y: Y0 + r * (PH + GX), w: PW, h: PH };
+  }
+  function plotAt(x, y) {
+    for (var i = 0; i < 6; i++) {
+      var r = rect(i);
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return i;
+    }
+    return -1;
+  }
+  function txt(ctx, s, x, y, size, col, align) {
+    ctx.font = size + 'px system-ui, sans-serif'; ctx.fillStyle = col; ctx.textAlign = align || 'left';
+    ctx.fillText(s, x, y);
+  }
+  function draw(ctx, state, view) {
+    view = view || {};
+    var flash = view.flash || {};
+    ctx.save();
+    if (view.shake > 0) ctx.translate((Math.sin(view.shake * 90)) * 4, 0);
+    ctx.fillStyle = '#10200f'; ctx.fillRect(0, 0, W, H);
+    var night = state.dayT / state.dayLen;
+    ctx.fillStyle = 'rgba(10,20,50,' + (0.45 * night * night).toFixed(3) + ')'; ctx.fillRect(0, 0, W, H);
+    txt(ctx, 'Gün ' + state.day + ' / ' + state.winDay, 20, 32, 22, '#e8f3d0');
+    txt(ctx, 'Tahıl: ' + state.grain, 20, 60, 20, '#ffd45e');
+    txt(ctx, 'Akşam yemeği: ' + state.need, 20, 84, 16, state.grain >= state.need ? '#b7d98b' : '#ff8a7a');
+    txt(ctx, 'Rekor: ' + (view.best || 0) + ' gün', W - 20, 32, 16, '#9fb88a', 'right');
+    txt(ctx, 'Skor: ' + state.score + ' gün', W - 20, 56, 16, '#e8f3d0', 'right');
+    ctx.fillStyle = '#243a1f'; ctx.fillRect(20, 98, W - 40, 8);
+    ctx.fillStyle = '#e0b84a'; ctx.fillRect(20, 98, (W - 40) * night, 8);
+    for (var i = 0; i < state.plots.length; i++) {
+      var p = state.plots[i], r = rect(i);
+      ctx.fillStyle = p.s === 0 ? '#4a3524' : p.s === 1 ? '#5a4a22' : '#7a6a1c';
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      if (flash[i] > 0) { ctx.fillStyle = 'rgba(255,255,255,' + Math.min(0.5, flash[i] * 2) + ')'; ctx.fillRect(r.x, r.y, r.w, r.h); }
+      ctx.strokeStyle = p.s === 2 ? '#ffe36b' : '#2a1d12'; ctx.lineWidth = p.s === 2 ? 4 : 2;
+      ctx.strokeRect(r.x, r.y, r.w, r.h);
+      txt(ctx, String(i + 1), r.x + 8, r.y + 20, 16, '#e8d9b0');
+      var cx = r.x + r.w / 2, cy = r.y + r.h / 2 + 8;
+      if (p.s === 1) {
+        var g = p.t / state.grow, h = 6 + g * 36;
+        ctx.fillStyle = '#6fbf4a'; ctx.fillRect(cx - 3, cy + 20 - h, 6, h);
+        ctx.fillStyle = '#244a1a'; ctx.fillRect(r.x + 10, r.y + r.h - 14, r.w - 20, 6);
+        ctx.fillStyle = '#9be36a'; ctx.fillRect(r.x + 10, r.y + r.h - 14, (r.w - 20) * g, 6);
+        txt(ctx, 'büyüyor', cx, r.y + r.h - 22, 12, '#cfe6b0', 'center');
+      } else if (p.s === 2) {
+        ctx.fillStyle = '#f0c93a'; ctx.fillRect(cx - 4, cy - 22, 8, 42);
+        ctx.beginPath(); ctx.arc(cx, cy - 26, 11, 0, 6.2832); ctx.fill();
+        var left = 1 - p.t / state.spoil;
+        ctx.fillStyle = '#5a2a1a'; ctx.fillRect(r.x + 10, r.y + r.h - 14, r.w - 20, 6);
+        ctx.fillStyle = '#ff9a4a'; ctx.fillRect(r.x + 10, r.y + r.h - 14, (r.w - 20) * left, 6);
+        txt(ctx, 'HASAT: +' + p.y, cx, r.y + r.h - 22, 13, '#fff1b0', 'center');
+      } else {
+        txt(ctx, 'boş — 1 tahıl ek', cx, cy + 4, 13, '#b89a78', 'center');
+      }
+    }
+    txt(ctx, '1-6 veya tıkla: ek / hasat · R: yeniden · M: ses', W / 2, H - 12, 13, '#8fa87a', 'center');
+    if (state.status !== 'playing') {
+      ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fillRect(0, 130, W, 140);
+      var won = state.status === 'won';
+      txt(ctx, won ? 'Hasat bereketli: ' + state.winDay + ' gün dayandın' : 'Oyun bitti', W / 2, 180, 28, won ? '#b6f08a' : '#ff8a7a', 'center');
+      if (!won) txt(ctx, state.overReason, W / 2, 214, 16, '#f0e6d0', 'center');
+      txt(ctx, 'R / boşluk / tıkla: yeniden başla', W / 2, 250, 15, '#cfd8c0', 'center');
+    }
+    ctx.restore();
+  }
+  if (typeof module !== 'undefined') module.exports = { draw: draw, plotAt: plotAt };
+  if (typeof window !== 'undefined') window.GameRender = { draw: draw, plotAt: plotAt };
+})();
+
+</script>
+<script>
+function bootstrap() {
+  var L = window.GameLogic, R = window.GameRender;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var DT = 1 / 60;
+  var best = 0, muted = false, audio = null;
+  try { best = parseInt(localStorage.getItem('tohumpayi-best'), 10) || 0; } catch (e) {}
+  var seed = (Date.now() & 0x7fffffff) || 1;
+  var state = L.createState(seed);
+  var pending = [];
+  var view = { best: best, flash: {}, shake: 0 };
+  var acc = 0, last = null;
+
+  function tone(f, d, type, vol) {
+    if (muted) return;
+    try {
+      if (!audio) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) audio = new AC(); }
+      if (!audio) return;
+      var o = audio.createOscillator(), g = audio.createGain();
+      o.type = type || 'square'; o.frequency.value = f; g.gain.value = vol || 0.05;
+      o.connect(g); g.connect(audio.destination);
+      o.start(); g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + d); o.stop(audio.currentTime + d);
+    } catch (e) {}
+  }
+  function restart() {
+    seed = (seed * 1664525 + 1013904223) & 0x7fffffff || 1;
+    state = L.createState(seed); pending = []; view.flash = {};
+  }
+  function handle(ev) {
+    if (ev.k === 'plant') { view.flash[ev.i] = 0.15; tone(300, 0.08); }
+    else if (ev.k === 'harvest') { view.flash[ev.i] = 0.25; tone(520 + ev.n * 80, 0.14, 'triangle'); }
+    else if (ev.k === 'ripe') { tone(700, 0.06, 'sine', 0.03); }
+    else if (ev.k === 'spoil') { view.shake = 0.15; tone(140, 0.2, 'sawtooth'); }
+    else if (ev.k === 'deny') { tone(120, 0.08, 'square'); }
+    else if (ev.k === 'eat') { tone(260, 0.2, 'triangle'); }
+    else if (ev.k === 'over') { view.shake = 0.2; tone(90, 0.4, 'sawtooth', 0.08); }
+    else if (ev.k === 'won') { tone(880, 0.4, 'triangle'); }
+  }
+  function finishCheck() {
+    if (state.status !== 'playing' && state.score > best) {
+      best = state.score; view.best = best;
+      try { localStorage.setItem('tohumpayi-best', String(best)); } catch (e) {}
+    }
+  }
+  function onKey(e) {
+    var k = e.key, code = e.code;
+    if (k === 'r' || k === 'R' || code === 'KeyR') { restart(); if (e.preventDefault) e.preventDefault(); return; }
+    if (k === 'm' || k === 'M') { muted = !muted; return; }
+    if (k === ' ' || k === 'Spacebar') {
+      if (e.preventDefault) e.preventDefault();
+      if (state.status !== 'playing') restart();
+      return;
+    }
+    if (k >= '1' && k <= '6') { pending.push(parseInt(k, 10) - 1); if (e.preventDefault) e.preventDefault(); }
+  }
+  function onPointer(e) {
+    if (state.status !== 'playing') { restart(); return; }
+    var rc = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: canvas.width, height: canvas.height };
+    var x = (e.clientX - rc.left) * canvas.width / (rc.width || canvas.width);
+    var y = (e.clientY - rc.top) * canvas.height / (rc.height || canvas.height);
+    var i = R.plotAt(x, y);
+    if (i >= 0) pending.push(i);
+  }
+  window.addEventListener('keydown', onKey);
+  canvas.addEventListener('pointerdown', onPointer);
+
+  function frame(ts) {
+    if (last === null) last = ts;
+    acc += Math.min(0.25, (ts - last) / 1000); last = ts;
+    var n = 0;
+    while (acc >= DT && n < 5) {
+      var input = { plot: pending.length ? pending.shift() : -1, restart: false };
+      L.step(state, input, DT);
+      for (var i = 0; i < state.events.length; i++) handle(state.events[i]);
+      finishCheck();
+      acc -= DT; n++;
+    }
+    if (n === 5) acc = 0;
+    for (var k in view.flash) { view.flash[k] -= 1 / 60; }
+    if (view.shake > 0) view.shake -= 1 / 60;
+    R.draw(ctx, state, view);
+    window.requestAnimationFrame(frame);
+  }
+  window.requestAnimationFrame(frame);
+  var api = { getState: function () { return state; }, setState: function (s) { state = s; } };
+  if (typeof window !== 'undefined') window.GameMain.api = api;
+  return api;
+}
+if (typeof window !== 'undefined') {
+  window.GameMain = { bootstrap: bootstrap };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrap); else bootstrap();
+}
+if (typeof module !== 'undefined') module.exports = { bootstrap: bootstrap };
+
+</script>
+</body>
+</html>

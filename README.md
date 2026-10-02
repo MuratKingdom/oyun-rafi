@@ -1,7 +1,7 @@
 # 🕹️ Oyun Rafı
 
 Gamer rutininin ürettiği küçük ama **bitmiş** tarayıcı oyunlarının rafı.
-Ayda iki oyun; her biri kurulumsuz, sunucusuz, derlemesiz — tek dosya HTML.
+Haftada iki oyun (pazartesi ve perşembe); her biri kurulumsuz, sunucusuz, derlemesiz — tek dosya HTML.
 
 **→ [Rafı aç: `index.html`](index.html)**
 
@@ -14,6 +14,8 @@ adresinde oynanır. Açık değilse: depoyu klonla, `index.html`'i tarayıcıda 
 |---|---|---|---|---|
 | Yerçekimi Tüneli | arcade/fizik | Tek tuşla yerçekimini ters çevirip dar bir tünelde engellerden kaçıyorsun. | [`oyunlar/gravtunel/`](oyunlar/gravtunel/index.html) | [`oyun/gravtunel`](../../tree/oyun/gravtunel) |
 | Son Kuyu | sandbox/inşa | 5×5 karede kolektör kurup kuyu inşa ederek tükenen suyu dengeliyorsun. | [`oyunlar/sonkuyu/`](oyunlar/sonkuyu/index.html) | [`oyun/sonkuyu`](../../tree/oyun/sonkuyu) |
+| Sekme Gücü | arcade/fizik | Zıplayan topu tek tuşla havada tutup dar kapılardan geçiriyorsun. | [`oyunlar/sekmeguc/`](oyunlar/sekmeguc/index.html) | [`oyun/sekmeguc`](../../tree/oyun/sekmeguc) |
+| Tohum Payı | sandbox/inşa | Altı tarlada tohum ayırıp her akşam artan yemek payını karşılıyorsun. | [`oyunlar/tohumpayi/`](oyunlar/tohumpayi/index.html) | [`oyun/tohumpayi`](../../tree/oyun/tohumpayi) |
 
 Her oyunun ayrıntılı kaydı — ana mekanik, ne çalışıyor / ne eksik,
 geliştirmek için ilk adım, doğrulama durumu — katalog issue'sundadır.
@@ -32,7 +34,7 @@ geliştirmek için ilk adım, doğrulama durumu — katalog issue'sundadır.
 dosyalarının birebir kopyalarıdır. Rutin yalnız dallara ve issue'lara yazar,
 `main`'i hiç bilmez — bu yüzden kopyaların eskimesi gerçek bir risk.
 `tools/raf-tazelik.sh` bunu denetler ve `.github/workflows/raf-tazelik.yml`
-her `main` push'unda, ayrıca rutin koşularının ertesi günü (ayın 2'si ve 16'sı)
+her `main` push'unda, ayrıca rutin koşularının ertesi günü (salı ve cuma)
 otomatik çalıştırır. Eskime sessiz kalmaz, CI'ı kırar.
 
 Yeni bir oyun dalı eklendiğinde rafı güncellemek için:
