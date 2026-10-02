@@ -1,4 +1,8 @@
 // Sekme Gücü — saf oyun mantığı (DOM/canvas/window kullanılmaz)
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
+// fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
+// window.Game* ve module.exports çıkar.
+(function () {
 
 var CANVAS_W = 520;
 var CANVAS_H = 540;
@@ -248,3 +252,4 @@ var CONST = {
 var API = { createState: createState, step: step, difficulty: difficulty, makeGeo: makeGeo, CONST: CONST };
 if (typeof module !== 'undefined') module.exports = API;
 if (typeof window !== 'undefined') window.GameLogic = API;
+})();

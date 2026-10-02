@@ -2,6 +2,10 @@
 // view: { best, muted, phase: 'ready'|'playing'|'paused'|'over'|'won', fx, touch, newBest, canRestart,
 //         theme: {deco, c:{...}}, skin: {shape, color}, coins, earned }  (theme/skin: shop.js kataloğu)
 //   fx: { particles: [{x,y,life,max,color}], shake: 0..1, squash: 0..1, trail: [{x,y}] }
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
+// fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
+// window.Game* ve module.exports çıkar.
+(function () {
 
 var W0 = 520;
 // Dikey ölçüler oyun durumunun geometrisinden gelir (uzun telefonda alan uzar); setGeo ayarlar.
@@ -306,3 +310,4 @@ function draw(ctx, state, view) {
 var RenderAPI = { draw: draw, drawBall: drawBall, drawDeco: drawDeco, DEFAULT_GEO: DEFAULT_GEO };
 if (typeof module !== 'undefined') module.exports = RenderAPI;
 if (typeof window !== 'undefined') window.GameRender = RenderAPI;
+})();

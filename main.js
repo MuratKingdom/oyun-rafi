@@ -3,6 +3,10 @@
 // Akış (phase): ready → playing ⇄ paused → over | won → (dokun/R) → playing
 // Mobil: ekranın her yeri dokunma alanıdır; parmak canvas dışına kayınca da bırakma
 // algılanır; sekme arka plana geçince oyun kendiliğinden duraklar.
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
+// fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
+// window.Game* ve module.exports çıkar.
+(function () {
 
 var RESTART_LOCK_MS = 450; // ölümden hemen sonraki dokunuş yanlışlıkla yeniden başlatmasın
 var SHAKE_MS = 180;
@@ -430,3 +434,4 @@ if (typeof window !== 'undefined') {
   }
 }
 if (typeof module !== 'undefined') module.exports = { bootstrap: bootstrap };
+})();
