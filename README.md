@@ -16,7 +16,8 @@ internet bağlantısı gerekmez.
 
 ## Kontroller
 - **Boşluk / Yukarı ok (basılı tut):** havadayken ekstra yükseklik kazandırır; bıraktığında yerçekimi normal hızında geri çeker
-- **Dokunuş / tıklama (canvas üzerinde, basılı tut):** aynı — kayıp ekranındaysa dokunuş yeniden başlatır
+- **Dokunuş / tıklama (ekranın herhangi bir yerinde, basılı tut):** aynı — kayıp ekranında kısa bir kilitten (0,45 sn) sonra dokunuş yeniden başlatır
+- **P / Esc:** duraklat; sekme arka plana geçince oyun kendiliğinden duraklar
 - **R:** kaybettikten sonra yeniden başla
 - **M:** sesi aç/kapat
 
@@ -37,12 +38,14 @@ bu yüzden kapı dizilimi her seferinde değişir.
 - Tek tuşla anında yeniden başlama, aynı seed'den birebir aynı ilk durum (kanıt: T4, T5d)
 - Canvas çizimi: zemin/tavan, duvarlar, top, skor/rekor, kayıp ekranı (kanıt: T5b, W3, W4, tarayıcı ekran görüntüsü)
 - WebAudio ile zıplama/kapı geçme/kayıp sesleri, `M` ile sessize alma, `localStorage` rekor kaydı (kanıt: kod okuma; tarayıcıda konsol hatası 0)
+- **Mobil cila (2 Ekim 2026):** başlangıç ekranı dokunuşu bekler (T5e), ölüm sonrası yanlış yeniden başlamayı önleyen kilit (T5f), tüm ekran dokunma alanı, kaydırma/yakınlaştırma kapalı, ekrana oranlı sığan keskin (DPR) canvas, parçacık + ekran sarsıntısı + top basılması + iz, titreşim (destekleyen cihazda), doygunluğa giden zorluk eğrisi (T6). Kanıt: test.js/test-dom.js PASS; Pixel 7 ve masaüstü boyutunda headless Chromium ekran görüntüleri, konsol hatası 0
 
 ## NE EKSİK / İSKELE
 - Kazanma koşulu yok; oyun yalnızca "kaç kapı geçebilirsin" mantığıyla ilerliyor, sabit bir hedefte bitmiyor.
-- Görsel çeşitlilik minimaldir (düz renk top ve duvarlar, parçacık efekti yok).
-- Zorluk eğrisi doğrusal; ince ayarlanmış bir denge eğrisi değil.
-- Ayrı bir mobil buton düzeni yok; canvas'a dokunma/tıklama basılı-tutma görevi görüyor ama buton boyutu/konumu mobil için ayrıca optimize edilmedi.
+- Görsel tema tek renk; arka plan/tema çeşitliliği yok.
+- Zorluk eğrisi sabitleri (`SPEED_MAX`, `GAP_MIN`, `DIFF_TAU`) insan oynanışına göre ayarlanmadı.
+- Uzun (dikey) telefon ekranlarında oyun alanı kare kaldığı için üstte/altta boşluk kalıyor.
+- Gerçek bir telefonda elle denenmedi (titreşim ve dokunma hissi dahil).
 
 ## Doğrulama durumu
 `node --check` tüm dosyalarda temiz (çıkış kodu 0). `test.js` (T1-T4) ve `test-dom.js`

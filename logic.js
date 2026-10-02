@@ -11,10 +11,13 @@ var THRUST = -700;
 var BOUNCE_V = -480;
 var MAX_VY = 900;
 var SPEED0 = 200;
-var SPEED_RAMP = 3;
+var SPEED_MAX = 340;
 var GAP_H0 = 170;
-var GAP_MIN = 100;
-var GAP_SHRINK = 0.8;
+var GAP_MIN = 104;
+// Zorluk eğrisi: doğrusal değil, doygunluğa giden üstel yaklaşım.
+// İlk dakikada hızlı sertleşir, sonra yavaşlar ve bir tavanda durur;
+// böylece uzun koşular adil kalır, "sonsuz hızlanma" ile zorla bitmez.
+var DIFF_TAU = 75;
 var WALL_W = 28;
 var SPAWN_GRACE = 2.2;
 var SPAWN_INTERVAL_MIN = 1.15;
@@ -27,6 +30,11 @@ function nextRand(state) {
   t = Math.imul(t ^ (t >>> 15), 1 | t);
   t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+// 0 (başlangıç) → 1 (tavan) arasında, t saniyede.
+function difficulty(t) {
+  return 1 - Math.exp(-t / DIFF_TAU);
 }
 
 function createState(seed) {
@@ -70,8 +78,9 @@ function step(state, input, dt) {
   }
 
   state.t += dt;
-  state.speed = SPEED0 + state.t * SPEED_RAMP;
-  state.gapH = Math.max(GAP_MIN, GAP_H0 - state.t * GAP_SHRINK);
+  var d = difficulty(state.t);
+  state.speed = SPEED0 + (SPEED_MAX - SPEED0) * d;
+  state.gapH = GAP_H0 - (GAP_H0 - GAP_MIN) * d;
 
   state.spawnTimer -= dt;
   if (state.spawnTimer <= 0) {
@@ -110,5 +119,11 @@ function step(state, input, dt) {
   return state;
 }
 
-if (typeof module !== 'undefined') module.exports = { createState: createState, step: step };
-if (typeof window !== 'undefined') window.GameLogic = { createState: createState, step: step };
+var CONST = {
+  CANVAS_W: CANVAS_W, CANVAS_H: CANVAS_H, BALL_X: BALL_X, BALL_R: BALL_R,
+  FLOOR_Y: FLOOR_Y, CEIL_Y: CEIL_Y, WALL_W: WALL_W,
+  SPEED0: SPEED0, SPEED_MAX: SPEED_MAX, GAP_H0: GAP_H0, GAP_MIN: GAP_MIN
+};
+var API = { createState: createState, step: step, difficulty: difficulty, CONST: CONST };
+if (typeof module !== 'undefined') module.exports = API;
+if (typeof window !== 'undefined') window.GameLogic = API;
