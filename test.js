@@ -292,5 +292,65 @@ var Shop = require('./shop.js');
     'H900 zemin=' + g1.floorY + ' (840) · H540 zemin=' + g2.floorY + ' (480) · mağaza profili=' + (prof.equipped ? 'sağlam' : 'BOZUK'));
 })();
 
+// --- Günlük görevler ----------------------------------------------------------
+var Q = require('./quests.js');
+
+// T18 — günün görevleri deterministik, 3 farklı tür, günden güne değişir
+(function t18() {
+  var a = Q.generate('2026-10-02'), b = Q.generate('2026-10-02'), c = Q.generate('2026-10-03');
+  var kinds = a.map(function (q) { return q.kind; });
+  var distinct = kinds.filter(function (k, i) { return kinds.indexOf(k) === i; }).length === 3;
+  var same = JSON.stringify(a) === JSON.stringify(b);
+  // 30 gün içinde en az 5 farklı görev seti
+  var sets = {};
+  for (var d = 1; d <= 30; d++) sets[JSON.stringify(Q.generate('2026-11-' + (d < 10 ? '0' : '') + d).map(function (q) { return q.kind + q.target; }))] = 1;
+  var variety = Object.keys(sets).length;
+  report('T18 günlük görev seçimi', a.length === 3 && distinct && same && variety >= 5 && JSON.stringify(a) !== JSON.stringify(c),
+    'bugün=' + kinds.join(',') + ' 30 günde ' + variety + ' farklı set');
+})();
+
+// T19 — giriş serisi: ardışık gün artar (tavan 7), gün atlanınca 1'e döner, aynı gün ikinci açılış ödül vermez
+(function t19() {
+  var d = Q.fresh(), got = [];
+  ['2026-10-01', '2026-10-02', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-09']
+    .forEach(function (k) { got.push(Q.ensureDay(d, k).coins); });
+  var ok = JSON.stringify(got) === JSON.stringify([3, 4, 0, 5, 6, 7, 7, 7, 3]) && d.streak === 1;
+  var monthEdge = Q.dayDiff('2026-10-31', '2026-11-01') === 1 && Q.dayDiff('2026-12-31', '2027-01-01') === 1;
+  report('T19 giriş serisi', ok && monthEdge, 'ödüller=' + got.join(',') + ' seri=' + d.streak + ' ay/yıl geçişi=' + monthEdge);
+})();
+
+// T20 — ilerleme: tek koşu görevleri en iyiyi tutar, günlükler birikir, tamamlanınca bir kez ödül verir
+(function t20() {
+  var d = Q.fresh();
+  Q.ensureDay(d, '2026-10-02');
+  d.quests = [
+    { kind: 'run_stars', target: 5, reward: 12, progress: 0, done: false },
+    { kind: 'day_gates', target: 40, reward: 12, progress: 0, done: false },
+    { kind: 'win', target: 1, reward: 25, progress: 0, done: false }
+  ];
+  var r1 = Q.applyRun(d, { stars: 3, score: 25, level: 4, status: 'over' });
+  var p1 = d.quests.map(function (q) { return q.progress; }).join(',');
+  var r2 = Q.applyRun(d, { stars: 6, score: 20, level: 3, status: 'over' });
+  var r3 = Q.applyRun(d, { stars: 9, score: 80, level: 10, status: 'won' });
+  var r4 = Q.applyRun(d, { stars: 9, score: 80, level: 10, status: 'won' });
+  var ok = r1.length === 0 && p1 === '3,25,0' &&
+    r2.length === 2 && r2[0].reward === 12 && r2[1].reward === 12 &&
+    r3.length === 1 && r3[0].reward === 25 && r4.length === 0;
+  report('T20 görev ilerlemesi ve tek seferlik ödül', ok,
+    'koşu1=' + r1.length + ' koşu2=' + r2.map(function (x) { return x.text; }).join(' | ') + ' koşu3=' + r3.length + ' tekrar=' + r4.length);
+})();
+
+// T21 — bozuk/kurcalanmış günlük kayıt: görevler kayıttan değil tarihten üretilir, ilerleme hedefe kırpılır
+(function t21() {
+  function mem(v) { var x = { 'sekmeguc-gunluk': v }; return { getItem: function (k) { return x[k] === undefined ? null : x[k]; }, setItem: function (k, y) { x[k] = y; } }; }
+  var a = Q.load(mem('{bozuk'));
+  var real = Q.generate('2026-10-02');
+  var hacked = { day: '2026-10-02', streak: -4, lastLogin: 'dün', quests: real.map(function (q) { return { kind: q.kind, target: 1, reward: 9999, progress: 99999, done: true }; }) };
+  var b = Q.load(mem(JSON.stringify(hacked)));
+  var ok = a.day === '' && a.quests.length === 0 && b.streak === 0 && b.lastLogin === '' &&
+    b.quests.every(function (q, i) { return q.reward === real[i].reward && q.target === real[i].target && q.progress === q.target; });
+  report('T21 günlük kayıt doğrulama', ok, 'bozuk→boş, kurcalanmış ödül=' + b.quests.map(function (q) { return q.reward; }).join('/') + ' (gerçek ' + real.map(function (q) { return q.reward; }).join('/') + ')');
+})();
+
 console.log('--- özet: ' + (fails === 0 ? 'tüm testler PASS' : fails + ' test FAIL'));
 process.exit(fails === 0 ? 0 : 1);

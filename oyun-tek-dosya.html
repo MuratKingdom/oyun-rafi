@@ -57,6 +57,23 @@
     max-width: 500px;
     padding: 0 8px;
   }
+  .dugmeler { display: flex; gap: 8px; justify-content: center; min-height: 0; }
+  #gorevBtn {
+    font: 600 15px system-ui, sans-serif;
+    color: #e8ecf1; background: #1c2a44; border: 1px solid #2c4369; border-radius: 999px;
+    padding: 9px 16px; cursor: pointer;
+  }
+  #gorevBtn[hidden] { display: none; }
+  #magaza .seri { margin: 2px 0 4px; color: #ffd166; font-weight: 600; font-size: 14px; }
+  #magaza .gorev {
+    display: grid; grid-template-columns: 1fr auto; gap: 6px 10px;
+    background: #14203a; border-radius: 10px; padding: 10px 12px;
+  }
+  #magaza .gorev .odul { color: #ffd166; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  #magaza .gorev .cubuk { grid-column: 1 / -1; height: 6px; background: #22324f; border-radius: 3px; overflow: hidden; }
+  #magaza .gorev .cubuk i { display: block; height: 100%; background: #5ac8fa; }
+  #magaza .gorev.bitti .cubuk i { background: #46d39a; }
+  #magaza .gorev.bitti .ad { color: #46d39a; }
   #magazaBtn {
     font: 600 15px system-ui, sans-serif;
     color: #05070c; background: #ffd166; border: 0; border-radius: 999px;
@@ -108,7 +125,7 @@
 <div id="wrap">
   <canvas id="game" width="520" height="540"></canvas>
   <div id="hint">Ekranın herhangi bir yerine basılı tut: yükseklik kazan<span class="kb"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
-  <button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button>
+  <div class="dugmeler"><button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button></div>
 </div>
 <div id="magaza" data-ui hidden role="dialog" aria-label="Mağaza">
   <div class="panel">
@@ -116,6 +133,7 @@
     <div class="sekmeler" role="tablist">
       <button type="button" role="tab" data-sekme="ball" aria-selected="true">Top</button>
       <button type="button" role="tab" data-sekme="map" aria-selected="false">Harita</button>
+      <button type="button" role="tab" data-sekme="quests" aria-selected="false">Görevler</button>
     </div>
     <div class="liste"></div>
     <p class="not">Yıldız kazanmak için: oyunda yıldız topla, her geçtiğin bölüm +1, kazanırsan +10. Gerçek para yok.</p>
@@ -222,6 +240,7 @@ function createState(seed, opts) {
     stars: 0,
     shield: 0,
     shieldUsed: 0,
+    movingPassed: 0,
     distance: 0,
     status: 'playing',
     overReason: ''
@@ -332,6 +351,7 @@ function step(state, input, dt) {
     if (!o.passed && o.x + WALL_W < BALL_X) {
       o.passed = true;
       state.score++;
+      if (o.move) state.movingPassed++;
       if (state.score % GATES_PER_LEVEL === 0) {
         if (state.level >= LEVEL_COUNT) {
           state.status = 'won';
@@ -502,6 +522,168 @@ if (typeof window !== 'undefined') window.GameShop = Shop;
 
 </script>
 <script>
+// Sekme Gücü — günlük görevler ve giriş serisi (saf mantık; DOM yok)
+//
+// Her gün 3 görev: tarih anahtarından (YYYY-AA-GG) deterministik seçilir, yani aynı gün
+// aynı cihazda hep aynı görevler gelir. Tamamlanan görevin ödülü kendiliğinden verilir.
+// Giriş serisi: ardışık her gün ilk açılışta 3, 4, 5, 6, 7 (tavan) yıldız; gün atlanırsa sıfırlanır.
+// Kayıt ayrı anahtardadır ('sekmeguc-gunluk'); bozuk/eski kayıt güvenle yeniden kurulur.
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
+// fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
+// window.Game* ve module.exports çıkar.
+(function () {
+
+var DAILY_KEY = 'sekmeguc-gunluk';
+var QUESTS_PER_DAY = 3;
+
+// kind: run_* tek koşuda, day_* gün boyunca birikir
+var TEMPLATES = [
+  { kind: 'run_stars', targets: [3, 5, 8], rewards: [10, 12, 15], text: 'Bir koşuda {n} yıldız topla' },
+  { kind: 'run_gates', targets: [10, 20, 30], rewards: [8, 12, 16], text: 'Bir koşuda {n} kapı geç' },
+  { kind: 'reach_level', targets: [3, 4, 6], rewards: [8, 12, 18], text: '{n}. bölüme ulaş' },
+  { kind: 'day_gates', targets: [25, 40, 60], rewards: [8, 12, 16], text: 'Bugün toplam {n} kapı geç' },
+  { kind: 'day_runs', targets: [3, 5], rewards: [6, 9], text: 'Bugün {n} oyun oyna' },
+  { kind: 'day_shield', targets: [1, 2], rewards: [8, 12], text: 'Kalkanla {n} çarpmadan kurtul' },
+  { kind: 'day_moving', targets: [3, 6], rewards: [8, 12], text: '{n} hareketli (mor) kapıdan geç' },
+  { kind: 'win', targets: [1], rewards: [25], text: 'Oyunu kazan (10 bölüm)' }
+];
+
+function pad(n) { return (n < 10 ? '0' : '') + n; }
+function dayKey(date) {
+  var d = date || new Date();
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+}
+// İki gün anahtarı arasındaki takvim farkı (gün)
+function dayDiff(a, b) {
+  function toUtc(k) { var p = k.split('-'); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
+  return Math.round((toUtc(b) - toUtc(a)) / 86400000);
+}
+function validKey(k) { return typeof k === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(k); }
+
+function hash(str) {
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+function describe(q) {
+  var tpl = null;
+  for (var i = 0; i < TEMPLATES.length; i++) if (TEMPLATES[i].kind === q.kind) tpl = TEMPLATES[i];
+  return tpl ? tpl.text.replace('{n}', q.target) : q.kind;
+}
+
+// Günün 3 görevi: farklı türlerden, tarihten deterministik
+function generate(key) {
+  var h = hash('sekmeguc:' + key);
+  var pool = TEMPLATES.slice();
+  var out = [];
+  while (out.length < QUESTS_PER_DAY && pool.length) {
+    h = (Math.imul(h, 1103515245) + 12345) >>> 0;
+    var tpl = pool.splice(h % pool.length, 1)[0];
+    h = (Math.imul(h, 1103515245) + 12345) >>> 0;
+    var ti = h % tpl.targets.length;
+    out.push({ kind: tpl.kind, target: tpl.targets[ti], reward: tpl.rewards[ti], progress: 0, done: false });
+  }
+  return out;
+}
+
+function fresh() {
+  return { day: '', streak: 0, lastLogin: '', quests: [] };
+}
+
+function sanitize(raw) {
+  var d = fresh();
+  if (!raw || typeof raw !== 'object') return d;
+  if (validKey(raw.day)) d.day = raw.day;
+  if (validKey(raw.lastLogin)) d.lastLogin = raw.lastLogin;
+  var st = Math.floor(Number(raw.streak));
+  d.streak = isFinite(st) && st > 0 ? Math.min(st, 3650) : 0;
+  // Görevler kayıttan değil, günün anahtarından yeniden üretilir; kayıttan yalnız ilerleme alınır
+  if (d.day) {
+    d.quests = generate(d.day);
+    var saved = Array.isArray(raw.quests) ? raw.quests : [];
+    for (var i = 0; i < d.quests.length; i++) {
+      var s = saved[i];
+      if (s && s.kind === d.quests[i].kind) {
+        var pr = Math.floor(Number(s.progress));
+        d.quests[i].progress = isFinite(pr) && pr > 0 ? Math.min(pr, d.quests[i].target) : 0;
+        d.quests[i].done = !!s.done && d.quests[i].progress >= d.quests[i].target;
+      }
+    }
+  }
+  return d;
+}
+
+function load(storage) {
+  try {
+    var txt = storage && storage.getItem(DAILY_KEY);
+    return sanitize(txt ? JSON.parse(txt) : null);
+  } catch (e) {
+    return fresh();
+  }
+}
+function save(storage, d) {
+  try { if (storage) storage.setItem(DAILY_KEY, JSON.stringify(d)); } catch (e) {}
+}
+
+function loginRewardFor(streak) { return Math.min(7, 2 + streak); }
+
+// Günün ilk açılışı: görevleri yenile, seriyi ilerlet. Dönen: { coins, streak } (yeni gün değilse coins 0)
+function ensureDay(d, key) {
+  var res = { coins: 0, streak: d.streak };
+  if (d.day !== key) {
+    d.day = key;
+    d.quests = generate(key);
+  }
+  if (d.lastLogin !== key) {
+    var gap = d.lastLogin ? dayDiff(d.lastLogin, key) : 99;
+    d.streak = gap === 1 ? d.streak + 1 : 1;
+    d.lastLogin = key;
+    res.coins = loginRewardFor(d.streak);
+    res.streak = d.streak;
+  }
+  return res;
+}
+
+// Bir koşu bitti: ilerlemeyi işle. run: { stars, score, level, shieldUsed, movingPassed, status }
+// Dönen: yeni tamamlanan görevler [{ text, reward }]; ödüller toplamı çağıran tarafından cüzdana eklenir
+function applyRun(d, run) {
+  var done = [];
+  for (var i = 0; i < d.quests.length; i++) {
+    var q = d.quests[i];
+    if (q.done) continue;
+    var v;
+    switch (q.kind) {
+      case 'run_stars': v = Math.max(q.progress, run.stars || 0); break;
+      case 'run_gates': v = Math.max(q.progress, run.score || 0); break;
+      case 'reach_level': v = Math.max(q.progress, run.level || 1); break;
+      case 'day_gates': v = q.progress + (run.score || 0); break;
+      case 'day_runs': v = q.progress + 1; break;
+      case 'day_shield': v = q.progress + (run.shieldUsed || 0); break;
+      case 'day_moving': v = q.progress + (run.movingPassed || 0); break;
+      case 'win': v = run.status === 'won' ? 1 : q.progress; break;
+      default: v = q.progress;
+    }
+    q.progress = Math.min(q.target, v);
+    if (q.progress >= q.target) {
+      q.done = true;
+      done.push({ text: describe(q), reward: q.reward });
+    }
+  }
+  return done;
+}
+
+var Quests = {
+  DAILY_KEY: DAILY_KEY, TEMPLATES: TEMPLATES, dayKey: dayKey, dayDiff: dayDiff,
+  generate: generate, describe: describe, fresh: fresh, sanitize: sanitize,
+  load: load, save: save, ensureDay: ensureDay, applyRun: applyRun, loginRewardFor: loginRewardFor
+};
+if (typeof module !== 'undefined') module.exports = Quests;
+if (typeof window !== 'undefined') window.GameQuests = Quests;
+})();
+
+</script>
+<script>
 // Sekme Gücü — yalnızca çizim, state değiştirmez
 // view: { best, muted, phase: 'ready'|'playing'|'paused'|'over'|'won', fx, touch, newBest, canRestart,
 //         theme: {deco, c:{...}}, skin: {shape, color}, coins, earned }  (theme/skin: shop.js kataloğu)
@@ -628,6 +810,16 @@ function drawDeco(ctx, theme, dist, geo) {
       ctx.fillRect(x, CEIL_Y + 8 + ((i * 71) % (FLOOR_Y - CEIL_Y - 16)), 2, 2);
     }
   }
+}
+
+function questLines(view) {
+  var q = view.questDone || [];
+  var out = [];
+  for (var i = 0; i < q.length && i < 3; i++) {
+    out.push({ text: '✓ Görev: ' + q[i].text + '  +' + q[i].reward + ' ★', font: '15px system-ui, sans-serif', color: '#46d39a', gap: 26 });
+  }
+  if (out.length) out[out.length - 1].gap = 40;
+  return out;
 }
 
 function draw(ctx, state, view) {
@@ -780,7 +972,7 @@ function draw(ctx, state, view) {
       { text: 'Basılı tut: top yükselir · bırak: düşer' },
       { text: 'Kapıları ıskalama, tavana değme', gap: 44 },
       { text: tapWord + ' ve başla', font: 'bold 20px system-ui, sans-serif', color: '#5ac8fa', gap: 40 }
-    ].concat(wallet ? [wallet] : []));
+    ].concat(wallet ? [wallet] : []).concat(view.notice ? [{ text: view.notice, font: 'bold 16px system-ui, sans-serif', color: '#46d39a' }] : []));
   } else if (phase === 'paused') {
     overlay(ctx, [
       { text: 'Duraklatıldı', font: 'bold 26px system-ui, sans-serif', gap: 40 },
@@ -790,11 +982,12 @@ function draw(ctx, state, view) {
     overlay(ctx, [
       { text: 'Kazandın!', font: 'bold 32px system-ui, sans-serif', color: '#ffd166', gap: 40 },
       { text: state.overReason },
-      { text: 'Kapı: ' + state.score + '   Yıldız: ' + state.stars, gap: 44 },
+      { text: 'Kapı: ' + state.score + '   Yıldız: ' + state.stars, gap: 44 }
+    ].concat(questLines(view)).concat([
       view.canRestart
         ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden oyna', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
         : { text: ' ', font: '16px system-ui, sans-serif' }
-    ].concat(wallet ? [wallet] : []));
+    ]).concat(wallet ? [wallet] : []));
   } else if (phase === 'over') {
     var lines = [
       { text: 'Oyun bitti', font: 'bold 28px system-ui, sans-serif', gap: 36 },
@@ -803,6 +996,7 @@ function draw(ctx, state, view) {
     ];
     if (view.newBest) lines.push({ text: 'Yeni rekor!', font: 'bold 20px system-ui, sans-serif', color: '#ffd166' });
     lines.push({ text: 'Kapı: ' + state.score + '   Rekor: ' + best, gap: 44 });
+    lines = lines.concat(questLines(view));
     lines.push(view.canRestart
       ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden başla', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
       : { text: ' ', font: '16px system-ui, sans-serif' });
@@ -867,7 +1061,24 @@ function bootstrap() {
   var Shop = window.GameShop || null;
   var profile = Shop ? Shop.load(window.localStorage) : null;
   var earned = 0;
+  var settled = false;
   var shopOpen = false;
+  // Günlük görevler ve giriş serisi
+  var Quests = window.GameQuests || null;
+  var daily = Quests && profile ? Quests.load(window.localStorage) : null;
+  var questDone = [];
+  var notice = '';
+  function checkDay() {
+    if (!daily) return;
+    var lr = Quests.ensureDay(daily, Quests.dayKey(new Date()));
+    if (lr.coins > 0) {
+      profile.coins += lr.coins;
+      notice = 'Günlük ödül: +' + lr.coins + ' ★' + (lr.streak > 1 ? '  (' + lr.streak + '. gün üst üste)' : '');
+      Shop.save(window.localStorage, profile);
+    }
+    Quests.save(window.localStorage, daily);
+  }
+  checkDay();
   try {
     var saved = window.localStorage.getItem('sekmeguc-best');
     if (saved) best = parseInt(saved, 10) || 0;
@@ -966,6 +1177,10 @@ function bootstrap() {
   }
   function restart() {
     earned = 0;
+    settled = false;
+    questDone = [];
+    notice = '';
+    checkDay();
     state = newGame();
     prevBounces = state.bounces;
     prevScore = state.score;
@@ -1038,11 +1253,17 @@ function bootstrap() {
   var shopBtn = document.getElementById('magazaBtn');
   var shopTab = 'ball';
   function settle() {
-    if (profile && earned === 0 && (state.status === 'over' || state.status === 'won')) {
-      earned = Shop.reward(state);
-      profile.coins += earned;
-      Shop.save(window.localStorage, profile);
+    if (!profile || settled || (state.status !== 'over' && state.status !== 'won')) return;
+    settled = true;
+    earned = Shop.reward(state);
+    if (daily) {
+      questDone = Quests.applyRun(daily, state);
+      for (var qi = 0; qi < questDone.length; qi++) earned += questDone[qi].reward;
+      Quests.save(window.localStorage, daily);
+      if (questDone.length) { beep(784, 0.1, 'triangle'); beep(1046, 0.14, 'triangle'); }
     }
+    profile.coins += earned;
+    Shop.save(window.localStorage, profile);
   }
   function preview(item, kind) {
     var cv = document.createElement('canvas');
@@ -1063,6 +1284,35 @@ function bootstrap() {
     c2.save(); c2.translate(kind === 'ball' ? 36 : 22, 26); window.GameRender.drawBall(c2, skin.shape, kind === 'ball' ? 13 : 7, skin.color); c2.restore();
     return cv;
   }
+  function renderQuests(list) {
+    var head = document.createElement('p');
+    head.className = 'seri';
+    head.textContent = daily.streak > 0
+      ? 'Giriş serisi: ' + daily.streak + ' gün · yarın gelirsen +' + Quests.loginRewardFor(daily.streak + 1) + ' ★'
+      : 'Her gün ilk açılışta yıldız kazanırsın.';
+    list.appendChild(head);
+    daily.quests.forEach(function (q) {
+      var row = document.createElement('div');
+      row.className = 'gorev' + (q.done ? ' bitti' : '');
+      var name = document.createElement('span');
+      name.className = 'ad';
+      name.textContent = (q.done ? '✓ ' : '') + Quests.describe(q);
+      var bar = document.createElement('div');
+      bar.className = 'cubuk';
+      var fill = document.createElement('i');
+      fill.style.width = Math.round(100 * q.progress / q.target) + '%';
+      bar.appendChild(fill);
+      var meta = document.createElement('span');
+      meta.className = 'odul';
+      meta.textContent = q.progress + '/' + q.target + ' · ★ ' + q.reward;
+      row.appendChild(name); row.appendChild(meta); row.appendChild(bar);
+      list.appendChild(row);
+    });
+    var foot = document.createElement('p');
+    foot.className = 'not';
+    foot.textContent = 'Görevler her gece yarısı yenilenir. Ödül görev bitince kendiliğinden eklenir.';
+    list.appendChild(foot);
+  }
   function renderShop() {
     if (!shopEl || !profile) return;
     shopEl.querySelector('.cuzdan').textContent = '★ ' + profile.coins;
@@ -1070,6 +1320,7 @@ function bootstrap() {
     for (var t = 0; t < tabs.length; t++) tabs[t].setAttribute('aria-selected', String(tabs[t].getAttribute('data-sekme') === shopTab));
     var list = shopEl.querySelector('.liste');
     list.innerHTML = '';
+    if (shopTab === 'quests') { if (daily) renderQuests(list); return; }
     Shop.CATALOG[shopTab].forEach(function (item) {
       var row = document.createElement('div');
       row.className = 'urun';
@@ -1095,8 +1346,9 @@ function bootstrap() {
       list.appendChild(row);
     });
   }
-  function openShop() {
+  function openShop(tab) {
     if (!shopEl || phase === 'playing') return;
+    if (typeof tab === 'string') shopTab = tab;
     shopOpen = true;
     release();
     shopEl.hidden = false;
@@ -1108,7 +1360,9 @@ function bootstrap() {
     shopEl.hidden = true;
   }
   if (shopEl && shopBtn && profile) {
-    shopBtn.addEventListener('click', openShop);
+    shopBtn.addEventListener('click', function () { openShop(shopTab === 'quests' ? 'ball' : shopTab); });
+    var questBtn = document.getElementById('gorevBtn');
+    if (questBtn) questBtn.addEventListener('click', function () { openShop('quests'); });
     shopEl.querySelector('.kapat').addEventListener('click', closeShop);
     var tabEls = shopEl.querySelectorAll('[data-sekme]');
     for (var ti = 0; ti < tabEls.length; ti++) {
@@ -1230,14 +1484,26 @@ function bootstrap() {
     if (banner.a > 0 && phase === 'playing') banner.a = Math.max(0, banner.a - frameDt);
 
     settle();
-    if (shopBtn) shopBtn.hidden = shopOpen || !(profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart());
+    var showBtns = !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
+    if (shopBtn) shopBtn.hidden = !showBtns;
+    var qb = document.getElementById('gorevBtn');
+    if (qb) {
+      qb.hidden = !showBtns || !daily;
+      if (daily) {
+        var left = 0;
+        for (var qn = 0; qn < daily.quests.length; qn++) if (!daily.quests[qn].done) left++;
+        qb.textContent = '📋 Görevler' + (left ? ' (' + left + ')' : ' ✓');
+      }
+    }
     window.GameRender.draw(ctx, state, {
       best: best, muted: muted, phase: phase, fx: fx, touch: touch,
       newBest: newBest, canRestart: (phase === 'over' || phase === 'won') && canRestart(),
       banner: banner, levelCount: C.LEVEL_COUNT, gatesPerLevel: C.GATES_PER_LEVEL,
       theme: profile ? Shop.equippedMap(profile) : null, skin: profile ? Shop.equippedBall(profile) : null,
       coins: profile && phase !== 'playing' && phase !== 'paused' ? profile.coins : undefined,
-      earned: phase === 'over' || phase === 'won' ? earned : 0
+      earned: phase === 'over' || phase === 'won' ? earned : 0,
+      questDone: phase === 'over' || phase === 'won' ? questDone : [],
+      notice: phase === 'ready' ? notice : ''
     });
     window.requestAnimationFrame(frame);
   }

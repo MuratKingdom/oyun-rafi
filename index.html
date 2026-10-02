@@ -57,6 +57,23 @@
     max-width: 500px;
     padding: 0 8px;
   }
+  .dugmeler { display: flex; gap: 8px; justify-content: center; min-height: 0; }
+  #gorevBtn {
+    font: 600 15px system-ui, sans-serif;
+    color: #e8ecf1; background: #1c2a44; border: 1px solid #2c4369; border-radius: 999px;
+    padding: 9px 16px; cursor: pointer;
+  }
+  #gorevBtn[hidden] { display: none; }
+  #magaza .seri { margin: 2px 0 4px; color: #ffd166; font-weight: 600; font-size: 14px; }
+  #magaza .gorev {
+    display: grid; grid-template-columns: 1fr auto; gap: 6px 10px;
+    background: #14203a; border-radius: 10px; padding: 10px 12px;
+  }
+  #magaza .gorev .odul { color: #ffd166; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  #magaza .gorev .cubuk { grid-column: 1 / -1; height: 6px; background: #22324f; border-radius: 3px; overflow: hidden; }
+  #magaza .gorev .cubuk i { display: block; height: 100%; background: #5ac8fa; }
+  #magaza .gorev.bitti .cubuk i { background: #46d39a; }
+  #magaza .gorev.bitti .ad { color: #46d39a; }
   #magazaBtn {
     font: 600 15px system-ui, sans-serif;
     color: #05070c; background: #ffd166; border: 0; border-radius: 999px;
@@ -108,7 +125,7 @@
 <div id="wrap">
   <canvas id="game" width="520" height="540"></canvas>
   <div id="hint">Ekranın herhangi bir yerine basılı tut: yükseklik kazan<span class="kb"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
-  <button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button>
+  <div class="dugmeler"><button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button></div>
 </div>
 <div id="magaza" data-ui hidden role="dialog" aria-label="Mağaza">
   <div class="panel">
@@ -116,6 +133,7 @@
     <div class="sekmeler" role="tablist">
       <button type="button" role="tab" data-sekme="ball" aria-selected="true">Top</button>
       <button type="button" role="tab" data-sekme="map" aria-selected="false">Harita</button>
+      <button type="button" role="tab" data-sekme="quests" aria-selected="false">Görevler</button>
     </div>
     <div class="liste"></div>
     <p class="not">Yıldız kazanmak için: oyunda yıldız topla, her geçtiğin bölüm +1, kazanırsan +10. Gerçek para yok.</p>
@@ -123,6 +141,7 @@
 </div>
 <script src="logic.js"></script>
 <script src="shop.js"></script>
+<script src="quests.js"></script>
 <script src="render.js"></script>
 <script src="main.js"></script>
 </body>
