@@ -52,7 +52,7 @@
 <body>
 <div class="wrap">
   <h1>🕹️ Oyun Rafı</h1>
-  <p class="tag">Gamer rutininin ürettiği küçük ama <strong>bitmiş</strong> tarayıcı oyunları. Ayda iki oyun; her biri kurulumsuz, sunucusuz, tek dosya.</p>
+  <p class="tag">Gamer rutininin ürettiği küçük ama <strong>bitmiş</strong> tarayıcı oyunları. Haftada iki oyun; her biri kurulumsuz, sunucusuz, tek dosya.</p>
 
   <div class="uyari">
     <strong>Bu sayfa GitHub Pages ile yayınlanmadıysa</strong> aşağıdaki “Oyna” düğmeleri yalnız depoyu klonlayıp
@@ -91,6 +91,42 @@
         <li><strong>Çalışıyor:</strong> kolektör/kuyu inşası, üretim ve su tüketimi · kayıp koşulu ve sebep gösterimi · tek tuşla temiz restart · canvas çizim, skor ve rekor</li>
         <li><strong>Eksik:</strong> kazanma koşulu yok (yalnızca dayanma skoru) · inşa geri alınamaz/taşınamaz · zorluk eğrisi basit basamak fonksiyonu</li>
         <li><strong>Geliştirmek için ilk adım:</strong> <code>logic.js</code>’teki <code>WELL_RATE</code>/<code>BASE_DRAIN</code>/<code>DRAIN_RAMP</code> sabitlerini değiştir veya <code>step()</code>’e yeni bir bina tipi ekle</li>
+      </ul>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Sekme Gücü</h2>
+    <p class="meta"><span class="kanat">arcade/fizik</span> · eklendi 2026-09-24</p>
+    <p class="ne">Zıplayan bir topu tek tuşla havada tutarak duvarlardaki dar kapılardan geçiriyorsun.</p>
+    <div class="actions">
+      <a class="btn" href="oyunlar/sekmeguc/index.html">Oyna</a>
+      <a class="btn ghost" href="https://github.com/MuratKingdom/oyun-rafi/tree/oyun/sekmeguc">Kaynak</a>
+    </div>
+    <details>
+      <summary>Ne çalışıyor, ne eksik</summary>
+      <ul>
+        <li><strong>Çalışıyor:</strong> zıplama fiziği ve basılı-tutma ile yükseklik kontrolü · kapı/duvar çarpışması ve kayıp sebebi · artan zorluk + kapı skoru · tek tuşla temiz restart · ses ve rekor</li>
+        <li><strong>Eksik:</strong> kazanma koşulu yok (yalnızca skor) · parçacık/görsel çeşitlilik minimal · zorluk eğrisi doğrusal · mobil için ayrı dokunma düzeni yok</li>
+        <li><strong>Geliştirmek için ilk adım:</strong> <code>logic.js</code>’teki <code>THRUST</code>/<code>BOUNCE_V</code>/<code>GAP_H0</code>/<code>GAP_SHRINK</code> sabitlerini değiştir veya <code>step()</code>’e hareketli kapı ekle</li>
+      </ul>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Tohum Payı</h2>
+    <p class="meta"><span class="kanat">sandbox/inşa</span> · eklendi 2026-10-01</p>
+    <p class="ne">Altı tarlalık bir çiftlikte her ekimde bir tahılı tohum olarak ayırıp her akşam artan yemek payını karşılamaya çalışıyorsun.</p>
+    <div class="actions">
+      <a class="btn" href="oyunlar/tohumpayi/index.html">Oyna</a>
+      <a class="btn ghost" href="https://github.com/MuratKingdom/oyun-rafi/tree/oyun/tohumpayi">Kaynak</a>
+    </div>
+    <details>
+      <summary>Ne çalışıyor, ne eksik</summary>
+      <ul>
+        <li><strong>Çalışıyor:</strong> ekim, büyüme, hasat, çürüme ve gün sonu yemek payı · kıtlıkla kaybetme ve sebep gösterimi · 15 günü bitirerek kazanma erişilebilir · tek tuşla temiz restart · ses ve rekor</li>
+        <li><strong>Eksik:</strong> zorluk yalnızca doğrusal artan yemek payı (hava/kuraklık olayı yok) · insan oynanışına göre denge ayarı yapılmadı · mobilde denenmedi · görsel çeşitlilik minimal</li>
+        <li><strong>Geliştirmek için ilk adım:</strong> <code>logic.js</code>’teki <code>GROW</code>/<code>SPOIL</code>/<code>needFor()</code> değerlerini değiştir veya <code>step()</code>’e hava olayı ekle</li>
       </ul>
     </details>
   </div>
