@@ -152,6 +152,7 @@ function bootstrap() {
   var prevLevel = state.level;
   var prevStars = state.stars;
   var prevShieldUsed = state.shieldUsed;
+  var prevPowers = state.powers;
   var banner = { title: 'Bölüm 1', sub: '', a: 0 };
 
   function nowMs() { return Date.now(); }
@@ -173,6 +174,7 @@ function bootstrap() {
     prevLevel = state.level;
     prevStars = state.stars;
     prevShieldUsed = state.shieldUsed;
+    prevPowers = state.powers;
     banner = { title: 'Bölüm 1', sub: '', a: 1.4 };
     newBest = false;
     fx.particles = [];
@@ -414,6 +416,13 @@ function bootstrap() {
           burst(C.BALL_X, state.y, 12, '#ffd166', 200);
           prevStars = state.stars;
         }
+        if (state.powers !== prevPowers) {
+          var slowNow = state.slowT === C.POWER_SLOW_T; // bu adımda alındıysa süre tam dolu
+          beep(slowNow ? 440 : 880, 0.1, 'sine'); beep(slowNow ? 330 : 1175, 0.12, 'sine');
+          buzz(12);
+          burst(C.BALL_X, state.y, 14, slowNow ? '#6fe0ff' : '#ff9df0', 220);
+          prevPowers = state.powers;
+        }
         if (state.shieldUsed !== prevShieldUsed) {
           beep(300, 0.12, 'square');
           buzz(30);
@@ -424,7 +433,10 @@ function bootstrap() {
         if (state.level !== prevLevel) {
           var sub = state.level === C.STAR_FROM ? 'Yıldız topla: bir çarpmayı affeder'
             : state.level === C.MOVE_FROM ? 'Mor kapılar hareket eder'
-            : state.level === C.DOUBLE_FROM ? 'Çift duvarlar geliyor' : '';
+            : state.level === C.PULSE_FROM ? 'Yeşil kapılar daralıp genişler'
+            : state.level === C.POWER_FROM ? 'Güçler: ⏱ dünyayı yavaşlatır, pembe top küçültür'
+            : state.level === C.DOUBLE_FROM ? 'Çift duvarlar geliyor'
+            : state.level === C.SPIKE_FROM ? 'Kırmızı dikenlere sekme: basılı tut, havada kal' : '';
           banner = { title: 'Bölüm ' + state.level, sub: sub, a: sub ? 2.2 : 1.4 };
           beep(523, 0.08, 'sine'); beep(784, 0.12, 'sine');
           prevLevel = state.level;

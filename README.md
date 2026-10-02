@@ -50,6 +50,18 @@ boyu, salınım genliği, sıçrama sınırı. Oyun geometrik olarak aynı kalı
 ekranda geçerlidir (T16 eşdeğerlik, T17 H=900'de kazanılabilirlik). Yükseklik yalnız yeni oyunda
 değişir; oyun sürerken ekran dönerse alan sabit kalır.
 
+## Yeni güçler ve engeller (2 Ekim 2026)
+| Bölüm | Öğe | Ne yapar |
+|---|---|---|
+| 4+ | **Nefes alan kapı** (yeşil ağız) | Ağız ortası sabit kalır, boyu %72'ye kadar daralıp genişler; hareketli kapıyla birleşmez |
+| 5+ | **⏱ Yavaşlatma** (mavi saat) | 4 sn boyunca duvarlar %65 hızla akar; topun düşüşü değişmez |
+| 5+ | **Küçülme** (pembe halka) | 6 sn boyunca top %60 boyuta iner, dar ağızlardan geçer |
+| 7+ | **Zemin dikeni** (kırmızı) | Duvarın ardında zeminde şerit; üstüne sekmek öldürür, basılı tutup havada kalarak geçilir |
+
+Güçler kapının ortasında yıldızın yerine çıkar; tekrar alınca süre baştan başlar. Kalkan bir
+diken çarpmasını da yutar. Etkin güçler ve kalan süreleri zeminin altında, sağda görünür.
+Çift duvarın ikinci parçasında nefes/diken olmaz.
+
 ## Mağaza (2 Ekim 2026)
 Başlangıç ve oyun sonu ekranındaki **🛒 Mağaza** düğmesiyle açılır. Para birimi **yıldız**dır:
 oyunda topladığın yıldızlar + geçtiğin her bölüm için 1 + kazanırsan 10. Gerçek para yok.
@@ -98,6 +110,12 @@ T15 (ödül hesabı ve fiyat dengesi: bir kazanma koşusu en pahalı ürünün d
 fazlasını getirir); `test-dom.js` T5g (oyun sonunda ödül cüzdana tam bir kez yazılır, kuşanılan
 tema çizime gider) — hepsi PASS. Headless Chromium'da Pixel 7 boyutunda mağaza açıldı, bir top
 ve bir harita satın alındı, profil kaydı ve oyun içi görünüm doğrulandı; konsol hatası 0.
+**Güçler ve engeller:** `test.js` T23 (nefes kapısı ortası sabit, boy sınır içinde), T24
+(yavaşlatma oranı 0,65 ve süre bitince normal), T25 (küçük top normalin sığmadığı ağızdan geçer),
+T26 (diken öldürür, kalkan yutar, havada geçiş sayılır), T27 (öğeler doğru bölümde, adil birleşim)
+— hepsi PASS. Kazanılabilirlik botu: kalkan açık 8/8, **kalkansız 8/8** (6'sı normal, 2'si
+`--guclu` aramayla), H=900 alanda 2/2. Çizim headless Chromium'da Pixel 7 boyunda kontrol edildi,
+konsol hatası 0.
 **Günlük görevler:** `test.js` T18 (belirlenimli seçim, 30 günde 30 farklı set), T19 (giriş
 serisi, ay/yıl geçişi, gün atlama), T20 (ilerleme ve ödülün tek seferliği), T21 (bozuk/kurcalanmış
 kayıt), T22 (betikler ortak tarayıcı kapsamında birbirini ezmiyor); `test-dom.js` T5h (giriş ödülü
