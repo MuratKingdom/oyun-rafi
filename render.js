@@ -25,6 +25,19 @@ function overlay(ctx, lines) {
   ctx.textAlign = 'left';
 }
 
+function starShape(ctx, cx, cy, r, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (var i = 0; i < 10; i++) {
+    var ang = -Math.PI / 2 + i * Math.PI / 5;
+    var rr = i % 2 === 0 ? r : r * 0.45;
+    var px = cx + Math.cos(ang) * rr, py = cy + Math.sin(ang) * rr;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
 function draw(ctx, state, view) {
   view = view || {};
   var fx = view.fx || {};
@@ -57,13 +70,21 @@ function draw(ctx, state, view) {
 
   for (var i = 0; i < state.obstacles.length; i++) {
     var o = state.obstacles[i];
-    ctx.fillStyle = o.passed ? '#16233b' : '#1f3150';
+    // Hareketli kapı mor tonlu, delinen (kalkanla) duvar soluk
+    ctx.fillStyle = o.hit ? '#141c2c' : (o.passed ? '#16233b' : (o.move ? '#2b2650' : '#1f3150'));
     ctx.fillRect(o.x, CEIL_Y, WALL_W, o.gapY - CEIL_Y);
     ctx.fillRect(o.x, o.gapY + o.gapH, WALL_W, FLOOR_Y - (o.gapY + o.gapH));
     // Kapı ağzını belirginleştiren ince kenar
-    ctx.fillStyle = o.passed ? '#2a3c5c' : '#5ac8fa';
+    ctx.fillStyle = o.passed ? '#2a3c5c' : (o.move ? '#b39dfa' : '#5ac8fa');
     ctx.fillRect(o.x, o.gapY - 3, WALL_W, 3);
     ctx.fillRect(o.x, o.gapY + o.gapH, WALL_W, 3);
+  }
+
+  // Yıldızlar (kapı ortasında; toplanınca kalkan)
+  for (var si = 0; si < state.obstacles.length; si++) {
+    var so = state.obstacles[si];
+    if (!so.star || so.star.taken) continue;
+    starShape(ctx, so.x + WALL_W / 2, so.gapY + so.gapH / 2, 9, '#ffd166');
   }
 
   // İz
@@ -89,6 +110,15 @@ function draw(ctx, state, view) {
   ctx.fill();
   ctx.restore();
 
+  // Kalkan halkası
+  if (state.shield > 0 && state.status === 'playing') {
+    ctx.strokeStyle = 'rgba(255,209,102,0.85)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(BALL_X, state.y, BALL_R + 6, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
   // Parçacıklar
   var ps = fx.particles || [];
   for (var p = 0; p < ps.length; p++) {
@@ -105,10 +135,34 @@ function draw(ctx, state, view) {
   ctx.font = 'bold 22px system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText('Kapı: ' + state.score, 14, 24);
+  ctx.textAlign = 'center';
+  ctx.font = '16px system-ui, sans-serif';
+  ctx.fillStyle = '#9fb3d1';
+  var lvCount = view.levelCount || 10;
+  var per = view.gatesPerLevel || 8;
+  ctx.fillText('Bölüm ' + state.level + '/' + lvCount + '  ·  ' + (state.score % per) + '/' + per, W0 / 2, 23);
   ctx.textAlign = 'right';
+  ctx.fillStyle = '#e8ecf1';
   ctx.font = '18px system-ui, sans-serif';
   ctx.fillText('Rekor: ' + best, W0 - 14, 24);
   ctx.textAlign = 'left';
+  if (state.shield > 0) starShape(ctx, W0 - 24, FLOOR_Y + 24, 8, '#ffd166');
+
+  // Bölüm geçişi yazısı (main.js süreyi tutar)
+  if (view.banner && view.banner.a > 0) {
+    ctx.globalAlpha = Math.min(1, view.banner.a);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#e8ecf1';
+    ctx.font = 'bold 34px system-ui, sans-serif';
+    ctx.fillText(view.banner.title, W0 / 2, 150);
+    if (view.banner.sub) {
+      ctx.font = '17px system-ui, sans-serif';
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText(view.banner.sub, W0 / 2, 182);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+  }
 
   if (view.muted) {
     ctx.fillStyle = '#7c8aa5';
@@ -129,10 +183,20 @@ function draw(ctx, state, view) {
       { text: 'Duraklatıldı', font: 'bold 26px system-ui, sans-serif', gap: 40 },
       { text: tapWord + ' ve devam et', color: '#5ac8fa' }
     ]);
+  } else if (phase === 'won') {
+    overlay(ctx, [
+      { text: 'Kazandın!', font: 'bold 32px system-ui, sans-serif', color: '#ffd166', gap: 40 },
+      { text: state.overReason },
+      { text: 'Kapı: ' + state.score + '   Yıldız: ' + state.stars, gap: 44 },
+      view.canRestart
+        ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden oyna', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
+        : { text: ' ', font: '16px system-ui, sans-serif' }
+    ]);
   } else if (phase === 'over') {
     var lines = [
       { text: 'Oyun bitti', font: 'bold 28px system-ui, sans-serif', gap: 36 },
-      { text: state.overReason }
+      { text: state.overReason },
+      { text: 'Bölüm ' + state.level + '’e kadar geldin', font: '16px system-ui, sans-serif', color: '#9fb3d1' }
     ];
     if (view.newBest) lines.push({ text: 'Yeni rekor!', font: 'bold 20px system-ui, sans-serif', color: '#ffd166' });
     lines.push({ text: 'Kapı: ' + state.score + '   Rekor: ' + best, gap: 44 });

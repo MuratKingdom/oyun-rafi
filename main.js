@@ -1,6 +1,6 @@
 // Sekme Gücü — döngü, girdi, ses, efektler; logic + render'ı bağlar
 //
-// Akış (phase): ready → playing ⇄ paused → over → (dokun/R) → playing
+// Akış (phase): ready → playing ⇄ paused → over | won → (dokun/R) → playing
 // Mobil: ekranın her yeri dokunma alanıdır; parmak canvas dışına kayınca da bırakma
 // algılanır; sekme arka plana geçince oyun kendiliğinden duraklar.
 
@@ -106,10 +106,15 @@ function bootstrap() {
   var newBest = false;
   var prevBounces = state.bounces;
   var prevScore = state.score;
+  var prevLevel = state.level;
+  var prevStars = state.stars;
+  var prevShieldUsed = state.shieldUsed;
+  var banner = { title: 'Bölüm 1', sub: '', a: 0 };
 
   function nowMs() { return Date.now(); }
 
   function startPlaying() {
+    if (phase === 'ready') banner = { title: 'Bölüm 1', sub: '', a: 1.4 };
     phase = 'playing';
     ensureAudio();
   }
@@ -117,6 +122,10 @@ function bootstrap() {
     state = newGame();
     prevBounces = state.bounces;
     prevScore = state.score;
+    prevLevel = state.level;
+    prevStars = state.stars;
+    prevShieldUsed = state.shieldUsed;
+    banner = { title: 'Bölüm 1', sub: '', a: 1.4 };
     newBest = false;
     fx.particles = [];
     fx.trail = [];
@@ -131,7 +140,7 @@ function bootstrap() {
   // Ortak "bas" ve "bırak" — klavye ve dokunuş aynı yoldan geçer.
   function press() {
     if (phase === 'ready' || phase === 'paused') { startPlaying(); input.action = true; return; }
-    if (phase === 'over') { if (canRestart()) { restart(); input.action = true; } return; }
+    if (phase === 'over' || phase === 'won') { if (canRestart()) { restart(); input.action = true; } return; }
     input.action = true;
   }
   function release() {
@@ -219,6 +228,42 @@ function bootstrap() {
           burst(C.BALL_X, state.y, 10, '#5ac8fa', 220);
           prevScore = state.score;
         }
+        if (state.stars !== prevStars) {
+          beep(990, 0.07, 'triangle');
+          beep(1320, 0.09, 'triangle');
+          burst(C.BALL_X, state.y, 12, '#ffd166', 200);
+          prevStars = state.stars;
+        }
+        if (state.shieldUsed !== prevShieldUsed) {
+          beep(300, 0.12, 'square');
+          buzz(30);
+          shakeLeft = SHAKE_MS * 0.6;
+          burst(C.BALL_X + 14, state.y, 16, '#ffd166', 260);
+          prevShieldUsed = state.shieldUsed;
+        }
+        if (state.level !== prevLevel) {
+          var sub = state.level === C.STAR_FROM ? 'Yıldız topla: bir çarpmayı affeder'
+            : state.level === C.MOVE_FROM ? 'Mor kapılar hareket eder'
+            : state.level === C.DOUBLE_FROM ? 'Çift duvarlar geliyor' : '';
+          banner = { title: 'Bölüm ' + state.level, sub: sub, a: sub ? 2.2 : 1.4 };
+          beep(523, 0.08, 'sine'); beep(784, 0.12, 'sine');
+          prevLevel = state.level;
+        }
+        if (state.status === 'won') {
+          beep(523, 0.1, 'sine'); beep(659, 0.1, 'sine'); beep(784, 0.2, 'sine');
+          buzz(40);
+          burst(C.BALL_X, state.y, 40, '#ffd166', 360);
+          if (state.score > best) {
+            best = state.score;
+            newBest = true;
+            try { window.localStorage.setItem('sekmeguc-best', String(best)); } catch (e) {}
+          }
+          phase = 'won';
+          overAt = nowMs();
+          input.action = false;
+          acc = 0;
+          break;
+        }
         if (state.status === 'over') {
           beep(110, 0.25, 'sawtooth');
           buzz(60);
@@ -242,10 +287,12 @@ function bootstrap() {
       acc = 0;
     }
     updateFx(frameDt);
+    if (banner.a > 0 && phase === 'playing') banner.a = Math.max(0, banner.a - frameDt);
 
     window.GameRender.draw(ctx, state, {
       best: best, muted: muted, phase: phase, fx: fx, touch: touch,
-      newBest: newBest, canRestart: phase === 'over' && canRestart()
+      newBest: newBest, canRestart: (phase === 'over' || phase === 'won') && canRestart(),
+      banner: banner, levelCount: C.LEVEL_COUNT, gatesPerLevel: C.GATES_PER_LEVEL
     });
     window.requestAnimationFrame(frame);
   }
