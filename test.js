@@ -377,6 +377,78 @@ var Shop = require('./shop.js');
   report('T15 ödül ve fiyat dengesi', ok, 'ödüller=' + r1 + '/' + r2 + '/' + r3 + '/' + r4 + ' en pahalı=' + maxPrice);
 })();
 
+// --- Yıldızın anlamı: kalıcı güçlendirmeler ve devam ------------------------------
+// T33 — güçlendirme satın alma: basamaklı fiyat, son basamakta durur, yetersizde değişmez, kayıt doğrulanır
+(function t33() {
+  var p = Shop.createProfile(); p.coins = 200;
+  var a = Shop.buyUpgrade(p, 'kalkan'), b = Shop.buyUpgrade(p, 'kalkan'), c = Shop.buyUpgrade(p, 'kalkan');
+  var chain = a.ok && b.ok && !c.ok && c.reason === 'tamam' && p.coins === 200 - 40 - 120 && p.upg.kalkan === 2;
+  var poor = Shop.buyUpgrade(p, 'baslangic'); // ★ 40 < 60
+  var poorOk = !poor.ok && poor.reason === 'yetersiz' && p.upg.baslangic === 0 && p.coins === 40;
+  var junk = Shop.sanitize({ coins: 5, upg: { kalkan: 99, sure: -3, miknatis: '1', hile: 7 } });
+  var junkOk = junk.upg.kalkan === 2 && junk.upg.sure === 0 && junk.upg.miknatis === 1 && junk.upg.hile === undefined;
+  var old = Shop.sanitize({ coins: 5 }); // güçlendirmeden önceki kayıt
+  var oldOk = old.upg && old.upg.kalkan === 0;
+  var m = Shop.mods(p);
+  var modsOk = m.maxShield === 3 && m.startShield === 0 && m.powerMul === 1 && m.magnet === 1;
+  report('T33 güçlendirme satın alma', chain && poorOk && junkOk && oldOk && modsOk,
+    'zincir=' + chain + ' yetersiz=' + poorOk + ' kurcalanmış kayıt=' + junkOk + ' eski kayıt=' + oldOk + ' etkiler=' + JSON.stringify(m));
+})();
+
+// T34 — güçlendirmelerin oyundaki etkisi: kapasite, başlangıç kalkanı, uzun güç, mıknatıs
+(function t34() {
+  var mods = { maxShield: 3, startShield: 1, powerMul: 1.5, magnet: 2.2 };
+  var s = quiet(createState(3, { mods: mods }));
+  var startOk = s.shield === 1;
+  for (var i = 0; i < 4; i++) {
+    s.y = 250; s.vy = 0;
+    s.obstacles = [wallAt(C2.BALL_X - C2.WALL_W / 2, 190, 120, { star: { taken: false } })];
+    s = step(s, { action: false }, DT);
+  }
+  var capOk = s.stars === 4 && s.shield === 3;
+  s.obstacles = [wallAt(C2.BALL_X - C2.WALL_W / 2, 190, 120, { power: { kind: 'slow', taken: false } })];
+  s.y = 250; s.vy = 0;
+  s = step(s, { action: false }, DT);
+  var durOk = Math.abs(s.slowT - C2.POWER_SLOW_T * 1.5) < 1e-9;
+  // mıknatıs: yıldız topun 28 px üstünde. Normalde (12+9=21) alınmaz, mıknatısla (12+19.8) alınır
+  function grab(mag) {
+    var t = quiet(createState(3, { mods: { magnet: mag } }));
+    t.y = 250; t.vy = 0;
+    t.obstacles = [wallAt(C2.BALL_X - C2.WALL_W / 2, 250 - 28 - 60, 120, { star: { taken: false } })];
+    t = step(t, { action: false }, DT);
+    return t.stars;
+  }
+  var magOk = grab(1) === 0 && grab(2.2) === 1;
+  var plain = createState(3);
+  var defOk = plain.shield === 0 && plain.maxShield === C2.MAX_SHIELD;
+  report('T34 güçlendirme etkileri', startOk && capOk && durOk && magOk && defOk,
+    'başlangıç kalkanı=' + startOk + ' kapasite 3=' + capOk + ' güç süresi=' + s.slowT.toFixed(2) + ' mıknatıs=' + magOk + ' varsayılan=' + defOk);
+})();
+
+// T35 — devam: yalnız ölüyken, önündeki engeller temizlenir, fiyat 15/30/60 ve en çok 3 kez
+(function t35() {
+  var s = quiet(createState(3));
+  s.obstacles = [wallAt(C2.BALL_X - 5, 60, 80), wallAt(C2.BALL_X + 150, 200, 120), wallAt(C2.BALL_X + 400, 200, 120),
+    wallAt(C2.BALL_X - 200, 200, 120, { passed: true })];
+  s.y = 300; s.vy = 0;
+  s = step(s, { action: false }, DT);
+  var died = s.status === 'over';
+  var notWhilePlaying = Logic.revive(createState(1)) === false;
+  var ok1 = Logic.revive(s);
+  var cleared = s.obstacles.length === 2 && s.obstacles.every(function (o) { return o.x > C2.BALL_X + 300 || o.x < C2.BALL_X - 100; });
+  var mid = s.status === 'playing' && s.revives === 1 && s.spawnTimer >= 1.2;
+  for (var i = 0; i < 30; i++) s = step(s, { action: false }, DT);
+  var survives = s.status === 'playing';
+  var costs = [0, 1, 2].map(Shop.reviveCost).join(',');
+  var p = Shop.createProfile(); p.coins = 200;
+  var pays = [0, 1, 2, 3].map(function (n) { return Shop.payRevive(p, n); });
+  var payOk = pays.join(',') === 'true,true,true,false' && p.coins === 200 - 15 - 30 - 60;
+  var poor = Shop.createProfile(); poor.coins = 14;
+  var poorOk = !Shop.canRevive(poor, 0);
+  report('T35 yıldızla devam', died && notWhilePlaying && ok1 && cleared && mid && survives && costs === '15,30,60' && payOk && poorOk,
+    'öldü=' + died + ' temizlendi=' + cleared + ' sürdü=' + survives + ' fiyatlar=' + costs + ' 4. hak=' + pays[3] + ' ★14 ile=' + !poorOk);
+})();
+
 // --- Dikey ekran (uzun alan) ---------------------------------------------------
 // T16 — ölçek eşdeğerliği: uzun alanda top, kare alandakiyle normalize edildiğinde birebir aynı hareket eder
 (function t16() {

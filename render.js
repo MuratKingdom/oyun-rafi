@@ -303,9 +303,10 @@ function draw(ctx, state, view) {
   ctx.font = '18px system-ui, sans-serif';
   ctx.fillText('Rekor: ' + best, W0 - 14, 24);
   ctx.textAlign = 'left';
-  if (state.shield > 0) starShape(ctx, W0 - 24, FLOOR_Y + 24, 8, '#ffd166');
+  // Kalkanlar (kapasite güçlendirmesiyle 3'e kadar): sağ altta birer yıldız
+  for (var sh = 0; sh < (state.shield || 0); sh++) starShape(ctx, W0 - 24 - sh * 20, FLOOR_Y + 24, 8, '#ffd166');
   // Etkin güçler ve kalan süre (zeminin altında, sağda)
-  var hx = W0 - 52;
+  var hx = W0 - 52 - Math.max(0, (state.shield || 0) - 1) * 20;
   [['slow', state.slowT], ['small', state.smallT]].forEach(function (pw) {
     if (!(pw[1] > 0)) return;
     powerIcon(ctx, pw[0], hx, FLOOR_Y + 24, 9);
@@ -341,7 +342,7 @@ function draw(ctx, state, view) {
 
   var tapWord = view.touch ? 'Dokun' : 'Boşluk / dokun';
   var wallet = typeof view.coins === 'number'
-    ? { text: '★ ' + view.coins + (view.earned ? '  (+' + view.earned + ')' : '') + '  ·  Mağaza: aşağıdaki düğme', font: '15px system-ui, sans-serif', color: '#ffd166' }
+    ? { text: '★ ' + view.coins + (view.earned ? '  (+' + view.earned + ')' : '') + (view.revive ? '' : '  ·  Mağaza: aşağıdaki düğme'), font: '15px system-ui, sans-serif', color: '#ffd166' }
     : null;
   if (phase === 'ready') {
     overlay(ctx, [
@@ -366,6 +367,9 @@ function draw(ctx, state, view) {
     if (view.newBest) lines.push({ text: 'Yeni rekor!', font: 'bold 20px system-ui, sans-serif', color: '#ffd166' });
     lines.push({ text: 'Kapı: ' + state.score + '   Rekor: ' + best, gap: 44 });
     lines = lines.concat(questLines(view));
+    if (view.revive) {
+      lines.push({ text: '❤ Devam etmek için aşağıdaki düğme (★ ' + view.revive.cost + ')' + (view.touch ? '' : ' · C'), font: 'bold 17px system-ui, sans-serif', color: '#ff7a90', gap: 30 });
+    }
     lines.push(view.canRestart
       ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden başla', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
       : { text: ' ', font: '16px system-ui, sans-serif' });
