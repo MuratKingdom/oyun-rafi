@@ -153,7 +153,7 @@
       <button type="button" role="tab" data-sekme="quests" aria-selected="false">Görevler</button>
     </div>
     <div class="liste"></div>
-    <p class="not">Yıldız kazanmak için: oyunda yıldız topla, her geçtiğin bölüm +1, kazanırsan +10. Gerçek para yok.</p>
+    <p class="not">Yıldız kazanmak için: oyunda yıldız topla, her geçtiğin bölüm +1, her 10 bölümlük eşik +10. Gerçek para yok.</p>
   </div>
 </div>
 <script>
@@ -200,8 +200,17 @@ function difficulty(t) {
   return 1 - Math.exp(-t / DIFF_TAU);
 }
 
+// Sonsuz bölge ilerlemesi: ilk eşiğe kadar 0, sonra ENDLESS_LEVELS bölümde 1'e çıkar
+function endless(level) {
+  return Math.max(0, Math.min(1, ((level || 1) - LEVEL_COUNT) / ENDLESS_LEVELS));
+}
+
 // --- Bölümler ---------------------------------------------------------------
-// Her bölüm GATES_PER_LEVEL kapıdır. Son bölümün son kapısı geçilince oyun kazanılır.
+// Her bölüm GATES_PER_LEVEL kapıdır. Oyun sonsuzdur: bitiş yok, yalnız ölünce biter.
+// Her LEVEL_COUNT bölümde bir eşik geçilir (state.milestones; ödülde bonus).
+// Eşik sonrası (sonsuz bölge) zorluk ENDLESS_LEVELS bölüm boyunca yavaşça bir tavana çıkar:
+// hız +ENDLESS_SPEED, kapı en dar GAP_MIN - ENDLESS_GAP, doğma aralığı ENDLESS_SPAWN_MIN'e iner.
+// Tavanda bile her dizilim geçilebilir kalır (MAX_JUMP, bot ölçümü: README).
 // Yeni öğeler bölümle açılır:
 //   2+  yıldız: kapının ortasında durur; toplanınca bir kalkan verir (en çok 1)
 //   3+  hareketli kapı: boşluk yukarı-aşağı salınır, genliği bölümle büyür
@@ -212,7 +221,11 @@ function difficulty(t) {
 //   7+  zemin dikeni: duvarın hemen ardında zeminde dikenli şerit; üstüne sekmek öldürür,
 //       basılı tutup havada kalarak geçilir
 // Kalkan, bir duvar ya da diken çarpmasını yutar (tavanı değil).
-var LEVEL_COUNT = 10;
+var LEVEL_COUNT = 10; // eşik uzunluğu (bölüm)
+var ENDLESS_LEVELS = 20;
+var ENDLESS_SPEED = 40;
+var ENDLESS_GAP = 15;
+var ENDLESS_SPAWN_MIN = 1.15;
 var GATES_PER_LEVEL = 8;
 var STAR_FROM = 2;
 var MOVE_FROM = 3;
@@ -273,6 +286,7 @@ function createState(seed, opts) {
     shield: 0,
     shieldUsed: 0,
     movingPassed: 0,
+    milestones: 0,
     slowT: 0,
     smallT: 0,
     powers: 0,
@@ -400,14 +414,16 @@ function step(state, input, dt) {
 
   state.t += dt;
   var d = difficulty(state.t);
-  state.speed = SPEED0 + (SPEED_MAX - SPEED0) * d;
-  state.gapH = (GAP_H0 - (GAP_H0 - GAP_MIN) * d) * g.k;
+  var e = endless(state.level);
+  state.speed = SPEED0 + (SPEED_MAX + ENDLESS_SPEED * e - SPEED0) * d;
+  state.gapH = (GAP_H0 - (GAP_H0 - (GAP_MIN - ENDLESS_GAP * e)) * d) * g.k;
 
   state.spawnTimer -= dt * wf;
   if (state.spawnTimer <= 0) {
     var extra = spawn(state);
     var interval = SPAWN_INTERVAL_MAX - state.t * SPAWN_RAMP;
-    if (interval < SPAWN_INTERVAL_MIN) interval = SPAWN_INTERVAL_MIN;
+    var imin = SPAWN_INTERVAL_MIN - (SPAWN_INTERVAL_MIN - ENDLESS_SPAWN_MIN) * e;
+    if (interval < imin) interval = imin;
     state.spawnTimer = interval + extra;
   }
 
@@ -456,11 +472,7 @@ function step(state, input, dt) {
       state.score++;
       if (o.move) state.movingPassed++;
       if (state.score % GATES_PER_LEVEL === 0) {
-        if (state.level >= LEVEL_COUNT) {
-          state.status = 'won';
-          state.overReason = 'Bütün bölümleri geçtin';
-          return state;
-        }
+        if (state.level % LEVEL_COUNT === 0) state.milestones++;
         state.level++;
       }
     }
@@ -497,11 +509,12 @@ var CONST = {
   LEVEL_COUNT: LEVEL_COUNT, GATES_PER_LEVEL: GATES_PER_LEVEL, STAR_R: STAR_R,
   STAR_FROM: STAR_FROM, MOVE_FROM: MOVE_FROM, DOUBLE_FROM: DOUBLE_FROM, MAX_JUMP: MAX_JUMP,
   MIN_H: MIN_H, MAX_H: MAX_H,
+  ENDLESS_LEVELS: ENDLESS_LEVELS, ENDLESS_SPEED: ENDLESS_SPEED, ENDLESS_GAP: ENDLESS_GAP, ENDLESS_SPAWN_MIN: ENDLESS_SPAWN_MIN,
   PULSE_FROM: PULSE_FROM, POWER_FROM: POWER_FROM, SPIKE_FROM: SPIKE_FROM, PULSE_MIN: PULSE_MIN,
   POWER_SLOW_F: POWER_SLOW_F, POWER_SLOW_T: POWER_SLOW_T, POWER_SMALL_F: POWER_SMALL_F, POWER_SMALL_T: POWER_SMALL_T,
   SPIKE_DX: SPIKE_DX, SPIKE_W: SPIKE_W
 };
-var API = { createState: createState, step: step, difficulty: difficulty, makeGeo: makeGeo, radius: radius, CONST: CONST };
+var API = { createState: createState, step: step, difficulty: difficulty, endless: endless, makeGeo: makeGeo, radius: radius, CONST: CONST };
 if (typeof module !== 'undefined') module.exports = API;
 if (typeof window !== 'undefined') window.GameLogic = API;
 })();
@@ -511,7 +524,7 @@ if (typeof window !== 'undefined') window.GameLogic = API;
 // Sekme Gücü — mağaza: katalog, cüzdan, satın alma, kuşanma (saf mantık; DOM yok)
 //
 // Para birimi yıldızdır. Oyun sonunda kazanılan: o koşuda toplanan yıldızlar
-// + geçilen her bölüm için 1 + kazanınca 10. Gerçek para yok.
+// + geçilen her bölüm için 1 + her 10 bölümlük eşik için 10. Gerçek para yok.
 // Profil tarayıcıda localStorage'da tutulur; bozuk/eksik veri sessizce varsayılana döner.
 // Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
 // fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
@@ -609,10 +622,13 @@ function equip(p, kind, id) {
   return true;
 }
 
-// Bir koşunun ödülü: toplanan yıldız + geçilen bölüm başına 1 + kazanma bonusu 10
+// Bir koşunun ödülü: toplanan yıldız + geçilen bölüm başına 1 + geçilen her eşik (10 bölüm) için 10.
+// Oyun sonsuzdur; eşik sayısı state.milestones'ta, eski kayıtlar için bölümden de hesaplanır.
+var MILESTONE_BONUS = 10;
 function reward(state) {
   var levelsDone = Math.max(0, (state.level || 1) - 1);
-  return (state.stars || 0) + levelsDone + (state.status === 'won' ? 10 : 0);
+  var ms = typeof state.milestones === 'number' ? state.milestones : Math.floor(levelsDone / 10);
+  return (state.stars || 0) + levelsDone + MILESTONE_BONUS * ms;
 }
 
 function equippedBall(p) { return find('ball', p.equipped.ball) || BALLS[0]; }
@@ -621,7 +637,7 @@ function equippedMap(p) { return find('map', p.equipped.map) || MAPS[0]; }
 var Shop = {
   STORAGE_KEY: STORAGE_KEY, CATALOG: CATALOG, find: find,
   createProfile: createProfile, sanitize: sanitize, load: load, save: save,
-  owns: owns, buy: buy, equip: equip, reward: reward,
+  owns: owns, buy: buy, equip: equip, reward: reward, MILESTONE_BONUS: MILESTONE_BONUS,
   equippedBall: equippedBall, equippedMap: equippedMap
 };
 if (typeof module !== 'undefined') module.exports = Shop;
@@ -653,7 +669,8 @@ var TEMPLATES = [
   { kind: 'day_runs', targets: [3, 5], rewards: [6, 9], text: 'Bugün {n} oyun oyna' },
   { kind: 'day_shield', targets: [1, 2], rewards: [8, 12], text: 'Kalkanla {n} çarpmadan kurtul' },
   { kind: 'day_moving', targets: [3, 6], rewards: [8, 12], text: '{n} hareketli (mor) kapıdan geç' },
-  { kind: 'win', targets: [1], rewards: [25], text: 'Oyunu kazan (10 bölüm)' }
+  // 'win' adı eski kayıtlarla uyum için kaldı: oyun sonsuz, görev ilk eşiği (10. bölüm) geçmek
+  { kind: 'win', targets: [1], rewards: [25], text: '10. bölümü geç (ilk eşik)' }
 ];
 
 function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -769,7 +786,7 @@ function applyRun(d, run) {
       case 'day_runs': v = q.progress + 1; break;
       case 'day_shield': v = q.progress + (run.shieldUsed || 0); break;
       case 'day_moving': v = q.progress + (run.movingPassed || 0); break;
-      case 'win': v = run.status === 'won' ? 1 : q.progress; break;
+      case 'win': v = (run.level || 1) > 10 || run.status === 'won' ? 1 : q.progress; break;
       default: v = q.progress;
     }
     q.progress = Math.min(q.target, v);
@@ -1247,9 +1264,8 @@ function draw(ctx, state, view) {
   ctx.textAlign = 'center';
   ctx.font = '16px system-ui, sans-serif';
   ctx.fillStyle = textDim;
-  var lvCount = view.levelCount || 10;
   var per = view.gatesPerLevel || 8;
-  ctx.fillText('Bölüm ' + state.level + '/' + lvCount + '  ·  ' + (state.score % per) + '/' + per, W0 / 2, 23);
+  ctx.fillText('Bölüm ' + state.level + '  ·  ' + (state.score % per) + '/' + per, W0 / 2, 23);
   ctx.textAlign = 'right';
   ctx.fillStyle = textCol;
   ctx.font = '18px system-ui, sans-serif';
@@ -1307,21 +1323,13 @@ function draw(ctx, state, view) {
       { text: 'Duraklatıldı', font: 'bold 26px system-ui, sans-serif', gap: 40 },
       { text: tapWord + ' ve devam et', color: '#5ac8fa' }
     ]);
-  } else if (phase === 'won') {
-    overlay(ctx, [
-      { text: 'Kazandın!', font: 'bold 32px system-ui, sans-serif', color: '#ffd166', gap: 40 },
-      { text: state.overReason },
-      { text: 'Kapı: ' + state.score + '   Yıldız: ' + state.stars, gap: 44 }
-    ].concat(questLines(view)).concat([
-      view.canRestart
-        ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': yeniden oyna', font: '16px system-ui, sans-serif', color: '#5ac8fa' }
-        : { text: ' ', font: '16px system-ui, sans-serif' }
-    ]).concat(wallet ? [wallet] : []));
-  } else if (phase === 'over') {
+  } else if (phase === 'over' || phase === 'won') {
+    // Oyun sonsuz: tek bitiş ekranı. 'won' yalnız eski durumlar için aynı ekrana düşer.
+    var ms = state.milestones || 0;
     var lines = [
       { text: 'Oyun bitti', font: 'bold 28px system-ui, sans-serif', gap: 36 },
       { text: state.overReason },
-      { text: 'Bölüm ' + state.level + '’e kadar geldin', font: '16px system-ui, sans-serif', color: '#9fb3d1' }
+      { text: 'Bölüm ' + state.level + '’e kadar geldin' + (ms ? '  ·  ' + ms + ' eşik geçildi' : ''), font: '16px system-ui, sans-serif', color: ms ? '#ffd166' : '#9fb3d1' }
     ];
     if (view.newBest) lines.push({ text: 'Yeni rekor!', font: 'bold 20px system-ui, sans-serif', color: '#ffd166' });
     lines.push({ text: 'Kapı: ' + state.score + '   Rekor: ' + best, gap: 44 });
@@ -1343,7 +1351,7 @@ if (typeof window !== 'undefined') window.GameRender = RenderAPI;
 <script>
 // Sekme Gücü — döngü, girdi, ses, efektler; logic + render'ı bağlar
 //
-// Akış (phase): ready → playing ⇄ paused → over | won → (dokun/R) → playing
+// Akış (phase): ready → playing ⇄ paused → over → (dokun/R) → playing  (oyun sonsuz; kazanma yok)
 // Mobil: ekranın her yeri dokunma alanıdır; parmak canvas dışına kayınca da bırakma
 // algılanır; sekme arka plana geçince oyun kendiliğinden duraklar.
 // Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
@@ -1544,6 +1552,7 @@ function bootstrap() {
   var prevStars = state.stars;
   var prevShieldUsed = state.shieldUsed;
   var prevPowers = state.powers;
+  var prevMilestones = state.milestones;
   var banner = { title: 'Bölüm 1', sub: '', a: 0 };
 
   function nowMs() { return Date.now(); }
@@ -1566,6 +1575,7 @@ function bootstrap() {
     prevStars = state.stars;
     prevShieldUsed = state.shieldUsed;
     prevPowers = state.powers;
+    prevMilestones = state.milestones;
     banner = { title: 'Bölüm 1', sub: '', a: 1.4 };
     newBest = false;
     fx.particles = [];
@@ -1827,24 +1837,19 @@ function bootstrap() {
             : state.level === C.POWER_FROM ? 'Güçler: ⏱ dünyayı yavaşlatır, pembe top küçültür'
             : state.level === C.DOUBLE_FROM ? 'Çift duvarlar geliyor'
             : state.level === C.SPIKE_FROM ? 'Kırmızı dikenlere sekme: basılı tut, havada kal' : '';
-          banner = { title: 'Bölüm ' + state.level, sub: sub, a: sub ? 2.2 : 1.4 };
-          sfx('level');
-          prevLevel = state.level;
-        }
-        if (state.status === 'won') {
-          sfx('win');
-          buzz(40);
-          burst(C.BALL_X, state.y, 40, '#ffd166', 360);
-          if (state.score > best) {
-            best = state.score;
-            newBest = true;
-            try { window.localStorage.setItem('sekmeguc-best', String(best)); } catch (e) {}
+          var milestone = state.milestones !== prevMilestones;
+          if (milestone) {
+            // Her 10 bölümde bir eşik: büyük kutlama, ödülde +10
+            sub = 'Eşik ' + state.milestones + ' geçildi! +' + (Shop ? Shop.MILESTONE_BONUS : 10) + ' ★' + (state.milestones === 1 ? ' · artık sonsuz: zorluk yavaşça artar' : '');
+            prevMilestones = state.milestones;
+            sfx('win');
+            buzz(40);
+            burst(C.BALL_X, state.y, 40, '#ffd166', 360);
+          } else {
+            sfx('level');
           }
-          phase = 'won';
-          overAt = nowMs();
-          input.action = false;
-          acc = 0;
-          break;
+          banner = { title: 'Bölüm ' + state.level, sub: sub, a: milestone ? 3 : sub ? 2.2 : 1.4 };
+          prevLevel = state.level;
         }
         if (state.status === 'over') {
           sfx('over');

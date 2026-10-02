@@ -21,7 +21,8 @@ var TEMPLATES = [
   { kind: 'day_runs', targets: [3, 5], rewards: [6, 9], text: 'Bugün {n} oyun oyna' },
   { kind: 'day_shield', targets: [1, 2], rewards: [8, 12], text: 'Kalkanla {n} çarpmadan kurtul' },
   { kind: 'day_moving', targets: [3, 6], rewards: [8, 12], text: '{n} hareketli (mor) kapıdan geç' },
-  { kind: 'win', targets: [1], rewards: [25], text: 'Oyunu kazan (10 bölüm)' }
+  // 'win' adı eski kayıtlarla uyum için kaldı: oyun sonsuz, görev ilk eşiği (10. bölüm) geçmek
+  { kind: 'win', targets: [1], rewards: [25], text: '10. bölümü geç (ilk eşik)' }
 ];
 
 function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -137,7 +138,7 @@ function applyRun(d, run) {
       case 'day_runs': v = q.progress + 1; break;
       case 'day_shield': v = q.progress + (run.shieldUsed || 0); break;
       case 'day_moving': v = q.progress + (run.movingPassed || 0); break;
-      case 'win': v = run.status === 'won' ? 1 : q.progress; break;
+      case 'win': v = (run.level || 1) > 10 || run.status === 'won' ? 1 : q.progress; break;
       default: v = q.progress;
     }
     q.progress = Math.min(q.target, v);

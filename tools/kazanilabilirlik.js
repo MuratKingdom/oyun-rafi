@@ -10,6 +10,7 @@
 //   node tools/kazanilabilirlik.js --kalkansiz 1,2  # kalkan kapalı (daha sert ölçüt)
 //   node tools/kazanilabilirlik.js --guclu 4        # daha derin arama (yavaş)
 //   node tools/kazanilabilirlik.js --yukseklik 900  # uzun (dikey telefon) alan
+//   node tools/kazanilabilirlik.js --hedef 30       # oyun sonsuz: N. bölümü bitirmek "başarı" sayılır (varsayılan 10)
 var path = require('path');
 
 function load(noShield) {
@@ -27,6 +28,7 @@ function play(seed, opts) {
   var L = load(opts.shield === false);
   var DT = 1 / 60, BLOCK = 5;
   var DEPTH = opts.depth || 24, N = opts.n || 80;
+  var target = opts.target || 10;
   var a = 12345;
   function rng() { a = (a * 1103515245 + 12345) & 0x7fffffff; return a / 0x7fffffff; }
   function clone(s) {
@@ -46,7 +48,7 @@ function play(seed, opts) {
       for (var i = 0; i < BLOCK; i++, f++) {
         L.step(c, { action: plan[b] }, DT);
         if (c.status === 'over') return f - 1e5 + c.score * 1000;
-        if (c.status === 'won') return 1e9;
+        if (c.level > target) return 1e9;
       }
     }
     var tgt = null;
@@ -58,7 +60,7 @@ function play(seed, opts) {
   }
   var s = L.createState(seed, { height: opts.height }), best = [];
   for (var i = 0; i < DEPTH; i++) best.push(false);
-  while (s.status === 'playing' && s.t < 600) {
+  while (s.status === 'playing' && s.level <= target && s.t < 1200) {
     var cands = [best.slice(1).concat([false]), best.slice(1).concat([true])];
     for (var n = 0; n < N; n++) {
       var p = [], on = rng() < 0.5;
@@ -76,6 +78,7 @@ function play(seed, opts) {
     best = bp;
     for (var j = 0; j < BLOCK && s.status === 'playing'; j++) L.step(s, { action: best[0] }, DT);
   }
+  s.reached = s.level > target;
   return s;
 }
 
@@ -85,17 +88,19 @@ if (require.main === module) {
   if (args.indexOf('--guclu') >= 0) { opts.depth = 36; opts.n = 300; }
   var hi = args.indexOf('--yukseklik');
   if (hi >= 0) opts.height = Number(args[hi + 1]);
-  var list = args.filter(function (x, i) { return /^[\d,]+$/.test(x) && args[i - 1] !== '--yukseklik'; })[0] || '1,2,3,4,5,42,99,1234';
+  var ti = args.indexOf('--hedef');
+  if (ti >= 0) opts.target = Number(args[ti + 1]);
+  var list = args.filter(function (x, i) { return /^[\d,]+$/.test(x) && args[i - 1] !== '--yukseklik' && args[i - 1] !== '--hedef'; })[0] || '1,2,3,4,5,42,99,1234';
   var seeds = list.split(',').map(Number), wins = 0;
   seeds.forEach(function (sd) {
     var s = play(sd, opts);
-    if (s.status === 'won') wins++;
-    console.log('tohum ' + sd + ': ' + s.status + ' · kapı ' + s.score + ' · bölüm ' + s.level +
+    if (s.reached) wins++;
+    console.log('tohum ' + sd + ': ' + (s.reached ? 'hedefe ulaştı' : s.status) + ' · kapı ' + s.score + ' · bölüm ' + s.level +
       ' · yıldız ' + s.stars + ' · güç ' + s.powers + ' · diken ' + s.spikesPassed +
       ' · kalkan kullanımı ' + s.shieldUsed + ' · ' + s.t.toFixed(0) + ' sn' +
       (s.status === 'over' ? ' · ' + s.overReason : ''));
   });
-  console.log('kazanılan: ' + wins + '/' + seeds.length + (opts.shield ? '' : ' (kalkansız)'));
+  console.log((opts.target || 10) + '. bölümü bitiren: ' + wins + '/' + seeds.length + (opts.shield ? '' : ' (kalkansız)'));
 }
 
 module.exports = { play: play };

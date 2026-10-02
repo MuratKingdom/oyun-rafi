@@ -30,8 +30,11 @@ duvarın kapısını topun mevcut yüksekliğine denk getirip çarpmadan geçmek
 duvara çarparsan ya da tuşu çok uzun süre basılı tutup tavana çarparsan oyun biter. Skor
 (**Kapı**) geçtiğin kapı sayısıdır; en yüksek skor (**Rekor**) tarayıcıda saklanır.
 
-**Bölümler (2 Ekim 2026):** Oyun 10 bölümdür, her bölüm 8 kapı. 10. bölümün son kapısı
-geçilince **kazanırsın**. Yeni öğeler bölümle açılır:
+**Bölümler ve sonsuz mod (2 Ekim 2026):** Her bölüm 8 kapı. Oyun **sonsuzdur**; bitiş yok,
+yalnız ölünce biter. Her 10 bölümde bir **eşik** geçilir (kutlama + ödülde ★ 10). İlk eşikten
+(10. bölüm) sonra zorluk 20 bölüm boyunca yavaşça bir tavana çıkar: hız 340 → 380, en dar kapı
+120 → 105, duvar aralığı en az 1,3 → 1,15 sn; 30. bölümden sonra sabit kalır. Asıl hedef rekor.
+Yeni öğeler bölümle açılır:
 - **Bölüm 2+ · Yıldız:** kapının ortasında durur; toplayınca topun çevresinde bir **kalkan**
   belirir (en fazla 1). Kalkan bir duvar çarpmasını affeder; tavanı affetmez.
 - **Bölüm 3+ · Hareketli kapı (mor):** boşluk yukarı-aşağı salınır; genlik bölümle büyür.
@@ -74,7 +77,7 @@ diken çarpmasını da yutar. Etkin güçler ve kalan süreleri zeminin altında
 
 ## Mağaza (2 Ekim 2026)
 Başlangıç ve oyun sonu ekranındaki **🛒 Mağaza** düğmesiyle açılır. Para birimi **yıldız**dır:
-oyunda topladığın yıldızlar + geçtiğin her bölüm için 1 + kazanırsan 10. Gerçek para yok.
+oyunda topladığın yıldızlar + geçtiğin her bölüm için 1 + her 10 bölümlük eşik için 10. Gerçek para yok.
 
 | Top | Fiyat | | Harita | Fiyat |
 |---|---|---|---|---|
@@ -93,7 +96,7 @@ elle değiştirilmiş kayıt güvenli varsayılana döner. Katalog `shop.js`'te.
 **📋 Görevler** düğmesi (ya da mağazadaki *Görevler* sekmesi) o günün 3 görevini gösterir.
 Görevler her gece yarısı (cihaz saati) yenilenir; gün tarihinden belirlenimli seçilir, 8 türden
 3 farklısı: bir koşuda yıldız / kapı, bölüme ulaş, gün içinde toplam kapı / oyun / kalkan
-kullanımı / hareketli kapı, oyunu kazan. Biten görevin ödülü (★ 5–25) oyun sonunda kendiliğinden
+kullanımı / hareketli kapı, ilk eşiği (10. bölüm) geç. Biten görevin ödülü (★ 5–25) oyun sonunda kendiliğinden
 cüzdana eklenir ve oyun sonu ekranında gösterilir. **Giriş ödülü:** günün ilk açılışında
 ★ (2 + seri), en çok ★ 7; bir gün atlanırsa seri 1'e döner. Kayıt `localStorage`
 (`sekmeguc-gunluk`); kurcalanmış kayıtta görevler ve ödüller tarihten yeniden üretilir,
@@ -112,11 +115,11 @@ ilerleme sınırlanır. Mantık `quests.js`'te.
 - Zorluk eğrisi sabitleri (`SPEED_MAX`, `GAP_MIN`, `DIFF_TAU`) insan oynanışına göre ayarlanmadı.
 - Gerçek bir telefonda elle denenmedi (titreşim ve dokunma hissi dahil).
 
-- Denge bir botla ölçüldü (aşağıda), insan oynanışıyla ayarlanmadı; 10 bölüm botun hızıyla ~105 sn sürüyor.
+- Denge bir botla ölçüldü (aşağıda), insan oynanışıyla ayarlanmadı; ilk 10 bölüm botun hızıyla ~105 sn sürüyor.
 
 ## Doğrulama durumu
 **Mağaza:** `test.js` T13 (satın alma/kuşanma kuralları), T14 (bozuk/kurcalanmış kayıt),
-T15 (ödül hesabı ve fiyat dengesi: bir kazanma koşusu en pahalı ürünün dörtte birinden
+T15 (ödül hesabı ve fiyat dengesi: ilk eşiği geçen bir koşu en pahalı ürünün dörtte birinden
 fazlasını getirir); `test-dom.js` T5g (oyun sonunda ödül cüzdana tam bir kez yazılır, kuşanılan
 tema çizime gider) — hepsi PASS. Headless Chromium'da Pixel 7 boyutunda mağaza açıldı, bir top
 ve bir harita satın alındı, profil kaydı ve oyun içi görünüm doğrulandı; konsol hatası 0.
@@ -137,9 +140,14 @@ serisi, ay/yıl geçişi, gün atlama), T20 (ilerleme ve ödülün tek seferliğ
 kayıt), T22 (betikler ortak tarayıcı kapsamında birbirini ezmiyor); `test-dom.js` T5h (giriş ödülü
 günde bir kez, ilerleme kaydedilir) — hepsi PASS. Pixel 7 boyutunda Görevler sekmesi açıldı,
 konsol hatası 0.
-**Bölümler (2. adım):** `test.js` T7 (bölüm atlama), T8 (kazanma), T9 (yıldız → kalkan →
+**Sonsuz mod:** `test.js` T8 (10. ve 20. bölüm sonunda oyun bitmez, eşik sayılır), T31 (sonsuz
+zorluk eğrisi ilk eşikte başlar, 30. bölümde tavana oturur; en dar kapı top çapının 4 katından
+geniş, sıçrama sınırı aynı), T32 (bot tavana ulaşıp 32. bölümü bitiriyor) — PASS. Bot ölçümü
+(`--hedef 40`, tohum 1–4): 29, 34, 34. bölümde öldü, biri 41. bölüme ulaştı; yani tavan zor ama
+geçilebilir, oyun gerçekten sonsuz ve bir noktada ustalık ister.
+**Bölümler (2. adım):** `test.js` T7 (bölüm atlama), T8 (sonsuzluk; eskiden kazanma), T9 (yıldız → kalkan →
 çarpma yutulur, aynı duvar ikinci kez öldürmez, kalkansız ölüm), T10 (hareketli kapı alan
-içinde), T11 (sıçrama ≤ 150 px, öğeler doğru bölümde açılıyor), T12 (bot tohum 1'de 10
+içinde), T11 (sıçrama ≤ 150 px, öğeler doğru bölümde açılıyor), T12 (bot tohum 1'de ilk 10
 bölümü bitiriyor) — hepsi PASS. `tools/kazanilabilirlik.js` ileriyi simüle eden bir botla
 8 tohumun 8'ini **kalkan kapalıyken bile** bitirdi (5'i normal aramayla, 3'ü `--guclu` ile);
 yani her dizilim fiziksel olarak geçilebilir. Bot insan tepki süresini temsil etmez.

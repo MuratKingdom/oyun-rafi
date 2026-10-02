@@ -41,8 +41,17 @@ function difficulty(t) {
   return 1 - Math.exp(-t / DIFF_TAU);
 }
 
+// Sonsuz bölge ilerlemesi: ilk eşiğe kadar 0, sonra ENDLESS_LEVELS bölümde 1'e çıkar
+function endless(level) {
+  return Math.max(0, Math.min(1, ((level || 1) - LEVEL_COUNT) / ENDLESS_LEVELS));
+}
+
 // --- Bölümler ---------------------------------------------------------------
-// Her bölüm GATES_PER_LEVEL kapıdır. Son bölümün son kapısı geçilince oyun kazanılır.
+// Her bölüm GATES_PER_LEVEL kapıdır. Oyun sonsuzdur: bitiş yok, yalnız ölünce biter.
+// Her LEVEL_COUNT bölümde bir eşik geçilir (state.milestones; ödülde bonus).
+// Eşik sonrası (sonsuz bölge) zorluk ENDLESS_LEVELS bölüm boyunca yavaşça bir tavana çıkar:
+// hız +ENDLESS_SPEED, kapı en dar GAP_MIN - ENDLESS_GAP, doğma aralığı ENDLESS_SPAWN_MIN'e iner.
+// Tavanda bile her dizilim geçilebilir kalır (MAX_JUMP, bot ölçümü: README).
 // Yeni öğeler bölümle açılır:
 //   2+  yıldız: kapının ortasında durur; toplanınca bir kalkan verir (en çok 1)
 //   3+  hareketli kapı: boşluk yukarı-aşağı salınır, genliği bölümle büyür
@@ -53,7 +62,11 @@ function difficulty(t) {
 //   7+  zemin dikeni: duvarın hemen ardında zeminde dikenli şerit; üstüne sekmek öldürür,
 //       basılı tutup havada kalarak geçilir
 // Kalkan, bir duvar ya da diken çarpmasını yutar (tavanı değil).
-var LEVEL_COUNT = 10;
+var LEVEL_COUNT = 10; // eşik uzunluğu (bölüm)
+var ENDLESS_LEVELS = 20;
+var ENDLESS_SPEED = 40;
+var ENDLESS_GAP = 15;
+var ENDLESS_SPAWN_MIN = 1.15;
 var GATES_PER_LEVEL = 8;
 var STAR_FROM = 2;
 var MOVE_FROM = 3;
@@ -114,6 +127,7 @@ function createState(seed, opts) {
     shield: 0,
     shieldUsed: 0,
     movingPassed: 0,
+    milestones: 0,
     slowT: 0,
     smallT: 0,
     powers: 0,
@@ -241,14 +255,16 @@ function step(state, input, dt) {
 
   state.t += dt;
   var d = difficulty(state.t);
-  state.speed = SPEED0 + (SPEED_MAX - SPEED0) * d;
-  state.gapH = (GAP_H0 - (GAP_H0 - GAP_MIN) * d) * g.k;
+  var e = endless(state.level);
+  state.speed = SPEED0 + (SPEED_MAX + ENDLESS_SPEED * e - SPEED0) * d;
+  state.gapH = (GAP_H0 - (GAP_H0 - (GAP_MIN - ENDLESS_GAP * e)) * d) * g.k;
 
   state.spawnTimer -= dt * wf;
   if (state.spawnTimer <= 0) {
     var extra = spawn(state);
     var interval = SPAWN_INTERVAL_MAX - state.t * SPAWN_RAMP;
-    if (interval < SPAWN_INTERVAL_MIN) interval = SPAWN_INTERVAL_MIN;
+    var imin = SPAWN_INTERVAL_MIN - (SPAWN_INTERVAL_MIN - ENDLESS_SPAWN_MIN) * e;
+    if (interval < imin) interval = imin;
     state.spawnTimer = interval + extra;
   }
 
@@ -297,11 +313,7 @@ function step(state, input, dt) {
       state.score++;
       if (o.move) state.movingPassed++;
       if (state.score % GATES_PER_LEVEL === 0) {
-        if (state.level >= LEVEL_COUNT) {
-          state.status = 'won';
-          state.overReason = 'Bütün bölümleri geçtin';
-          return state;
-        }
+        if (state.level % LEVEL_COUNT === 0) state.milestones++;
         state.level++;
       }
     }
@@ -338,11 +350,12 @@ var CONST = {
   LEVEL_COUNT: LEVEL_COUNT, GATES_PER_LEVEL: GATES_PER_LEVEL, STAR_R: STAR_R,
   STAR_FROM: STAR_FROM, MOVE_FROM: MOVE_FROM, DOUBLE_FROM: DOUBLE_FROM, MAX_JUMP: MAX_JUMP,
   MIN_H: MIN_H, MAX_H: MAX_H,
+  ENDLESS_LEVELS: ENDLESS_LEVELS, ENDLESS_SPEED: ENDLESS_SPEED, ENDLESS_GAP: ENDLESS_GAP, ENDLESS_SPAWN_MIN: ENDLESS_SPAWN_MIN,
   PULSE_FROM: PULSE_FROM, POWER_FROM: POWER_FROM, SPIKE_FROM: SPIKE_FROM, PULSE_MIN: PULSE_MIN,
   POWER_SLOW_F: POWER_SLOW_F, POWER_SLOW_T: POWER_SLOW_T, POWER_SMALL_F: POWER_SMALL_F, POWER_SMALL_T: POWER_SMALL_T,
   SPIKE_DX: SPIKE_DX, SPIKE_W: SPIKE_W
 };
-var API = { createState: createState, step: step, difficulty: difficulty, makeGeo: makeGeo, radius: radius, CONST: CONST };
+var API = { createState: createState, step: step, difficulty: difficulty, endless: endless, makeGeo: makeGeo, radius: radius, CONST: CONST };
 if (typeof module !== 'undefined') module.exports = API;
 if (typeof window !== 'undefined') window.GameLogic = API;
 })();
