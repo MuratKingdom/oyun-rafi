@@ -31,7 +31,7 @@ duvara çarparsan ya da tuşu çok uzun süre basılı tutup tavana çarparsan o
 (**Kapı**) geçtiğin kapı sayısıdır; en yüksek skor (**Rekor**) tarayıcıda saklanır.
 
 **Bölümler ve sonsuz mod (2 Ekim 2026):** Her bölüm 8 kapı. Oyun **sonsuzdur**; bitiş yok,
-yalnız ölünce biter. Her 10 bölümde bir **eşik** geçilir (kutlama + ödülde ★ 10). İlk eşikten
+yalnız ölünce biter. Her 10 bölümde bir **eşik** geçilir (kutlama + ödülde ★ 5). İlk eşikten
 (10. bölüm) sonra zorluk 20 bölüm boyunca yavaşça bir tavana çıkar: hız 340 → 380, en dar kapı
 120 → 105, duvar aralığı en az 1,3 → 1,15 sn; 30. bölümden sonra sabit kalır. Asıl hedef rekor.
 Yeni öğeler bölümle açılır:
@@ -59,15 +59,15 @@ koşudan itibaren geçerli, geri satılmaz):
 
 | Güçlendirme | Basamaklar | Fiyat |
 |---|---|---|
-| Kalkan kapasitesi | 1 → 2 → 3 kalkan | ★ 40, ★ 120 |
-| Başlangıç kalkanı | her koşuya 1 kalkanla başla | ★ 60 |
-| Uzun güçler | güç süresi ×1,25 → ×1,5 | ★ 35, ★ 90 |
-| Yıldız mıknatısı | yıldız/güç alma alanı ×1,6 → ×2,2 | ★ 50, ★ 130 |
+| Kalkan kapasitesi | 1 → 2 → 3 kalkan | ★ 200, ★ 600 |
+| Başlangıç kalkanı | her koşuya 1 kalkanla başla | ★ 450 |
+| Uzun güçler | güç süresi ×1,25 → ×1,5 | ★ 150, ★ 400 |
+| Yıldız mıknatısı | yıldız/güç alma alanı ×1,6 → ×2,2 | ★ 250, ★ 650 |
 
 **Ölünce devam:** yıldız yetiyorsa 5 sn boyunca **❤ Devam** düğmesi çıkar (klavyede C / Enter).
 Bedeli koşu başına ★ 15 → 30 → 60, en çok 3 kez. Top ortaya alınır, önündeki engeller temizlenir,
 yeni duvar 1,2 sn gecikir. Teklif açıkken koşunun ödülü yazılmaz; süre dolunca ya da yeniden
-başlayınca yazılır. Hepsinin toplamı ~★ 525 (görünümler ~★ 475): birkaç günlük oyunla dolar.
+başlayınca yazılır. Güçlendirmelerin toplamı ★ 2700, görünümlerinki ★ 2635 (ekonomi hızı aşağıda).
 Yıldız gerçek parayla satılmaz; güçlendirmeler bu yüzden adil kalır.
 
 ## Ses ve müzik (2 Ekim 2026)
@@ -94,16 +94,17 @@ diken çarpmasını da yutar. Etkin güçler ve kalan süreleri zeminin altında
 
 ## Mağaza (2 Ekim 2026)
 Başlangıç ve oyun sonu ekranındaki **🛒 Mağaza** düğmesiyle açılır. Para birimi **yıldız**dır:
-oyunda topladığın yıldızlar + geçtiğin her bölüm için 1 + her 10 bölümlük eşik için 10. Gerçek para yok.
+oyunda topladığın yıldızlar + her 10 bölümlük eşik için 5 + günlük görev ve giriş ödülleri. Gerçek para yok.
 
 | Top | Fiyat | | Harita | Fiyat |
 |---|---|---|---|---|
 | Klasik | ücretsiz | | Gece | ücretsiz |
-| Kor, Nane | ★ 15 | | Gün Batımı, Orman | ★ 40 |
-| Küp | ★ 30 | | Neon, Buz | ★ 70 |
-| Elmas | ★ 45 | | | |
-| Yıldız | ★ 60 | | | |
-| Gezegen (halkalı) | ★ 90 | | | |
+| Kor | ★ 25 | | Gün Batımı | ★ 150 |
+| Nane | ★ 60 | | Orman | ★ 200 |
+| Küp | ★ 150 | | Neon | ★ 350 |
+| Elmas | ★ 250 | | Buz | ★ 450 |
+| Yıldız | ★ 400 | | | |
+| Gezegen (halkalı) | ★ 600 | | | |
 
 Satın alınan ürün hemen kuşanılır; sahip olunanlar arasında istediğin an geçiş yapılır.
 Cüzdan ve görünümler tarayıcıda (`localStorage`, `sekmeguc-profil`) saklanır; bozuk ya da
@@ -113,11 +114,33 @@ elle değiştirilmiş kayıt güvenli varsayılana döner. Katalog `shop.js`'te.
 **📋 Görevler** düğmesi (ya da mağazadaki *Görevler* sekmesi) o günün 3 görevini gösterir.
 Görevler her gece yarısı (cihaz saati) yenilenir; gün tarihinden belirlenimli seçilir, 8 türden
 3 farklısı: bir koşuda yıldız / kapı, bölüme ulaş, gün içinde toplam kapı / oyun / kalkan
-kullanımı / hareketli kapı, ilk eşiği (10. bölüm) geç. Biten görevin ödülü (★ 5–25) oyun sonunda kendiliğinden
+kullanımı / hareketli kapı, ilk eşiği (10. bölüm) geç. Biten görevin ödülü (★ 3–15) oyun sonunda kendiliğinden
 cüzdana eklenir ve oyun sonu ekranında gösterilir. **Giriş ödülü:** günün ilk açılışında
 ★ (2 + seri), en çok ★ 7; bir gün atlanırsa seri 1'e döner. Kayıt `localStorage`
 (`sekmeguc-gunluk`); kurcalanmış kayıtta görevler ve ödüller tarihten yeniden üretilir,
 ilerleme sınırlanır. Mantık `quests.js`'te.
+
+## Ekonomi hızı (3 Ekim 2026)
+İlk sürümde mağaza birkaç günde bitiyordu (orta oyuncu her şeye 6, usta oyuncu 2 günde
+ulaşıyordu); hedefsiz kalan oyuncu bırakır. Yeni denge: bölüm başına ayrı ödül kalktı (kazanç
+= ekranda toplanan yıldız + eşik başına ★ 5), görev ödülleri yaklaşık yarıya indi, fiyatlar
+~5 katına çıktı. Ucuz ilk ürün (Kor, ★ 25) ilk gün alınabilsin diye bırakıldı. Giriş serisi
+ve devam bedeli (★ 15/30/60) değişmedi.
+
+`node tools/ekonomi.js` gerçek `shop.js`/`quests.js` değerleriyle tabloyu üretir. Oyuncu
+modeli bir **varsayımdır** (bölüm başına ölüm olasılığı %30 / %15 / %7, günde 5 / 8 / 10 koşu,
+çıkan yıldızın %50 / %65 / %80'ini alma), gerçek oyuncu verisi değildir; devam harcaması sayılmaz.
+
+| Oyuncu | ★/gün | İlk alım | Güçlendirmelerin hepsi | Her şey |
+|---|---|---|---|---|
+| Gündelik | ~35 | 1. gün | ~79. gün | 120 günden uzun |
+| Orta | ~114 | 1. gün | ~25. gün | ~49. gün |
+| Usta | ~360 | 1. gün | ~8. gün | ~15. gün |
+
+T36 bu aralıkları korur: herkes ilk gün bir şey alabilir, orta oyuncu güçlendirmelerin
+hepsine 20 günden, her şeye 35 günden önce ulaşamaz. Play sürümünden gerçek veri gelince
+(oturum başına koşu, ortalama bölüm) model değerleri `tools/ekonomi.js`'teki `PLAYERS`
+tablosunda güncellenmeli.
 
 ## NE ÇALIŞIYOR
 - Zıplama fiziği, basılı-tutma ile yükseklik kontrolü, kapı/duvar çarpışması ve kayıp sebebi gösterimi (kanıt: T1, T2, T3, T5c, tarayıcı)
@@ -136,8 +159,7 @@ ilerleme sınırlanır. Mantık `quests.js`'te.
 
 ## Doğrulama durumu
 **Mağaza:** `test.js` T13 (satın alma/kuşanma kuralları), T14 (bozuk/kurcalanmış kayıt),
-T15 (ödül hesabı ve fiyat dengesi: ilk eşiği geçen bir koşu en pahalı ürünün dörtte birinden
-fazlasını getirir); `test-dom.js` T5g (oyun sonunda ödül cüzdana tam bir kez yazılır, kuşanılan
+T15 (ödül hesabı: toplanan yıldız + eşik başına 5), T36 (ekonomi hızı, yukarıda); `test-dom.js` T5g (oyun sonunda ödül cüzdana tam bir kez yazılır, kuşanılan
 tema çizime gider) — hepsi PASS. Headless Chromium'da Pixel 7 boyutunda mağaza açıldı, bir top
 ve bir harita satın alındı, profil kaydı ve oyun içi görünüm doğrulandı; konsol hatası 0.
 **Ses ve müzik:** `test.js` T28 (notalar belirlenimli ve duyulur aralıkta, ezgi 3. bölümde
