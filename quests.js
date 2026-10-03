@@ -14,15 +14,15 @@ var QUESTS_PER_DAY = 3;
 
 // kind: run_* tek koşuda, day_* gün boyunca birikir
 var TEMPLATES = [
-  { kind: 'run_stars', targets: [3, 5, 8], rewards: [10, 12, 15], text: 'Bir koşuda {n} yıldız topla' },
-  { kind: 'run_gates', targets: [10, 20, 30], rewards: [8, 12, 16], text: 'Bir koşuda {n} kapı geç' },
-  { kind: 'reach_level', targets: [3, 4, 6], rewards: [8, 12, 18], text: '{n}. bölüme ulaş' },
-  { kind: 'day_gates', targets: [25, 40, 60], rewards: [8, 12, 16], text: 'Bugün toplam {n} kapı geç' },
-  { kind: 'day_runs', targets: [3, 5], rewards: [6, 9], text: 'Bugün {n} oyun oyna' },
-  { kind: 'day_shield', targets: [1, 2], rewards: [8, 12], text: 'Kalkanla {n} çarpmadan kurtul' },
-  { kind: 'day_moving', targets: [3, 6], rewards: [8, 12], text: '{n} hareketli (mor) kapıdan geç' },
+  { kind: 'run_stars', targets: [3, 5, 8], rewards: [5, 6, 8], text: 'Bir koşuda {n} yıldız topla' },
+  { kind: 'run_gates', targets: [10, 20, 30], rewards: [4, 6, 8], text: 'Bir koşuda {n} kapı geç' },
+  { kind: 'reach_level', targets: [3, 4, 6], rewards: [4, 6, 9], text: '{n}. bölüme ulaş' },
+  { kind: 'day_gates', targets: [25, 40, 60], rewards: [4, 6, 8], text: 'Bugün toplam {n} kapı geç' },
+  { kind: 'day_runs', targets: [3, 5], rewards: [3, 5], text: 'Bugün {n} oyun oyna' },
+  { kind: 'day_shield', targets: [1, 2], rewards: [4, 6], text: 'Kalkanla {n} çarpmadan kurtul' },
+  { kind: 'day_moving', targets: [3, 6], rewards: [4, 6], text: '{n} hareketli (mor) kapıdan geç' },
   // 'win' adı eski kayıtlarla uyum için kaldı: oyun sonsuz, görev ilk eşiği (10. bölüm) geçmek
-  { kind: 'win', targets: [1], rewards: [25], text: '10. bölümü geç (ilk eşik)' }
+  { kind: 'win', targets: [1], rewards: [15], text: '10. bölümü geç (ilk eşik)' }
 ];
 
 function pad(n) { return (n < 10 ? '0' : '') + n; }

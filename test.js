@@ -337,8 +337,8 @@ var Shop = require('./shop.js');
 (function t13() {
   var p = Shop.createProfile();
   var r1 = Shop.buy(p, 'ball', 'kup');                // para yok
-  p.coins = 50;
-  var r2 = Shop.buy(p, 'ball', 'kup');                // 30 öder, kuşanır
+  p.coins = 170;
+  var r2 = Shop.buy(p, 'ball', 'kup');                // 150 öder, kuşanır
   var r3 = Shop.buy(p, 'ball', 'kup');                // ikinci kez alınmaz
   var r4 = Shop.buy(p, 'map', 'yok-boyle-bir-sey');
   var eqBad = Shop.equip(p, 'map', 'neon');            // sahip değil
@@ -363,7 +363,8 @@ var Shop = require('./shop.js');
   report('T14 kayıt doğrulama', ok, 'bozuk→' + a.coins + ' kurcalanmış→coins=' + b.coins + ',kuşanılan=' + b.equipped.ball + ' gidiş-dönüş=' + d.coins + '/' + d.equipped.ball);
 })();
 
-// T15 — ödül: yıldız + geçilen bölüm başına 1 + her eşik için 10; katalog fiyatları erişilebilir
+// T15 — ödül: toplanan yıldız + her eşik için 5 (bölüm başına ayrı ödül yok); varsayılanlar bedava.
+// Fiyatların ne kadar sürede ulaşılır olduğu T36'da (ekonomi simülasyonu) ölçülür.
 (function t15() {
   var r1 = Shop.reward({ stars: 3, level: 4, status: 'over' });
   var r2 = Shop.reward({ stars: 20, level: 11, milestones: 1, status: 'over' });
@@ -371,20 +372,19 @@ var Shop = require('./shop.js');
   var maxPrice = 0;
   ['ball', 'map'].forEach(function (k) { Shop.CATALOG[k].forEach(function (it) { maxPrice = Math.max(maxPrice, it.price); }); });
   var freeDefaults = Shop.find('ball', 'klasik').price === 0 && Shop.find('map', 'gece').price === 0;
-  // ilk eşiği geçen bir koşu (~20 yıldız) en pahalı ürünün en az dörtte birini getirmeli
   var r4 = Shop.reward({ stars: 0, level: 21 }); // eski kayıt: eşik sayısı bölümden hesaplanır
-  var ok = r1 === 6 && r2 === 40 && r3 === 0 && r4 === 40 && freeDefaults && r2 * 4 >= maxPrice;
+  var ok = r1 === 3 && r2 === 25 && r3 === 0 && r4 === 10 && freeDefaults;
   report('T15 ödül ve fiyat dengesi', ok, 'ödüller=' + r1 + '/' + r2 + '/' + r3 + '/' + r4 + ' en pahalı=' + maxPrice);
 })();
 
 // --- Yıldızın anlamı: kalıcı güçlendirmeler ve devam ------------------------------
 // T33 — güçlendirme satın alma: basamaklı fiyat, son basamakta durur, yetersizde değişmez, kayıt doğrulanır
 (function t33() {
-  var p = Shop.createProfile(); p.coins = 200;
+  var p = Shop.createProfile(); p.coins = 1000;
   var a = Shop.buyUpgrade(p, 'kalkan'), b = Shop.buyUpgrade(p, 'kalkan'), c = Shop.buyUpgrade(p, 'kalkan');
-  var chain = a.ok && b.ok && !c.ok && c.reason === 'tamam' && p.coins === 200 - 40 - 120 && p.upg.kalkan === 2;
-  var poor = Shop.buyUpgrade(p, 'baslangic'); // ★ 40 < 60
-  var poorOk = !poor.ok && poor.reason === 'yetersiz' && p.upg.baslangic === 0 && p.coins === 40;
+  var chain = a.ok && b.ok && !c.ok && c.reason === 'tamam' && p.coins === 1000 - 200 - 600 && p.upg.kalkan === 2;
+  var poor = Shop.buyUpgrade(p, 'baslangic'); // ★ 200 < 450
+  var poorOk = !poor.ok && poor.reason === 'yetersiz' && p.upg.baslangic === 0 && p.coins === 200;
   var junk = Shop.sanitize({ coins: 5, upg: { kalkan: 99, sure: -3, miknatis: '1', hile: 7 } });
   var junkOk = junk.upg.kalkan === 2 && junk.upg.sure === 0 && junk.upg.miknatis === 1 && junk.upg.hile === undefined;
   var old = Shop.sanitize({ coins: 5 }); // güçlendirmeden önceki kayıt
@@ -447,6 +447,20 @@ var Shop = require('./shop.js');
   var poorOk = !Shop.canRevive(poor, 0);
   report('T35 yıldızla devam', died && notWhilePlaying && ok1 && cleared && mid && survives && costs === '15,30,60' && payOk && poorOk,
     'öldü=' + died + ' temizlendi=' + cleared + ' sürdü=' + survives + ' fiyatlar=' + costs + ' 4. hak=' + pays[3] + ' ★14 ile=' + !poorOk);
+})();
+
+// T36 — ekonomi hızı: mağaza ilk gün tadılır ama birkaç günde bitmez (tools/ekonomi.js modeli).
+// Ölçüt: her oyuncu tipi 1. gün bir şey alabilir; orta oyuncu güçlendirmelerin tamamına 20 günden
+// önce, her şeye 35 günden önce ulaşamaz ama 70 günde ulaşır; usta oyuncu her şeye 12 günden önce ulaşamaz.
+(function t36() {
+  var E = require('./tools/ekonomi.js').analyze(90, 20);
+  var by = {};
+  E.players.forEach(function (r) { by[r.id] = r; });
+  var first = E.players.every(function (r) { return r.firstBuy === 1; });
+  var mid = by.orta.upgrades >= 20 && by.orta.all >= 35 && by.orta.all <= 70;
+  var pro = by.usta.all >= 12;
+  report('T36 ekonomi hızı (ilk gün tadılır, haftalarca sürer)', first && mid && pro,
+    E.players.map(function (r) { return r.id + ': ilk ' + r.firstBuy + '. gün, güçler ' + r.upgrades + ', hepsi ' + (r.all === null ? '90+' : r.all); }).join(' · '));
 })();
 
 // --- Dikey ekran (uzun alan) ---------------------------------------------------

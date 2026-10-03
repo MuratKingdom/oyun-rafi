@@ -163,7 +163,7 @@
       <button type="button" role="tab" data-sekme="quests" aria-selected="false">Görevler</button>
     </div>
     <div class="liste"></div>
-    <p class="not">Yıldız kazanmak için: oyunda yıldız topla, her geçtiğin bölüm +1, her 10 bölümlük eşik +10. Gerçek para yok.</p>
+    <p class="not">Yıldız kazanmak için: oyunda yıldız topla, günlük görevleri bitir, her 10 bölümlük eşik +5. Gerçek para yok.</p>
   </div>
 </div>
 <script>
@@ -567,7 +567,8 @@ if (typeof window !== 'undefined') window.GameLogic = API;
 // Sekme Gücü — mağaza: katalog, cüzdan, satın alma, kuşanma (saf mantık; DOM yok)
 //
 // Para birimi yıldızdır. Oyun sonunda kazanılan: o koşuda toplanan yıldızlar
-// + geçilen her bölüm için 1 + her 10 bölümlük eşik için 10. Gerçek para yok.
+// + her 10 bölümlük eşik için 5. Gerçek para yok. Fiyat/ödül dengesi
+// tools/ekonomi.js ile ölçülür (hedef: orta oyuncu her şeye ~1,5 ayda ulaşır).
 // Profil tarayıcıda localStorage'da tutulur; bozuk/eksik veri sessizce varsayılana döner.
 // Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
 // fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
@@ -579,25 +580,25 @@ var STORAGE_KEY = 'sekmeguc-profil';
 // Top görünümleri. shape: circle | square | diamond | star | ring
 var BALLS = [
   { id: 'klasik', name: 'Klasik', price: 0, shape: 'circle', color: '#5ac8fa' },
-  { id: 'kor', name: 'Kor', price: 15, shape: 'circle', color: '#ff8a3d' },
-  { id: 'nane', name: 'Nane', price: 15, shape: 'circle', color: '#46d39a' },
-  { id: 'kup', name: 'Küp', price: 30, shape: 'square', color: '#f2f2f2' },
-  { id: 'elmas', name: 'Elmas', price: 45, shape: 'diamond', color: '#7fe3ff' },
-  { id: 'yildiz', name: 'Yıldız', price: 60, shape: 'star', color: '#ff8ee8' },
-  { id: 'gezegen', name: 'Gezegen', price: 90, shape: 'ring', color: '#c49bff' }
+  { id: 'kor', name: 'Kor', price: 25, shape: 'circle', color: '#ff8a3d' },
+  { id: 'nane', name: 'Nane', price: 60, shape: 'circle', color: '#46d39a' },
+  { id: 'kup', name: 'Küp', price: 150, shape: 'square', color: '#f2f2f2' },
+  { id: 'elmas', name: 'Elmas', price: 250, shape: 'diamond', color: '#7fe3ff' },
+  { id: 'yildiz', name: 'Yıldız', price: 400, shape: 'star', color: '#ff8ee8' },
+  { id: 'gezegen', name: 'Gezegen', price: 600, shape: 'ring', color: '#c49bff' }
 ];
 
 // Harita temaları. deco: arka plan süsü (dots | sun | trees | grid | flakes)
 var MAPS = [
   { id: 'gece', name: 'Gece', price: 0, deco: 'dots',
     c: { bg: '#0b1220', line: '#223352', wall: '#1f3150', wallPassed: '#16233b', wallMove: '#2b2650', edge: '#5ac8fa', edgeMove: '#b39dfa', deco: 'rgba(200,220,255,0.35)' } },
-  { id: 'gunbatimi', name: 'Gün Batımı', price: 40, deco: 'sun',
+  { id: 'gunbatimi', name: 'Gün Batımı', price: 150, deco: 'sun',
     c: { bg: '#2a1530', line: '#5a2f4a', wall: '#4a2340', wallPassed: '#331a2e', wallMove: '#5a2a5e', edge: '#ffb36b', edgeMove: '#ff7fb0', deco: 'rgba(255,170,90,0.16)' } },
-  { id: 'orman', name: 'Orman', price: 40, deco: 'trees',
+  { id: 'orman', name: 'Orman', price: 200, deco: 'trees',
     c: { bg: '#0e1f17', line: '#24443a', wall: '#1d3b2c', wallPassed: '#152a20', wallMove: '#2d3b1d', edge: '#8fe388', edgeMove: '#e3d488', deco: 'rgba(60,120,80,0.55)' } },
-  { id: 'neon', name: 'Neon', price: 70, deco: 'grid',
+  { id: 'neon', name: 'Neon', price: 350, deco: 'grid',
     c: { bg: '#07050f', line: '#ff2bd6', wall: '#1a0f33', wallPassed: '#120a24', wallMove: '#2a0f3a', edge: '#2bf0ff', edgeMove: '#ff2bd6', deco: 'rgba(255,43,214,0.18)' } },
-  { id: 'buz', name: 'Buz', price: 70, deco: 'flakes',
+  { id: 'buz', name: 'Buz', price: 450, deco: 'flakes',
     c: { bg: '#e8f3fb', line: '#9ac0da', wall: '#b9d6ea', wallPassed: '#d3e5f2', wallMove: '#c9c2ec', edge: '#2a7fb8', edgeMove: '#6a4fc4', deco: 'rgba(120,170,210,0.6)', text: '#12324a', textDim: '#4f7591' } }
 ];
 
@@ -607,13 +608,13 @@ var CATALOG = { ball: BALLS, map: MAPS };
 // values[seviye] o seviyenin etkisidir; prices[i] i → i+1 geçişinin fiyatı.
 // Bunlar yalnız oynayarak kazanılan yıldızla alınır; gerçek parayla yıldız satılmaz.
 var UPGRADES = [
-  { id: 'kalkan', name: 'Kalkan kapasitesi', prices: [40, 120], values: [1, 2, 3],
+  { id: 'kalkan', name: 'Kalkan kapasitesi', prices: [200, 600], values: [1, 2, 3],
     desc: function (v) { return 'Aynı anda en çok ' + v + ' kalkan'; } },
-  { id: 'baslangic', name: 'Başlangıç kalkanı', prices: [60], values: [0, 1],
+  { id: 'baslangic', name: 'Başlangıç kalkanı', prices: [450], values: [0, 1],
     desc: function (v) { return v ? 'Her koşuya 1 kalkanla başla' : 'Koşuya kalkansız başla'; } },
-  { id: 'sure', name: 'Uzun güçler', prices: [35, 90], values: [1, 1.25, 1.5],
+  { id: 'sure', name: 'Uzun güçler', prices: [150, 400], values: [1, 1.25, 1.5],
     desc: function (v) { return v === 1 ? 'Güçler normal süre (4 / 6 sn)' : 'Güçler %' + Math.round((v - 1) * 100) + ' daha uzun'; } },
-  { id: 'miknatis', name: 'Yıldız mıknatısı', prices: [50, 130], values: [1, 1.6, 2.2],
+  { id: 'miknatis', name: 'Yıldız mıknatısı', prices: [250, 650], values: [1, 1.6, 2.2],
     desc: function (v) { return v === 1 ? 'Yıldız ve güç normal alanda alınır' : 'Yıldız ve güç ' + String(v).replace('.', ',') + ' kat geniş alandan alınır'; } }
 ];
 
@@ -694,13 +695,14 @@ function equip(p, kind, id) {
   return true;
 }
 
-// Bir koşunun ödülü: toplanan yıldız + geçilen bölüm başına 1 + geçilen her eşik (10 bölüm) için 10.
+// Bir koşunun ödülü: toplanan yıldız + geçilen her eşik (10 bölüm) için MILESTONE_BONUS.
+// Bölüm başına ayrı ödül yok: kazanç, ekranda toplanan yıldızla aynı kalsın.
 // Oyun sonsuzdur; eşik sayısı state.milestones'ta, eski kayıtlar için bölümden de hesaplanır.
-var MILESTONE_BONUS = 10;
+var MILESTONE_BONUS = 5;
 function reward(state) {
   var levelsDone = Math.max(0, (state.level || 1) - 1);
   var ms = typeof state.milestones === 'number' ? state.milestones : Math.floor(levelsDone / 10);
-  return (state.stars || 0) + levelsDone + MILESTONE_BONUS * ms;
+  return (state.stars || 0) + MILESTONE_BONUS * ms;
 }
 
 // { ok, reason } — reason: 'yok' | 'tamam' (son basamak) | 'yetersiz'
@@ -771,15 +773,15 @@ var QUESTS_PER_DAY = 3;
 
 // kind: run_* tek koşuda, day_* gün boyunca birikir
 var TEMPLATES = [
-  { kind: 'run_stars', targets: [3, 5, 8], rewards: [10, 12, 15], text: 'Bir koşuda {n} yıldız topla' },
-  { kind: 'run_gates', targets: [10, 20, 30], rewards: [8, 12, 16], text: 'Bir koşuda {n} kapı geç' },
-  { kind: 'reach_level', targets: [3, 4, 6], rewards: [8, 12, 18], text: '{n}. bölüme ulaş' },
-  { kind: 'day_gates', targets: [25, 40, 60], rewards: [8, 12, 16], text: 'Bugün toplam {n} kapı geç' },
-  { kind: 'day_runs', targets: [3, 5], rewards: [6, 9], text: 'Bugün {n} oyun oyna' },
-  { kind: 'day_shield', targets: [1, 2], rewards: [8, 12], text: 'Kalkanla {n} çarpmadan kurtul' },
-  { kind: 'day_moving', targets: [3, 6], rewards: [8, 12], text: '{n} hareketli (mor) kapıdan geç' },
+  { kind: 'run_stars', targets: [3, 5, 8], rewards: [5, 6, 8], text: 'Bir koşuda {n} yıldız topla' },
+  { kind: 'run_gates', targets: [10, 20, 30], rewards: [4, 6, 8], text: 'Bir koşuda {n} kapı geç' },
+  { kind: 'reach_level', targets: [3, 4, 6], rewards: [4, 6, 9], text: '{n}. bölüme ulaş' },
+  { kind: 'day_gates', targets: [25, 40, 60], rewards: [4, 6, 8], text: 'Bugün toplam {n} kapı geç' },
+  { kind: 'day_runs', targets: [3, 5], rewards: [3, 5], text: 'Bugün {n} oyun oyna' },
+  { kind: 'day_shield', targets: [1, 2], rewards: [4, 6], text: 'Kalkanla {n} çarpmadan kurtul' },
+  { kind: 'day_moving', targets: [3, 6], rewards: [4, 6], text: '{n} hareketli (mor) kapıdan geç' },
   // 'win' adı eski kayıtlarla uyum için kaldı: oyun sonsuz, görev ilk eşiği (10. bölüm) geçmek
-  { kind: 'win', targets: [1], rewards: [25], text: '10. bölümü geç (ilk eşik)' }
+  { kind: 'win', targets: [1], rewards: [15], text: '10. bölümü geç (ilk eşik)' }
 ];
 
 function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -2016,8 +2018,8 @@ function bootstrap() {
             : state.level === C.SPIKE_FROM ? 'Kırmızı dikenlere sekme: basılı tut, havada kal' : '';
           var milestone = state.milestones !== prevMilestones;
           if (milestone) {
-            // Her 10 bölümde bir eşik: büyük kutlama, ödülde +10
-            sub = 'Eşik ' + state.milestones + ' geçildi! +' + (Shop ? Shop.MILESTONE_BONUS : 10) + ' ★' + (state.milestones === 1 ? ' · artık sonsuz: zorluk yavaşça artar' : '');
+            // Her 10 bölümde bir eşik: büyük kutlama, ödülde +MILESTONE_BONUS
+            sub = 'Eşik ' + state.milestones + ' geçildi! +' + (Shop ? Shop.MILESTONE_BONUS : 5) + ' ★' + (state.milestones === 1 ? ' · artık sonsuz: zorluk yavaşça artar' : '');
             prevMilestones = state.milestones;
             sfx('win');
             buzz(40);

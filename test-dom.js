@@ -195,7 +195,7 @@ function firePointer(type) {
   listeners.pointerdown.length = 0; listeners.pointerup.length = 0;
   require('./shop.js');
   var P = global.window.GameShop.createProfile();
-  P.coins = 100; global.window.GameShop.buy(P, 'map', 'neon');
+  P.coins = 400; global.window.GameShop.buy(P, 'map', 'neon');
   global.window.GameShop.save(global.localStorage, P);
   // Ödül hesabı T15'te ayrıca sınanıyor; burada main.js'in onu tam bir kez uyguladığını ölçmek için sabitle
   var realReward = global.window.GameShop.reward;
