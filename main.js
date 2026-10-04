@@ -552,8 +552,8 @@ function bootstrap() {
             : state.level === C.SPIKE_FROM ? 'Kırmızı dikenlere sekme: basılı tut, havada kal' : '';
           var milestone = state.milestones !== prevMilestones;
           if (milestone) {
-            // Her 10 bölümde bir eşik: büyük kutlama, ödülde +10
-            sub = 'Eşik ' + state.milestones + ' geçildi! +' + (Shop ? Shop.MILESTONE_BONUS : 10) + ' ★' + (state.milestones === 1 ? ' · artık sonsuz: zorluk yavaşça artar' : '');
+            // Her 10 bölümde bir eşik: büyük kutlama, ödülde +MILESTONE_BONUS
+            sub = 'Eşik ' + state.milestones + ' geçildi! +' + (Shop ? Shop.MILESTONE_BONUS : 5) + ' ★' + (state.milestones === 1 ? ' · artık sonsuz: zorluk yavaşça artar' : '');
             prevMilestones = state.milestones;
             sfx('win');
             buzz(40);
