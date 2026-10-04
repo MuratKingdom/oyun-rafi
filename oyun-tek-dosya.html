@@ -79,8 +79,8 @@
     color: var(--metin); background: var(--cam); border: 1px solid var(--cizgi); border-radius: 999px;
     padding: 10px 18px; cursor: pointer; box-shadow: 0 0 14px rgba(90,200,250,0.18);
   }
-  #gorevBtn[hidden] { display: none; }
-  #muzikBtn, #sesBtn, #dilBtn {
+  #gorevBtn[hidden], #liderBtn[hidden] { display: none; }
+  #muzikBtn, #sesBtn, #dilBtn, #liderBtn {
     font: inherit; font-size: 18px; width: 44px; height: 44px; padding: 0; border-radius: 50%;
     border: 1px solid rgba(143,163,196,0.35); background: var(--cam); color: var(--metin); cursor: pointer;
   }
@@ -200,14 +200,20 @@
   }
   /* Dar telefon: dört düğme tek satıra sığsın (ayrıntılı kurallardan sonra gelmeli) */
   @media (max-width: 440px) {
-    .dugmeler { gap: 6px; }
-    #magazaBtn, #gorevBtn { padding: 9px 12px; font-size: 13px; }
-    #muzikBtn, #sesBtn, #dilBtn { width: 38px; height: 38px; font-size: 16px; }
+    .dugmeler { gap: 5px; padding: 0 6px; }
+    #magazaBtn, #gorevBtn { padding: 8px 10px; font-size: 12.5px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn { width: 34px; height: 34px; font-size: 15px; }
+    #dilBtn { font-size: 11px; }
+  }
+  @media (max-width: 380px) {
+    #magazaBtn, #gorevBtn { padding: 7px 8px; font-size: 12px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn { width: 31px; height: 31px; font-size: 14px; }
   }
   @media (max-width: 340px) {
-    .dugmeler { gap: 4px; padding: 0 4px; }
-    #magazaBtn, #gorevBtn { padding: 7px 8px; font-size: 12px; }
-    #muzikBtn, #sesBtn, #dilBtn { width: 32px; height: 32px; font-size: 14px; }
+    .dugmeler { gap: 3px; padding: 0 3px; }
+    #magazaBtn, #gorevBtn { padding: 6px 7px; font-size: 11px; letter-spacing: 0; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn { width: 27px; height: 27px; font-size: 12px; }
+    #dilBtn { font-size: 10px; }
   }
 </style>
 </head>
@@ -215,7 +221,7 @@
 <div id="wrap">
   <canvas id="game" width="520" height="540"></canvas>
   <div id="hint"><span data-i18n="Ekranın herhangi bir yerine basılı tut: yükseklik kazan">Ekranın herhangi bir yerine basılı tut: yükseklik kazan</span><span class="kb" data-i18n=" · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
-  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="reklamDevamBtn" type="button" data-ui hidden>📺 Reklamla devam</button><button id="ikiKatBtn" type="button" data-ui hidden>📺 ★ x2</button><button id="magazaBtn" type="button" data-ui hidden data-i18n="🛒 Mağaza">🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik" data-i18n-aria="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri" data-i18n-aria="Efekt sesleri">🔊</button><button id="dilBtn" class="ikon" type="button" data-ui aria-label="Dil" data-i18n-aria="Dil">TR</button></div>
+  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="reklamDevamBtn" type="button" data-ui hidden>📺 Reklamla devam</button><button id="ikiKatBtn" type="button" data-ui hidden>📺 ★ x2</button><button id="magazaBtn" type="button" data-ui hidden data-i18n="🛒 Mağaza">🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="liderBtn" class="ikon" type="button" data-ui hidden aria-label="Liderlik tablosu" data-i18n-aria="Liderlik tablosu">🏆</button><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik" data-i18n-aria="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri" data-i18n-aria="Efekt sesleri">🔊</button><button id="dilBtn" class="ikon" type="button" data-ui aria-label="Dil" data-i18n-aria="Dil">TR</button></div>
 </div>
 <div id="magaza" data-ui hidden role="dialog" aria-label="Mağaza">
   <div class="panel">
@@ -304,6 +310,7 @@ var EN = {
   'Müzik': 'Music',
   'Efekt sesleri': 'Sound effects',
   'Dil': 'Language',
+  'Liderlik tablosu': 'Leaderboard',
   // index.html
   'Ekranın herhangi bir yerine basılı tut: yükseklik kazan': 'Hold anywhere on the screen to gain height',
   ' · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat': ' · Space / ↑ · R: restart · M: sound · P: pause',
@@ -1187,6 +1194,59 @@ var Monetize = {
 };
 if (typeof module !== 'undefined') module.exports = Monetize;
 if (typeof window !== 'undefined') window.GameMonetize = Monetize;
+})();
+
+</script>
+<script>
+// Sekme Gücü (Bopgate) — bulut kayıt birleştirme (saf mantık; DOM yok)
+//
+// Android'de Play Games kayıtlı oyunu (window.BopgateNative.games.saveGame / loadGame) profili
+// cihazlar arasında taşır. İki kayıt (bu cihaz + bulut) çakışırsa hiçbir kazanım kaybolmasın diye
+// birleştirilir: sahip olunan görünümler ve satın alma hakları birleşimi, güçlendirme basamakları ve
+// rekor en büyüğü, cüzdan en büyüğü (iki cihazda ayrı ayrı biriken yıldız toplanmaz — çift sayım
+// olmasın), kuşanılan görünüm bu cihazınki. Bulut verisi her zaman Shop.sanitize'dan geçer.
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; dosya kendi kapsamında çalışır.
+(function () {
+
+var VERSION = 1;
+
+function pack(profile, best) {
+  return JSON.stringify({ v: VERSION, profile: profile, best: best || 0 });
+}
+
+// Bozuk / tanınmayan veri → null
+function unpack(Shop, text) {
+  try {
+    var d = JSON.parse(text);
+    if (!d || d.v !== VERSION || typeof d.profile !== 'object') return null;
+    var best = Math.floor(Number(d.best));
+    return { profile: Shop.sanitize(d.profile), best: isFinite(best) && best > 0 ? Math.min(best, 1e6) : 0 };
+  } catch (e) {
+    return null;
+  }
+}
+
+function merge(Shop, local, localBest, remote) {
+  if (!remote) return { profile: local, best: localBest || 0, changed: false };
+  var before = pack(local, localBest);
+  var p = Shop.sanitize(JSON.parse(JSON.stringify(local)));
+  var r = remote.profile;
+  p.coins = Math.max(p.coins, r.coins);
+  ['ball', 'map'].forEach(function (k) {
+    r.owned[k].forEach(function (id) { if (p.owned[k].indexOf(id) < 0) p.owned[k].push(id); });
+  });
+  Shop.UPGRADES.forEach(function (u) { p.upg[u.id] = Math.max(p.upg[u.id] || 0, r.upg[u.id] || 0); });
+  r.ent.products.forEach(function (id) { if (p.ent.products.indexOf(id) < 0) p.ent.products.push(id); });
+  p.ent.noads = p.ent.noads || r.ent.noads;
+  // sahip olunan her şey yerleşti; premium kuralları için son bir doğrulama
+  p = Shop.sanitize(p);
+  var best = Math.max(localBest || 0, remote.best || 0);
+  return { profile: p, best: best, changed: pack(p, best) !== before };
+}
+
+var Cloud = { VERSION: VERSION, pack: pack, unpack: unpack, merge: merge };
+if (typeof module !== 'undefined') module.exports = Cloud;
+if (typeof window !== 'undefined') window.GameCloud = Cloud;
 })();
 
 </script>
@@ -2390,6 +2450,15 @@ function bootstrap() {
     }
   }
   function todayKey() { return Quests ? Quests.dayKey(new Date()) : ''; }
+  // Çevrimiçi (yalnız Android paketinde): Play Games liderlik tablosu ve bulut kayıt. Sunucu yok;
+  // köprü (window.BopgateNative.games) Google'ın altyapısını kullanır. Tarayıcıda hepsi kapalı.
+  var Cloud = window.GameCloud || null;
+  var games = window.BopgateNative && window.BopgateNative.games ? window.BopgateNative.games : null;
+  function soft(fn) { try { return Promise.resolve(fn()).catch(function () { return null; }); } catch (e) { return Promise.resolve(null); } }
+  function cloudSave() {
+    if (!games || !Cloud || !profile) return;
+    soft(function () { return games.saveGame(Cloud.pack(profile, best)); });
+  }
   function checkDay() {
     if (!daily) return;
     var lr = Quests.ensureDay(daily, Quests.dayKey(new Date()));
@@ -2405,6 +2474,19 @@ function bootstrap() {
     var saved = window.localStorage.getItem('sekmeguc-best');
     if (saved) best = parseInt(saved, 10) || 0;
   } catch (e) {}
+  if (games && Cloud && profile) {
+    soft(function () { return games.loadGame(); }).then(function (text) {
+      var m = Cloud.merge(Shop, profile, best, typeof text === 'string' ? Cloud.unpack(Shop, text) : null);
+      if (m.changed) {
+        profile = m.profile;
+        best = m.best;
+        Shop.save(window.localStorage, profile);
+        try { window.localStorage.setItem('sekmeguc-best', String(best)); } catch (e) {}
+        if (shopOpen) renderShop();
+      }
+      cloudSave();
+    });
+  }
 
   var audioCtx = null;
   function ensureAudio() {
@@ -2669,6 +2751,10 @@ function bootstrap() {
   // Teklif açıkken ödül yazılmaz (koşu sürebilir); süre dolunca ya da yeniden başlayınca yazılır.
   var devamBtn = document.getElementById('devamBtn');
   var reklamDevamBtn = document.getElementById('reklamDevamBtn');
+  var liderBtn = document.getElementById('liderBtn');
+  if (liderBtn) liderBtn.addEventListener('click', function () {
+    if (games) soft(function () { return games.showLeaderboard(); });
+  });
   var ikiKatBtn = document.getElementById('ikiKatBtn');
   var runReward = 0;     // koşunun kendi ödülü (görevler hariç): ★ x2 bunu bir kez daha verir
   var doubled = false;
@@ -2742,6 +2828,8 @@ function bootstrap() {
     }
     profile.coins += earned;
     Shop.save(window.localStorage, profile);
+    if (games && newBest) soft(function () { return games.submitScore(best); });
+    cloudSave();
   }
   function preview(item, kind) {
     var cv = document.createElement('canvas');
@@ -2885,6 +2973,7 @@ function bootstrap() {
       Mon.grant(Shop, profile, id);
       if (equipAfter) Shop.equip(profile, equipAfter[0], equipAfter[1]);
       Shop.save(window.localStorage, profile);
+      cloudSave();
       sfx('buy');
       renderShop();
     });
@@ -2942,6 +3031,7 @@ function bootstrap() {
   }
   function closeShop() {
     if (!shopEl) return;
+    if (shopOpen) cloudSave(); // mağazada yapılan alımlar buluta
     shopOpen = false;
     shopEl.hidden = true;
   }
@@ -3095,6 +3185,7 @@ function bootstrap() {
     }
     var showBtns = !rOpen && !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
     if (shopBtn) shopBtn.hidden = !showBtns;
+    if (liderBtn) liderBtn.hidden = !showBtns || !games;
     var qb = document.getElementById('gorevBtn');
     if (qb) {
       qb.hidden = !showBtns || !daily;

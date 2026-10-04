@@ -407,6 +407,54 @@ function flush() { var p = Promise.resolve(); for (var i = 0; i < 6; i++) p = p.
   });
 })();
 
+// T5l — Android'de çevrimiçi: açılışta bulut kaydı birleşir, rekor kırılınca skor gönderilir, kayıt buluta yazılır,
+// 🏆 liderlik düğmesi görünür; köprü hata verse de oyun sürer
+pending5 = pending5.then(function () {
+  rafQueue.length = 0;
+  listeners.keydown.length = 0; listeners.keyup.length = 0;
+  listeners.pointerdown.length = 0; listeners.pointerup.length = 0;
+  var Sh = global.window.GameShop;
+  var Cl = require('./cloud.js');
+  var remote = Sh.createProfile(); remote.coins = 900; remote.owned.map.push('orman');
+  var calls = { load: 0, save: [], score: [], board: 0 };
+  global.window.BopgateNative = { platform: 'android', games: {
+    signIn: function () { return Promise.resolve(true); },
+    loadGame: function () { calls.load++; return Promise.resolve(Cl.pack(remote, 5)); },
+    saveGame: function (j) { calls.save.push(j); return Promise.resolve(true); },
+    submitScore: function (n) { calls.score.push(n); return Promise.reject(new Error('ağ yok')); },
+    showLeaderboard: function () { calls.board++; throw new Error('anında hata'); }
+  } };
+  var P = Sh.createProfile(); P.coins = 10; Sh.save(global.localStorage, P);
+  global.localStorage.setItem('sekmeguc-best', '0');
+  var lb = { hidden: true, handlers: [], addEventListener: function (t, f) { if (t === 'click') this.handlers.push(f); } };
+  var oldGet = global.document.getElementById;
+  global.document.getElementById = function (id) { return id === 'liderBtn' ? lb : oldGet(id); };
+  require('./main.js').bootstrap();
+  return flush().then(function () {
+    pumpFrames(2);
+    var stored = JSON.parse(global.localStorage.getItem('sekmeguc-profil'));
+    var merged = calls.load === 1 && stored.coins === 900 && stored.owned.map.indexOf('orman') >= 0 &&
+      global.localStorage.getItem('sekmeguc-best') === '5' && calls.save.length >= 1;
+    var shown = !lb.hidden;
+    var err = null;
+    try { lb.handlers.forEach(function (f) { f(); }); } catch (e) { err = e; }
+    // rekor kır: koşunun skorunu buluttaki rekorun (5) üstüne çek, sonra tavana çarp
+    lastState.score = 12;
+    fireKey('keydown', 'ArrowUp');
+    for (var i = 0; i < 400 && lastState.status !== 'over'; i++) pumpFrames(1);
+    fireKey('keyup', 'ArrowUp');
+    pumpFrames(400); // devam teklifi süresi dolsun, ödül yazılsın
+    return flush().then(function () {
+      var saves = calls.save.length;
+      global.document.getElementById = oldGet;
+      delete global.window.BopgateNative;
+      report('T5l çevrimiçi: bulut birleşir, kayıt yazılır, 🏆 görünür, hata yumuşak', merged && shown && !err && calls.board === 1 && saves >= 2 && lastState.status === 'over' && calls.score.length === 1 && calls.score[0] === 12,
+        'birleşti=' + merged + ' (★' + stored.coins + ') 🏆=' + shown + ' liderlik çağrısı=' + calls.board + ' hata sızdı=' + !!err +
+        ' kayıt yazımı=' + saves + ' skor gönderimi=' + calls.score.length);
+    });
+  });
+});
+
 pending5.then(function () {
   console.log('--- özet: ' + (fails === 0 ? 'tüm testler PASS' : fails + ' test FAIL'));
   process.exit(fails === 0 ? 0 : 1);

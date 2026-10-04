@@ -70,6 +70,7 @@ var EN = {
   'Müzik': 'Music',
   'Efekt sesleri': 'Sound effects',
   'Dil': 'Language',
+  'Liderlik tablosu': 'Leaderboard',
   // index.html
   'Ekranın herhangi bir yerine basılı tut: yükseklik kazan': 'Hold anywhere on the screen to gain height',
   ' · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat': ' · Space / ↑ · R: restart · M: sound · P: pause',

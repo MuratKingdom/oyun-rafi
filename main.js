@@ -91,6 +91,15 @@ function bootstrap() {
     }
   }
   function todayKey() { return Quests ? Quests.dayKey(new Date()) : ''; }
+  // Çevrimiçi (yalnız Android paketinde): Play Games liderlik tablosu ve bulut kayıt. Sunucu yok;
+  // köprü (window.BopgateNative.games) Google'ın altyapısını kullanır. Tarayıcıda hepsi kapalı.
+  var Cloud = window.GameCloud || null;
+  var games = window.BopgateNative && window.BopgateNative.games ? window.BopgateNative.games : null;
+  function soft(fn) { try { return Promise.resolve(fn()).catch(function () { return null; }); } catch (e) { return Promise.resolve(null); } }
+  function cloudSave() {
+    if (!games || !Cloud || !profile) return;
+    soft(function () { return games.saveGame(Cloud.pack(profile, best)); });
+  }
   function checkDay() {
     if (!daily) return;
     var lr = Quests.ensureDay(daily, Quests.dayKey(new Date()));
@@ -106,6 +115,19 @@ function bootstrap() {
     var saved = window.localStorage.getItem('sekmeguc-best');
     if (saved) best = parseInt(saved, 10) || 0;
   } catch (e) {}
+  if (games && Cloud && profile) {
+    soft(function () { return games.loadGame(); }).then(function (text) {
+      var m = Cloud.merge(Shop, profile, best, typeof text === 'string' ? Cloud.unpack(Shop, text) : null);
+      if (m.changed) {
+        profile = m.profile;
+        best = m.best;
+        Shop.save(window.localStorage, profile);
+        try { window.localStorage.setItem('sekmeguc-best', String(best)); } catch (e) {}
+        if (shopOpen) renderShop();
+      }
+      cloudSave();
+    });
+  }
 
   var audioCtx = null;
   function ensureAudio() {
@@ -370,6 +392,10 @@ function bootstrap() {
   // Teklif açıkken ödül yazılmaz (koşu sürebilir); süre dolunca ya da yeniden başlayınca yazılır.
   var devamBtn = document.getElementById('devamBtn');
   var reklamDevamBtn = document.getElementById('reklamDevamBtn');
+  var liderBtn = document.getElementById('liderBtn');
+  if (liderBtn) liderBtn.addEventListener('click', function () {
+    if (games) soft(function () { return games.showLeaderboard(); });
+  });
   var ikiKatBtn = document.getElementById('ikiKatBtn');
   var runReward = 0;     // koşunun kendi ödülü (görevler hariç): ★ x2 bunu bir kez daha verir
   var doubled = false;
@@ -443,6 +469,8 @@ function bootstrap() {
     }
     profile.coins += earned;
     Shop.save(window.localStorage, profile);
+    if (games && newBest) soft(function () { return games.submitScore(best); });
+    cloudSave();
   }
   function preview(item, kind) {
     var cv = document.createElement('canvas');
@@ -586,6 +614,7 @@ function bootstrap() {
       Mon.grant(Shop, profile, id);
       if (equipAfter) Shop.equip(profile, equipAfter[0], equipAfter[1]);
       Shop.save(window.localStorage, profile);
+      cloudSave();
       sfx('buy');
       renderShop();
     });
@@ -643,6 +672,7 @@ function bootstrap() {
   }
   function closeShop() {
     if (!shopEl) return;
+    if (shopOpen) cloudSave(); // mağazada yapılan alımlar buluta
     shopOpen = false;
     shopEl.hidden = true;
   }
@@ -796,6 +826,7 @@ function bootstrap() {
     }
     var showBtns = !rOpen && !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
     if (shopBtn) shopBtn.hidden = !showBtns;
+    if (liderBtn) liderBtn.hidden = !showBtns || !games;
     var qb = document.getElementById('gorevBtn');
     if (qb) {
       qb.hidden = !showBtns || !daily;
