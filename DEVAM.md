@@ -1,6 +1,6 @@
 # Oyun Rafı — devam notu (handoff)
 
-Hazırlanma: 3 Ekim 2026. Bu dosya rafla ilgili işi yeni bir sohbet/oturumda kaldığı yerden sürdürmek
+Hazırlanma: 3 Ekim 2026 · son güncelleme: 4 Ekim 2026. Bu dosya rafla ilgili işi yeni bir sohbet/oturumda kaldığı yerden sürdürmek
 içindir. Önce bunu, sonra `README.md`'yi oku.
 
 ## Depo nasıl çalışıyor (kısa)
@@ -32,7 +32,7 @@ içindir. Önce bunu, sonra `README.md`'yi oku.
 |---|---|---|
 | Yerçekimi Tüneli | `oyun/gravtunel` | Rutin üretimi, dokunulmadı |
 | Son Kuyu | `oyun/sonkuyu` | Rutin üretimi, dokunulmadı |
-| **Sekme Gücü** | `oyun/sekmeguc` | 2 Ekim'de elle geliştirildi (aşağıda) |
+| **Sekme Gücü** (global ad: **Bopgate**) | `oyun/sekmeguc` | 2–4 Ekim'de elle geliştirildi (aşağıda) |
 | Tohum Payı | `oyun/tohumpayi` | Rutin üretimi, dokunulmadı |
 
 ## Sekme Gücü — mevcut durum
@@ -50,9 +50,11 @@ dışarıya yalnız `window.Game*` ve `module.exports` çıkar; yeni dosya da b�
 | `render.js` | Yalnız çizim |
 | `main.js` | Döngü, girdi, ses çalma, mağaza/görev arayüzü, devam düğmesi |
 | `build-single.js` | Betikleri `index.html`'e gömüp `oyun-tek-dosya.html` üretir (dosya listesi içinde) |
-| `test.js` | T1–T35 (mantık, mağaza, görev, ses, sonsuzluk, güçlendirme) |
+| `test.js` | T1–T36 (mantık, mağaza, görev, ses, sonsuzluk, güçlendirme, ekonomi hızı) |
 | `test-dom.js` | T5a–T5j (sahte DOM ile bağlantı testleri) |
 | `tools/kazanilabilirlik.js` | İleriye bakan bot: `--kalkansiz`, `--guclu`, `--yukseklik N`, `--hedef N` |
+| `tools/ekonomi.js` | Yıldız ekonomisi simülasyonu: oyuncu tipi başına ilk alım / güçlendirmeler / her şey günü |
+| `docs/isim-arastirmasi.md` | Global isim araştırması ve karar |
 
 Oyun özeti (2 Ekim itibarıyla, oyun-rafi #5–#19):
 - Dikey telefon ekranına uyan uzun alan (540–1000 mantıksal yükseklik, fizik ölçekli).
@@ -61,8 +63,13 @@ Oyun özeti (2 Ekim itibarıyla, oyun-rafi #5–#19):
   Bot 29–41. bölümde ölüyor (tavan zor ama geçilebilir).
 - Öğeler: 2+ yıldız/kalkan, 3+ hareketli kapı, 4+ nefes alan kapı, 5+ güçler (⏱ yavaşlatma, küçülme),
   6+ çift duvar, 7+ zemin dikeni.
-- Mağaza (★): toplar, haritalar, **Güç** sekmesi (kalkan kapasitesi, başlangıç kalkanı, uzun güçler,
-  yıldız mıknatısı; toplam ~★ 525). Ölünce 5 sn **❤ Devam** (★ 15/30/60, koşu başına en çok 3).
+- Mağaza (★): toplar (★ 25–600), haritalar (★ 150–450), **Güç** sekmesi (kalkan kapasitesi, başlangıç
+  kalkanı, uzun güçler, yıldız mıknatısı; toplam ★ 2700). Ölünce 5 sn **❤ Devam** (★ 15/30/60, en çok 3).
+- **Ekonomi (#21, 3 Ekim):** koşu ödülü = toplanan yıldız + eşik başına ★ 5; görev ödülleri ★ 3–15.
+  Modelde orta oyuncu güçlendirmelere ~25, her şeye ~49 günde ulaşıyor (eskiden 6 gün). T36 korur.
+- **Görsel (#23, 4 Ekim):** neon arcade: gradyan gök, perspektif zemin ızgarası, parlayan kapı ağızları,
+  ışık kuyruğu, kapı halkası; BOPGATE logolu açılış, sonuç kartı, cam görünümlü mağaza. Işıma
+  gerçek telefonda ölçülmedi (eski cihazda kare hızı riski).
 - Günlük görevler + giriş serisi; harita başına prosedürel müzik; 🎵/🔊 düğmeleri, M tuşu.
 - `localStorage` anahtarları: `sekmeguc-best`, `sekmeguc-profil`, `sekmeguc-gunluk`, `sekmeguc-ses`
   (hepsi bozuk/kurcalanmış veride güvenli varsayılana döner).
@@ -71,25 +78,27 @@ Doğrulama sınırı: **gerçek telefonda elle oynanmadı.** Denge bot ve headle
 
 ## Bekleyen kararlar (Murat'ta)
 
-- **Play Store**: paket adı (öneri `com.cozulur.sekmegucu`), mağaza adı, ikon. Karar gelince
-  Capacitor ya da TWA paketi kurulacak.
-- **Ücretli içerik** önerisi: önce ücretsiz Play sürümü + birkaç haftalık veri; sonra yalnız görünüm
-  içeren tek seferlik "Destekçi paketi" (Play Billing). **Yıldız, güç, kalkan, şans kutusu satılmaz**
-  (güçlendirmeler yıldızla alındığı için adil kalmalı).
+- **Play Store adı — karar verildi (4 Ekim):** **Bopgate**, paket `com.cozulur.bopgate` (#22).
+  Murat'ın elle yapacağı 4 kontrol bekliyor: Play Console'da paket adı, Play/App Store içi arama,
+  USPTO/EUIPO/TÜRKPATENT "BOPGATE" (sınıf 9 ve 41), `bopgate.com` WHOIS. İkon henüz yok.
+- **Para kazanma — karar verildi (4 Ekim):** uygulama içi satın alma ile **ücretli toplar, haritalar,
+  özellikler** ve **reklamı kapatan paket**; reklam türü yalnız **ödüllü reklam** (ara reklam ve banner
+  yok). Uygulanmadı: sıradaki iş oyun içi altyapı (sahte sağlayıcıyla, testli), sonra Capacitor +
+  Play Billing + AdMob paketi.
 
 ## Gamer rutini
 
 - Rutin adı "Gamer" (claude.ai Routines). Takvim: haftada 2, pazartesi ve perşembe 09:07 UTC.
-- Rutinin **prompt metni hâlâ "ayın 1'i ve 15'i"** diyor; takvimle uyumlu hâle getirilmesi bekliyor
-  (Murat onaylarsa güncellenir).
+- Prompt metni 3 Ekim'de takvimle uyumlu hâle getirildi ("Her pazartesi ve perşembe … Haftada iki
+  oyun"); değişen yalnız o cümle, geri okunarak doğrulandı.
 - Rutin yalnız `oyun/<ad>` dallarına ve issue #1 / #2'ye yazar; rafı (`main`) güncellemek elle ya da
   bu tür bir oturumla yapılır.
 
 ## Olası sonraki işler
 
-- Sekme Gücü: gerçek cihazda elle deneme ve denge ayarı; Play paketi (karar sonrası).
+- Sekme Gücü / Bopgate: para kazanma altyapısı (ücretli ürünler, reklamı kapatan paket, ödüllü reklam);
+  Capacitor paketi (`com.cozulur.bopgate`); ikon; gerçek cihazda elle deneme (denge + neon kare hızı).
 - Diğer üç oyuna benzer cila (mobil dokunma, ses) — istenirse.
-- README'deki oyun tablosunda Sekme Gücü satırı kısa kaldı; yeni özellikler eklenebilir.
 
 ## Kurallar
 
