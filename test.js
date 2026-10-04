@@ -521,6 +521,33 @@ var pending = [];
   }));
 })();
 
+// --- Dil (i18n.js) -------------------------------------------------------------
+// T39 — İngilizce sözlük: katalog, görev, güçlendirme, ürün ve ölüm metinlerinin hepsinin karşılığı var;
+// parametreler iki dilde aynı; dil seçimi cihaz diline ve kayıtlı tercihe uyar
+(function t39() {
+  var I = require('./i18n.js');
+  var Q2 = require('./quests.js');
+  var src = [];
+  ['ball', 'map'].forEach(function (k) { Shop.CATALOG[k].forEach(function (it) { src.push(it.name); }); });
+  Shop.UPGRADES.forEach(function (u) { src.push(u.name); });
+  Q2.TEMPLATES.forEach(function (t) { src.push(t.text); });
+  Mon.PRODUCTS.forEach(function (p) { src.push(p.name, p.desc); });
+  src.push('Dikene düştün', 'Tavana çarptın', 'Duvara çarptın');
+  var lacking = src.filter(function (k) { return !Object.prototype.hasOwnProperty.call(I.EN, k); });
+  var params = function (x) { return (x.match(/\{\w+\}/g) || []).sort().join(','); };
+  var badParams = Object.keys(I.EN).filter(function (k) { return params(k) !== params(I.EN[k]); });
+  var mem = { v: null, getItem: function () { return this.v; }, setItem: function (k, v) { this.v = v; } };
+  var det = I.detect(null, { language: 'tr-TR' }) === 'tr' && I.detect(null, { language: 'en-US' }) === 'en' &&
+    I.detect(null, { language: 'de-DE' }) === 'en' && I.detect(null, {}) === 'en';
+  I.setLang('en', mem);
+  var saved = mem.v === 'en' && I.detect(mem, { language: 'tr-TR' }) === 'en' && I.detect({ getItem: function () { return 'xx'; } }, { language: 'tr' }) === 'tr';
+  var en = I.L('Bölüm {n}', { n: 3 }) === 'Level 3' && I.L('Kuşan') === 'Equip';
+  I.setLang('tr', null);
+  var tr = I.L('Bölüm {n}', { n: 3 }) === 'Bölüm 3' && I.L('olmayan {x}', { x: 1 }) === 'olmayan 1';
+  report('T39 İngilizce sözlük ve dil seçimi', lacking.length === 0 && badParams.length === 0 && det && saved && en && tr,
+    'eksik=' + JSON.stringify(lacking) + ' parametre uyumsuz=' + JSON.stringify(badParams) + ' algılama=' + det + ' kayıt=' + saved + ' en=' + en + ' tr=' + tr);
+})();
+
 // --- Dikey ekran (uzun alan) ---------------------------------------------------
 // T16 — ölçek eşdeğerliği: uzun alanda top, kare alandakiyle normalize edildiğinde birebir aynı hareket eder
 (function t16() {
