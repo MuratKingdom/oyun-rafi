@@ -162,6 +162,33 @@ düşer (T22'deki sahte bağlam bu yolu, T5b gradyanlı yolu sınar).
 Bilinen risk: ışıma (`shadowBlur`) eski/zayıf telefonlarda kare hızını düşürebilir; gerçek cihazda
 ölçülmedi.
 
+## Para kazanma: satın alma ve ödüllü reklam (4 Ekim 2026)
+`monetize.js` ürün kataloğunu, hakları ve sağlayıcıyı tutar. Tüm ürünler **tek seferlik**
+(Play'de "yönetilen, tüketilmeyen"); fiyatı Play Console belirler, aşağıdakiler öneridir:
+
+| Ürün kimliği (Play Console) | Ad | Verdiği | Önerilen |
+|---|---|---|---|
+| `bopgate.reklamsiz` | Reklamsız | Reklam izlemeden ödül (bedava devam, ★ x2 anında) | ₺49,99 |
+| `bopgate.destekci` | Destekçi paketi | Reklamsız + Alev topu + Nebula haritası + ★ 1000 | ₺149,99 |
+| `bopgate.ozellik.paket` | Güç paketi | Bütün güçlendirmeler son basamakta | ₺99,99 |
+| `bopgate.top.alev` | Alev topu | Yalnız parayla alınan top (alev şekli) | ₺29,99 |
+| `bopgate.top.kristal` | Kristal topu | Yalnız parayla alınan top (altıgen kristal) | ₺29,99 |
+| `bopgate.harita.nebula` | Nebula haritası | Yalnız parayla alınan harita, kendi müziğiyle | ₺39,99 |
+
+- **Ödüllü reklam** (ara reklam ve banner yok): ölünce **📺 Devam** (koşu başına 1, yıldız harcamaz)
+  ve oyun sonunda **📺 ★ x2** (koşunun yıldızını bir kez daha verir; görev ödülleri hariç; günde en
+  çok 5). Reklamsız hakkı olan oyuncu aynı ödülü reklamsız alır ("❤ Bedava", "★ x2").
+- Reklam uzun sürse de (teklif süresi 5 sn) izlenince devam hakkı geçerli kalır (T5k).
+- Premium top/harita yıldızla alınamaz; mağazanın **💎** sekmesinde ve kendi sekmelerinde fiyatla
+  görünür. "Satın alımları geri yükle" düğmesi ve açılışta otomatik geri yükleme var.
+- **Sağlayıcı:** Android paketinde `window.BopgateNative` (Play Billing + AdMob, `android-paket/`).
+  **Tarayıcıda gerçek para ve reklam yok**: düğmeler "Uygulamada" yazar ve kapalıdır. Elle denemek
+  için adrese `?demo-odeme` eklenir (sahte sağlayıcı, her şey anında, para yok).
+- Kayıt güvenliği: haklar profilde (`ent`); kurcalanmış kayıt premium ürünü ya da reklamsızı
+  sahiplenemez (T37). Köprü hata verse ya da anında fırlatsa da oyun bozulmaz (T38).
+- Bilinen sınır: gerçek doğrulama (sunucu tarafı satın alma doğrulaması) yok; hak cihazda tutulur ve
+  Play'den geri yüklenir.
+
 ## NE ÇALIŞIYOR
 - Zıplama fiziği, basılı-tutma ile yükseklik kontrolü, kapı/duvar çarpışması ve kayıp sebebi gösterimi (kanıt: T1, T2, T3, T5c, tarayıcı)
 - Artan zorluk (hız + daralan kapı) ve kapı geçme skoru (kanıt: T1, T3, W3)
