@@ -11,7 +11,9 @@
 var RESTART_LOCK_MS = 450; // ölümden hemen sonraki dokunuş yanlışlıkla yeniden başlatmasın
 var SHAKE_MS = 180;
 var SQUASH_MS = 120;
-var TRAIL_LEN = 6;
+var TRAIL_LEN = 10;
+var RING_S = 0.35; // kapı geçiş halkasının ömrü (sn)
+var POP_S = 0.25;  // skor sıçramasının süresi (sn)
 var REVIVE_MS = 5000; // ölünce "★ ile devam" teklifinin süresi
 
 function bootstrap() {
@@ -156,7 +158,8 @@ function bootstrap() {
   }
 
   // Efekt durumu — oyun mantığından ayrı; testler mantığı bundan bağımsız doğrular.
-  var fx = { particles: [], shake: 0, squash: 0, trail: [] };
+  var fx = { particles: [], shake: 0, squash: 0, trail: [], rings: [], scorePop: 0 };
+  var popLeft = 0;
   var shakeLeft = 0;
   var squashLeft = 0;
   function burst(x, y, n, color, speed) {
@@ -179,11 +182,22 @@ function bootstrap() {
       kept.push(p);
     }
     fx.particles = kept;
+    var ringsKept = [];
+    for (var r = 0; r < fx.rings.length; r++) {
+      fx.rings[r].life -= dt;
+      if (fx.rings[r].life > 0) ringsKept.push(fx.rings[r]);
+    }
+    fx.rings = ringsKept;
+    popLeft = Math.max(0, popLeft - dt);
+    fx.scorePop = popLeft / POP_S;
     shakeLeft = Math.max(0, shakeLeft - dt * 1000);
     squashLeft = Math.max(0, squashLeft - dt * 1000);
     fx.shake = shakeLeft / SHAKE_MS;
     fx.squash = squashLeft / SQUASH_MS;
   }
+
+  function skinColor() { return profile ? Shop.equippedBall(profile).color : '#5ac8fa'; }
+  function themeEdge() { return profile ? Shop.equippedMap(profile).c.edge : '#5ac8fa'; }
 
   function newGame() {
     var seed = Date.now() % 2147483647;
@@ -231,6 +245,8 @@ function bootstrap() {
     newBest = false;
     fx.particles = [];
     fx.trail = [];
+    fx.rings = [];
+    popLeft = 0;
     shakeLeft = 0;
     squashLeft = 0;
     startPlaying();
@@ -332,20 +348,23 @@ function bootstrap() {
   function preview(item, kind) {
     var cv = document.createElement('canvas');
     var pr = Math.min(3, Math.max(1, window.devicePixelRatio || 1));
-    cv.width = 72 * pr; cv.height = 52 * pr;
+    cv.width = 76 * pr; cv.height = 55 * pr;
     cv.className = 'onizleme';
     var c2 = cv.getContext('2d');
     c2.scale(pr, pr);
     var theme = kind === 'map' ? item : Shop.equippedMap(profile);
-    c2.fillStyle = theme.c.bg; c2.fillRect(0, 0, 72, 52);
-    c2.save(); c2.scale(72 / 520, 52 / 540); window.GameRender.drawDeco(c2, theme, 0, window.GameRender.DEFAULT_GEO);
+    c2.fillStyle = theme.c.bg; c2.fillRect(0, 0, 76, 55);
+    c2.save(); c2.scale(76 / 520, 55 / 540); window.GameRender.drawDeco(c2, theme, 0, window.GameRender.DEFAULT_GEO);
     if (kind === 'map') {
       c2.fillStyle = theme.c.wall; c2.fillRect(300, 30, 40, 150); c2.fillRect(300, 330, 40, 150);
-      c2.fillStyle = theme.c.edge; c2.fillRect(300, 177, 40, 6); c2.fillRect(300, 330, 40, 6);
+      c2.shadowColor = theme.c.edge; c2.shadowBlur = 8;
+      c2.fillStyle = theme.c.edge; c2.fillRect(292, 170, 56, 12); c2.fillRect(292, 330, 56, 12);
+      c2.fillRect(0, 478, 520, 6);
+      c2.shadowBlur = 0;
     }
     c2.restore();
     var skin = kind === 'ball' ? item : Shop.equippedBall(profile);
-    c2.save(); c2.translate(kind === 'ball' ? 36 : 22, 26); window.GameRender.drawBall(c2, skin.shape, kind === 'ball' ? 13 : 7, skin.color); c2.restore();
+    c2.save(); c2.translate(kind === 'ball' ? 38 : 22, 27); window.GameRender.drawBall(c2, skin.shape, kind === 'ball' ? 13 : 7, skin.color, { shine: true, glow: 10 }); c2.restore();
     return cv;
   }
   function renderQuests(list) {
@@ -515,13 +534,16 @@ function bootstrap() {
         if (state.bounces !== prevBounces) {
           sfx('bounce');
           squashLeft = SQUASH_MS;
-          burst(C.BALL_X, C.FLOOR_Y, 4, '#2f4a73', 120);
+          burst(C.BALL_X, C.FLOOR_Y, 5, skinColor(), 130);
           prevBounces = state.bounces;
         }
         if (state.score !== prevScore) {
           beep(Snd ? Snd.gateFreq(state.score) : 660, 0.08, 'sine');
           buzz(8);
-          burst(C.BALL_X, state.y, 10, '#5ac8fa', 220);
+          var edgeCol = themeEdge();
+          burst(C.BALL_X, state.y, 10, edgeCol, 220);
+          fx.rings.push({ x: C.BALL_X, y: state.y, life: RING_S, max: RING_S, color: edgeCol });
+          popLeft = POP_S;
           prevScore = state.score;
         }
         if (state.stars !== prevStars) {
@@ -608,7 +630,7 @@ function bootstrap() {
       }
     }
     window.GameRender.draw(ctx, state, {
-      best: best, muted: muted, phase: phase, fx: fx, touch: touch,
+      best: best, muted: muted, phase: phase, fx: fx, touch: touch, time: ts / 1000,
       newBest: newBest, canRestart: (phase === 'over' || phase === 'won') && canRestart(),
       banner: banner, levelCount: C.LEVEL_COUNT, gatesPerLevel: C.GATES_PER_LEVEL,
       theme: profile ? Shop.equippedMap(profile) : null, skin: profile ? Shop.equippedBall(profile) : null,

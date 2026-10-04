@@ -142,6 +142,26 @@ hepsine 20 günden, her şeye 35 günden önce ulaşamaz. Play sürümünden ger
 (oturum başına koşu, ortalama bölüm) model değerleri `tools/ekonomi.js`'teki `PLAYERS`
 tablosunda güncellenmeli.
 
+## Görsel tasarım: neon arcade (4 Ekim 2026)
+Global ad **Bopgate** (bkz. `docs/isim-arastirmasi.md`); açılış logosu ve sayfa başlığı bu ad.
+Oyun içi metinler şimdilik Türkçe. Çizim `render.js`'te, tümü kodla (dış görsel/font yok):
+- **Sahne:** temanın rengine göre dikey gradyan gök, ufuk ışığı, zeminde akan perspektif ızgara,
+  neon tavan/zemin çizgisi; varsayılan haritada iki katman (paralaks) yıldız.
+- **Duvarlar:** yandan ışık alan gövde, ağızda parlayan yuvarlak kapaklar ve aradaki ışık perdesi
+  (mavi normal, mor hareketli, yeşil nefes alan); geçilen duvar söner.
+- **Top ve efektler:** hacimli, parlayan top; topa bağlanan ışık kuyruğu; kapı geçişinde genişleyen
+  halka ve skor sıçraması; dönen kalkan halkası; ışıklı parçacıklar; nabız atan yıldız/güçler.
+- **HUD:** ortada büyük skor, solda bölüm + 8 parçalı ilerleme, sağda rekor.
+- **Açılış:** BOPGATE logosu, nabız atan ▶ OYNA düğmesi, rekor ve cüzdan rozetleri.
+- **Oyun sonu:** kart: sebep, büyük skor, yeni rekor rozeti, bölüm/eşik, kazanılan yıldız, görevler,
+  devam ve tekrar.
+- **Mağaza/görevler (DOM):** cam görünümlü panel, kayan sekmeler, kart ürünler, gradyanlı fiyat
+  düğmeleri, parlayan önizlemeler, gradyanlı görev çubukları.
+Açık renkli haritada (Buz) ışıma kapalıdır. Gradyan/gölge desteklemeyen bağlamda çizim düz renge
+düşer (T22'deki sahte bağlam bu yolu, T5b gradyanlı yolu sınar).
+Bilinen risk: ışıma (`shadowBlur`) eski/zayıf telefonlarda kare hızını düşürebilir; gerçek cihazda
+ölçülmedi.
+
 ## NE ÇALIŞIYOR
 - Zıplama fiziği, basılı-tutma ile yükseklik kontrolü, kapı/duvar çarpışması ve kayıp sebebi gösterimi (kanıt: T1, T2, T3, T5c, tarayıcı)
 - Artan zorluk (hız + daralan kapı) ve kapı geçme skoru (kanıt: T1, T3, W3)

@@ -6,6 +6,7 @@ function report(name, ok, detail) {
 }
 
 var drawCallCount = 0;
+var gradients = 0;
 function makeCtx() {
   var handler = {
     get: function (target, prop) {
@@ -26,7 +27,11 @@ function makeCtx() {
     moveTo: function () {}, lineTo: function () {}, stroke: function () {}, fill: function () {},
     arc: function () {}, fillText: function () {}, measureText: function () { return { width: 10 }; },
     save: function () {}, restore: function () {}, translate: function () {},
-    setTransform: function () {}, scale: function () {}, closePath: function () {}, rect: function () {}
+    setTransform: function () {}, scale: function () {}, closePath: function () {}, rect: function () {},
+    strokeText: function () {},
+    // Gerçek tarayıcıdaki gibi gradyan desteği: render.js'in neon yolu (düz renk yedeği değil) sınansın
+    createLinearGradient: function () { gradients++; return { addColorStop: function () {} }; },
+    createRadialGradient: function () { gradients++; return { addColorStop: function () {} }; }
   };
   return new Proxy(base, handler);
 }
@@ -111,7 +116,7 @@ function pumpFrames(n) {
 pumpFrames(5);
 drawCallCount = 0;
 pumpFrames(120);
-report('T5b canvas gerçekten çiziliyor', drawCallCount > 0, 'çağrı sayısı=' + drawCallCount);
+report('T5b canvas gerçekten çiziliyor', drawCallCount > 0 && gradients > 0, 'çağrı sayısı=' + drawCallCount + ' gradyan=' + gradients);
 
 function fireKey(type, code) {
   var evt = { code: code, preventDefault: function () {} };
