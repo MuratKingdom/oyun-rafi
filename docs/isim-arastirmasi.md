@@ -40,7 +40,15 @@ Paket adı yayından sonra değişmez; bu yüzden ad, paketlemeden önce seçili
 | Zipple | Riskli | Steam'de "Zipple World" oyunları; zipple.com dolu; "Zip…" alanı kalabalık. |
 | Vaulty | DOLU | Play'de aynı adla birden çok uygulama, vaulty.com kullanımda. |
 
-## Öneri
+## Karar (4 Ekim 2026)
+
+Murat **Bopgate**'i seçti. Paket adı: **`com.cozulur.bopgate`**. Bilinen risk: İngilizcede "-gate" eki
+skandal çağrışımı taşır (2019'daki motor sporları "BoP-gate" olayı dahil); çakışma bulunmadığı için
+engel sayılmadı. Kesinleştirmeden önce aşağıdaki 4 kontrol bu ad için yapılmalı:
+Play Console'da `com.cozulur.bopgate`, Play/App Store içi arama ("Bopgate", "Bop Gate"),
+USPTO/EUIPO/TÜRKPATENT'te "BOPGATE" (sınıf 9 ve 41), `bopgate.com` WHOIS.
+
+## İlk öneri (karar öncesi)
 
 **Lofthop** — paket adı `com.cozulur.lofthop`. Çakışma bulunamayan iki addan anlamı oyuna en çok uyan
 ve "-gate" skandal çağrışımı taşımayan odur. Kesinleştirmeden önce:
