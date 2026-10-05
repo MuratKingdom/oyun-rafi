@@ -91,7 +91,12 @@
     box-shadow: 0 0 20px rgba(255,93,122,0.55), inset 0 1px 0 rgba(255,255,255,0.4);
     padding: 10px 20px; cursor: pointer; animation: nabiz 1s ease-in-out infinite;
   }
-  #devamBtn[hidden] { display: none; }
+  #devamBtn[hidden], #reklamDevamBtn[hidden], #ikiKatBtn[hidden] { display: none; }
+  #reklamDevamBtn, #ikiKatBtn {
+    font: 900 15px var(--font); color: #05070c; border: 0; border-radius: 999px; padding: 10px 18px; cursor: pointer;
+    background: linear-gradient(180deg, #a6ecff, var(--cyan)); box-shadow: 0 0 18px rgba(90,200,250,0.5), inset 0 1px 0 rgba(255,255,255,0.5);
+  }
+  #ikiKatBtn { color: #1a1206; background: linear-gradient(180deg, #ffe08a, var(--turuncu)); box-shadow: 0 0 18px rgba(255,159,67,0.5); animation: nabiz 1.2s ease-in-out infinite; }
   @keyframes nabiz { 50% { transform: scale(1.06); } }
 
   /* --- Mağaza ve görevler paneli --- */
@@ -125,7 +130,7 @@
     border: 1px solid rgba(143,163,196,0.35); border-radius: 999px; padding: 7px 14px; cursor: pointer;
   }
   #magaza .sekmeler {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px;
+    display: grid; grid-template-columns: repeat(4, 1fr) 0.7fr; gap: 4px; padding: 4px;
     background: rgba(0,0,0,0.3); border-radius: 14px;
   }
   #magaza [data-sekme] {
@@ -158,6 +163,19 @@
   }
   #magaza .urun button:disabled.al { opacity: 0.4; box-shadow: none; cursor: not-allowed; }
   #magaza .not { font-size: 12px; color: var(--soluk); margin: 0; line-height: 1.4; }
+  #magaza .urun button.para {
+    color: #fff; background: linear-gradient(180deg, #c58bff, #7a4dff); box-shadow: 0 0 14px rgba(150,100,255,0.45);
+  }
+  #magaza .urun button.para:disabled { opacity: 0.5; box-shadow: none; cursor: not-allowed; }
+  #magaza .urun.premium { border-color: rgba(197,139,255,0.45); }
+  #magaza .paket { grid-template-columns: 52px 1fr auto; }
+  #magaza .paket .paket-ikon { font-size: 30px; text-align: center; filter: drop-shadow(0 0 8px rgba(197,139,255,0.6)); }
+  #magaza .paket .etki { display: block; font-size: 12.5px; color: var(--soluk); margin-top: 3px; font-weight: 500; }
+  #magaza .paket.en-iyi { border-color: rgba(255,209,102,0.7); box-shadow: 0 0 16px rgba(255,209,102,0.25); }
+  #magaza .geri-yukle {
+    font: 800 13px var(--font); color: var(--soluk); background: transparent; border: 1px solid rgba(143,163,196,0.35);
+    border-radius: 999px; padding: 8px 14px; cursor: pointer; align-self: center;
+  }
   #magaza .guc .basamak { width: 76px; text-align: center; color: var(--altin); font-size: 18px; letter-spacing: 3px; text-shadow: 0 0 8px rgba(255,209,102,0.6); }
   #magaza .guc .etki { display: block; font-size: 12.5px; color: var(--soluk); margin-top: 3px; font-weight: 500; }
   #magaza .seri {
@@ -196,7 +214,7 @@
 <div id="wrap">
   <canvas id="game" width="520" height="540"></canvas>
   <div id="hint">Ekranın herhangi bir yerine basılı tut: yükseklik kazan<span class="kb"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
-  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri">🔊</button></div>
+  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="reklamDevamBtn" type="button" data-ui hidden>📺 Reklamla devam</button><button id="ikiKatBtn" type="button" data-ui hidden>📺 ★ x2</button><button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri">🔊</button></div>
 </div>
 <div id="magaza" data-ui hidden role="dialog" aria-label="Mağaza">
   <div class="panel">
@@ -206,6 +224,7 @@
       <button type="button" role="tab" data-sekme="map" aria-selected="false">Harita</button>
       <button type="button" role="tab" data-sekme="upg" aria-selected="false">Güç</button>
       <button type="button" role="tab" data-sekme="quests" aria-selected="false">Görevler</button>
+      <button type="button" role="tab" data-sekme="premium" aria-selected="false">💎</button>
     </div>
     <div class="liste"></div>
     <p class="not">Yıldız kazanmak için: oyunda yıldız topla, günlük görevleri bitir, her 10 bölümlük eşik +5. Gerçek para yok.</p>
@@ -630,7 +649,10 @@ var BALLS = [
   { id: 'kup', name: 'Küp', price: 150, shape: 'square', color: '#f2f2f2' },
   { id: 'elmas', name: 'Elmas', price: 250, shape: 'diamond', color: '#7fe3ff' },
   { id: 'yildiz', name: 'Yıldız', price: 400, shape: 'star', color: '#ff8ee8' },
-  { id: 'gezegen', name: 'Gezegen', price: 600, shape: 'ring', color: '#c49bff' }
+  { id: 'gezegen', name: 'Gezegen', price: 600, shape: 'ring', color: '#c49bff' },
+  // Yalnız gerçek parayla (monetize.js): yıldızla alınamaz; premiumBy = bu hakkı veren ürünler
+  { id: 'alev', name: 'Alev', price: null, shape: 'flame', color: '#ff6b2c', premiumBy: ['bopgate.top.alev', 'bopgate.destekci'] },
+  { id: 'kristal', name: 'Kristal', price: null, shape: 'hex', color: '#9ef0ff', premiumBy: ['bopgate.top.kristal'] }
 ];
 
 // Harita temaları. deco: arka plan süsü (dots | sun | trees | grid | flakes)
@@ -644,7 +666,9 @@ var MAPS = [
   { id: 'neon', name: 'Neon', price: 350, deco: 'grid',
     c: { bg: '#07050f', line: '#ff2bd6', wall: '#1a0f33', wallPassed: '#120a24', wallMove: '#2a0f3a', edge: '#2bf0ff', edgeMove: '#ff2bd6', deco: 'rgba(255,43,214,0.18)' } },
   { id: 'buz', name: 'Buz', price: 450, deco: 'flakes',
-    c: { bg: '#e8f3fb', line: '#9ac0da', wall: '#b9d6ea', wallPassed: '#d3e5f2', wallMove: '#c9c2ec', edge: '#2a7fb8', edgeMove: '#6a4fc4', deco: 'rgba(120,170,210,0.6)', text: '#12324a', textDim: '#4f7591' } }
+    c: { bg: '#e8f3fb', line: '#9ac0da', wall: '#b9d6ea', wallPassed: '#d3e5f2', wallMove: '#c9c2ec', edge: '#2a7fb8', edgeMove: '#6a4fc4', deco: 'rgba(120,170,210,0.6)', text: '#12324a', textDim: '#4f7591' } },
+  { id: 'nebula', name: 'Nebula', price: null, deco: 'nebula', premiumBy: ['bopgate.harita.nebula', 'bopgate.destekci'],
+    c: { bg: '#0d0820', line: '#3a2560', wall: '#2a1748', wallPassed: '#1b1030', wallMove: '#3a1650', edge: '#ff7ad9', edgeMove: '#7af0ff', deco: 'rgba(255,170,240,0.4)' } }
 ];
 
 var CATALOG = { ball: BALLS, map: MAPS };
@@ -681,7 +705,16 @@ function findUpgrade(id) {
 function createProfile() {
   var upg = {};
   UPGRADES.forEach(function (u) { upg[u.id] = 0; });
-  return { coins: 0, owned: { ball: ['klasik'], map: ['gece'] }, equipped: { ball: 'klasik', map: 'gece' }, upg: upg };
+  return { coins: 0, owned: { ball: ['klasik'], map: ['gece'] }, equipped: { ball: 'klasik', map: 'gece' }, upg: upg,
+    ent: { noads: false, products: [] } };
+}
+
+function isPremium(item) { return !!(item && item.premiumBy); }
+// Gerçek parayla alınan ürünün hakkı kayıtta var mı (kurcalanmış kayıt premium ürünü sahiplenemesin)
+function premiumAllowed(ent, item) {
+  if (!isPremium(item)) return true;
+  for (var i = 0; i < item.premiumBy.length; i++) if (ent.products.indexOf(item.premiumBy[i]) >= 0) return true;
+  return false;
 }
 
 // Dışarıdan gelen (localStorage) veriyi doğrular; tanınmayan her şeyi atar.
@@ -690,10 +723,21 @@ function sanitize(raw) {
   if (!raw || typeof raw !== 'object') return p;
   var coins = Math.floor(Number(raw.coins));
   p.coins = isFinite(coins) && coins > 0 ? Math.min(coins, 999999) : 0;
+  var re = /^bopgate\.[a-z.]{3,40}$/;
+  var rawEnt = raw.ent && typeof raw.ent === 'object' ? raw.ent : {};
+  (Array.isArray(rawEnt.products) ? rawEnt.products : []).forEach(function (id) {
+    if (typeof id === 'string' && re.test(id) && p.ent.products.indexOf(id) < 0 && p.ent.products.length < 20) p.ent.products.push(id);
+  });
+  p.ent.noads = rawEnt.noads === true && p.ent.products.length > 0;
+  if (raw.ads && typeof raw.ads === 'object' && typeof raw.ads.day === 'string' && raw.ads.day.length <= 10) {
+    var x2 = Math.floor(Number(raw.ads.x2));
+    p.ads = { day: raw.ads.day, x2: isFinite(x2) && x2 > 0 ? Math.min(x2, 99) : 0 };
+  }
   ['ball', 'map'].forEach(function (kind) {
     var owned = raw.owned && Array.isArray(raw.owned[kind]) ? raw.owned[kind] : [];
     owned.forEach(function (id) {
-      if (find(kind, id) && p.owned[kind].indexOf(id) < 0) p.owned[kind].push(id);
+      var it = find(kind, id);
+      if (it && premiumAllowed(p.ent, it) && p.owned[kind].indexOf(id) < 0) p.owned[kind].push(id);
     });
     var eq = raw.equipped && raw.equipped[kind];
     if (eq && p.owned[kind].indexOf(eq) >= 0) p.equipped[kind] = eq;
@@ -722,11 +766,12 @@ function owns(p, kind, id) {
   return p.owned[kind].indexOf(id) >= 0;
 }
 
-// { ok, reason } — reason: 'yok' | 'zaten-var' | 'yetersiz'
+// { ok, reason } — reason: 'yok' | 'zaten-var' | 'premium' (yıldızla alınmaz) | 'yetersiz'
 function buy(p, kind, id) {
   var item = find(kind, id);
   if (!item) return { ok: false, reason: 'yok' };
   if (owns(p, kind, id)) return { ok: false, reason: 'zaten-var' };
+  if (isPremium(item)) return { ok: false, reason: 'premium' };
   if (p.coins < item.price) return { ok: false, reason: 'yetersiz' };
   p.coins -= item.price;
   p.owned[kind].push(id);
@@ -791,13 +836,162 @@ function equippedMap(p) { return find('map', p.equipped.map) || MAPS[0]; }
 var Shop = {
   STORAGE_KEY: STORAGE_KEY, CATALOG: CATALOG, find: find,
   createProfile: createProfile, sanitize: sanitize, load: load, save: save,
-  owns: owns, buy: buy, equip: equip, reward: reward, MILESTONE_BONUS: MILESTONE_BONUS,
+  owns: owns, buy: buy, equip: equip, isPremium: isPremium, reward: reward, MILESTONE_BONUS: MILESTONE_BONUS,
   equippedBall: equippedBall, equippedMap: equippedMap,
   UPGRADES: UPGRADES, findUpgrade: findUpgrade, buyUpgrade: buyUpgrade, upgradeValue: upgradeValue, mods: mods,
   REVIVE_BASE: REVIVE_BASE, REVIVE_MAX: REVIVE_MAX, reviveCost: reviveCost, canRevive: canRevive, payRevive: payRevive
 };
 if (typeof module !== 'undefined') module.exports = Shop;
 if (typeof window !== 'undefined') window.GameShop = Shop;
+})();
+
+</script>
+<script>
+// Sekme Gücü (Bopgate) — gerçek parayla satın alma ve ödüllü reklam (saf mantık + sağlayıcı sarmalayıcı)
+//
+// Ürünler tek seferliktir (Play'de "yönetilen, tüketilmeyen" ürün). Fiyatı Play Console belirler;
+// burada yalnız önerilen fiyat (suggest) ve ürünün verdiği haklar durur.
+// Haklar profilde tutulur: p.ent = { noads: bool, products: [ürün kimlikleri] }. Bir ürünün
+// hakkı bir kez uygulanır (yıldız hediyesi tekrar verilmez); geri yüklemede eksikler uygulanır.
+//
+// Sağlayıcı: Android paketinde window.BopgateNative (android-paket/bridge.js) gerçek Play Billing
+// ve AdMob'a bağlanır. Tarayıcıda yerel köprü yoktur: satın alma ve reklam kapalıdır (dürüstçe
+// "uygulamada" yazar). Testler ve elle deneme için sahte sağlayıcı (mockProvider) vardır;
+// tarayıcıda adres çubuğuna ?demo-odeme eklenirse o kullanılır (gerçek para yok).
+//
+// Ödüllü reklam yerleri: 'devam' (koşu başına 1 bedava devam) ve 'iki_kat' (koşunun yıldızını
+// ikiye katlar, günde en çok AD_X2_PER_DAY kez). Reklamsız hakkı olan oyuncu reklam izlemeden
+// aynı ödülü alır. Ara reklam ve banner yoktur.
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; dosya kendi kapsamında çalışır.
+(function () {
+
+var AD_X2_PER_DAY = 5;
+var PRODUCT_RE = /^bopgate\.[a-z.]{3,40}$/;
+
+var PRODUCTS = [
+  { id: 'bopgate.reklamsiz', name: 'Reklamsız', suggest: '₺49,99',
+    desc: 'Reklam izlemeden ödül: bedava devam ve ★ x2 anında', grants: { noads: true } },
+  { id: 'bopgate.destekci', name: 'Destekçi paketi', suggest: '₺149,99', best: true,
+    desc: 'Reklamsız + Alev topu + Nebula haritası + ★ 1000', grants: { noads: true, items: [['ball', 'alev'], ['map', 'nebula']], coins: 1000 } },
+  { id: 'bopgate.ozellik.paket', name: 'Güç paketi', suggest: '₺99,99',
+    desc: 'Bütün güçlendirmeler son basamakta', grants: { maxUpgrades: true } },
+  { id: 'bopgate.top.alev', name: 'Alev topu', suggest: '₺29,99',
+    desc: 'Yalnız satın alınabilen top', grants: { items: [['ball', 'alev']] } },
+  { id: 'bopgate.top.kristal', name: 'Kristal topu', suggest: '₺29,99',
+    desc: 'Yalnız satın alınabilen top', grants: { items: [['ball', 'kristal']] } },
+  { id: 'bopgate.harita.nebula', name: 'Nebula haritası', suggest: '₺39,99',
+    desc: 'Yalnız satın alınabilen harita, kendi müziğiyle', grants: { items: [['map', 'nebula']] } }
+];
+
+function product(id) {
+  for (var i = 0; i < PRODUCTS.length; i++) if (PRODUCTS[i].id === id) return PRODUCTS[i];
+  return null;
+}
+function ids() { return PRODUCTS.map(function (p) { return p.id; }); }
+
+function ent(p) {
+  if (!p.ent || typeof p.ent !== 'object') p.ent = { noads: false, products: [] };
+  if (!Array.isArray(p.ent.products)) p.ent.products = [];
+  return p.ent;
+}
+function owned(p, id) { return ent(p).products.indexOf(id) >= 0; }
+function hasNoAds(p) { return !!ent(p).noads; }
+
+// Bir ürünün haklarını profile uygular. Yeni uygulandıysa true; zaten varsa false (hediye tekrar yok).
+function grant(Shop, p, id) {
+  var pr = product(id);
+  if (!pr || owned(p, id)) return false;
+  var e = ent(p);
+  e.products.push(id);
+  var g = pr.grants;
+  if (g.noads) e.noads = true;
+  (g.items || []).forEach(function (it) {
+    if (p.owned[it[0]].indexOf(it[1]) < 0) p.owned[it[0]].push(it[1]);
+  });
+  if (g.coins) p.coins = Math.min(999999, p.coins + g.coins);
+  if (g.maxUpgrades) Shop.UPGRADES.forEach(function (u) { p.upg[u.id] = u.prices.length; });
+  return true;
+}
+
+// --- Ödüllü reklam günlük sayacı (profilde: p.ads = { day, x2 }) ---------------
+function adState(p, day) {
+  if (!p.ads || typeof p.ads !== 'object' || p.ads.day !== day) p.ads = { day: day, x2: 0 };
+  return p.ads;
+}
+function x2Left(p, day) { return Math.max(0, AD_X2_PER_DAY - adState(p, day).x2); }
+function useX2(p, day) {
+  var s = adState(p, day);
+  if (s.x2 >= AD_X2_PER_DAY) return false;
+  s.x2++;
+  return true;
+}
+
+// --- Sağlayıcılar --------------------------------------------------------------
+// call: köprüyü çağıran fonksiyon. Köprü anında fırlatsa da, reddetse de oyun yedek sonucu alır.
+function softly(call, fallback) {
+  try {
+    return Promise.resolve(call()).then(function (v) { return v == null ? fallback : v; }, function () { return fallback; });
+  } catch (e) {
+    return Promise.resolve(fallback);
+  }
+}
+
+// native: window.BopgateNative ya da null. Dönen nesne hiçbir zaman fırlatmaz.
+function provider(native) {
+  if (!native || !native.iap || !native.ads) {
+    return {
+      platform: 'web', canBuy: false, canAds: false,
+      products: function () { return Promise.resolve([]); },
+      buy: function (id) { return Promise.resolve({ ok: false, id: id, reason: 'yok' }); },
+      restore: function () { return Promise.resolve([]); },
+      rewarded: function () { return Promise.resolve({ rewarded: false }); }
+    };
+  }
+  return {
+    platform: native.platform || 'android', canBuy: true, canAds: true,
+    products: function (list) { return softly(function () { return native.iap.products(list || ids()); }, []); },
+    buy: function (id) { return softly(function () { return native.iap.buy(id); }, { ok: false, id: id, reason: 'hata' }); },
+    restore: function () { return softly(function () { return native.iap.restore(); }, []); },
+    rewarded: function (placement) { return softly(function () { return native.ads.rewarded(placement); }, { rewarded: false }); }
+  };
+}
+
+// Testler ve ?demo-odeme için: gerçek para ve reklam yok, her şey anında olur.
+// opts: { adResult: true|false, buyResult: true|false, owned: [ids] }
+function mockProvider(opts) {
+  opts = opts || {};
+  var calls = { buy: 0, ads: 0, restore: 0 };
+  var bought = (opts.owned || []).slice();
+  return {
+    platform: 'demo', canBuy: true, canAds: true, calls: calls,
+    products: function (list) {
+      return Promise.resolve((list || ids()).map(function (id) { var p = product(id); return { id: id, price: p ? p.suggest : '?' }; }));
+    },
+    buy: function (id) {
+      calls.buy++;
+      var ok = opts.buyResult !== false && !!product(id);
+      if (ok && bought.indexOf(id) < 0) bought.push(id);
+      return Promise.resolve(ok ? { ok: true, id: id } : { ok: false, id: id, reason: 'iptal' });
+    },
+    restore: function () { calls.restore++; return Promise.resolve(bought.slice()); },
+    rewarded: function () { calls.ads++; return Promise.resolve({ rewarded: opts.adResult !== false }); }
+  };
+}
+
+// Reklamsız hakkı varsa reklam gösterilmeden ödül verilir.
+function rewardedOrSkip(prov, p, placement) {
+  if (hasNoAds(p)) return Promise.resolve({ rewarded: true, skipped: true });
+  if (!prov.canAds) return Promise.resolve({ rewarded: false });
+  return prov.rewarded(placement);
+}
+
+var Monetize = {
+  PRODUCTS: PRODUCTS, PRODUCT_RE: PRODUCT_RE, AD_X2_PER_DAY: AD_X2_PER_DAY,
+  product: product, ids: ids, ent: ent, owned: owned, hasNoAds: hasNoAds, grant: grant,
+  x2Left: x2Left, useX2: useX2, provider: provider, mockProvider: mockProvider, rewardedOrSkip: rewardedOrSkip
+};
+if (typeof module !== 'undefined') module.exports = Monetize;
+if (typeof window !== 'undefined') window.GameMonetize = Monetize;
 })();
 
 </script>
@@ -1016,7 +1210,8 @@ var TUNES = {
   gunbatimi: { root: 60, scale: MAJOR, prog: [0, 4, 5, 3], lead: 'sine' },     // Do majör
   orman: { root: 62, scale: DORIAN, prog: [0, 3, 0, 4], lead: 'triangle' },    // Re dorian
   neon: { root: 55, scale: MINOR, prog: [0, 6, 5, 4], lead: 'square' },        // Sol minör
-  buz: { root: 64, scale: PENTA, prog: [0, 3, 4, 2], lead: 'sine' }            // Mi pentatonik
+  buz: { root: 64, scale: PENTA, prog: [0, 3, 4, 2], lead: 'sine' },           // Mi pentatonik
+  nebula: { root: 53, scale: DORIAN, prog: [0, 2, 5, 3], lead: 'sine' }         // Fa dorian (premium harita)
 };
 
 function tune(mapId) { return TUNES[mapId] || TUNES.gece; }
@@ -1288,11 +1483,38 @@ function drawBall(ctx, shape, r, color, opts) {
     ctx.closePath();
   } else if (shape === 'star') {
     starPath(ctx, 0, 0, r * 1.25);
+  } else if (shape === 'hex') {
+    for (var hi = 0; hi < 6; hi++) {
+      var ha = Math.PI / 6 + hi * Math.PI / 3;
+      if (hi === 0) ctx.moveTo(Math.cos(ha) * r * 1.1, Math.sin(ha) * r * 1.1); else ctx.lineTo(Math.cos(ha) * r * 1.1, Math.sin(ha) * r * 1.1);
+    }
+    ctx.closePath();
+  } else if (shape === 'flame') {
+    // Damla: altta yuvarlak gövde, üstte sivri alev ucu
+    ctx.arc(0, r * 0.2, r * 0.9, Math.PI * 0.05, Math.PI * 0.95);
+    ctx.lineTo(-r * 0.55, -r * 0.35);
+    ctx.lineTo(0, -r * 1.35);
+    ctx.lineTo(r * 0.55, -r * 0.35);
+    ctx.closePath();
   } else {
     ctx.arc(0, 0, r, 0, Math.PI * 2);
   }
   ctx.fill();
   noGlow(ctx);
+  if (shape === 'flame') {
+    // İç alev
+    ctx.fillStyle = mix(color, '#ffe08a', 0.7);
+    ctx.beginPath();
+    ctx.arc(0, r * 0.35, r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (shape === 'hex') {
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.55, -r * 0.95); ctx.lineTo(r * 0.55, r * 0.95);
+    ctx.moveTo(r * 0.55, -r * 0.95); ctx.lineTo(-r * 0.55, r * 0.95);
+    ctx.stroke();
+  }
   if (shape === 'ring') {
     ctx.strokeStyle = mix(color, '#ffffff', 0.25);
     ctx.lineWidth = 2;
@@ -1347,6 +1569,20 @@ function drawDeco(ctx, theme, dist, geo) {
     var off = (d * 0.5) % 40;
     for (x = -off; x < W0; x += 40) { ctx.beginPath(); ctx.moveTo(x, CEIL_Y); ctx.lineTo(x, FLOOR_Y); ctx.stroke(); }
     for (var y = CEIL_Y; y < FLOOR_Y; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W0, y); ctx.stroke(); }
+  } else if (theme.deco === 'nebula') {
+    // Yavaş kayan renkli bulutsular + yıldız tozu
+    var blobs = [['rgba(255,90,210,0.16)', 0, 0.3, 150], ['rgba(90,220,255,0.13)', 260, 0.55, 180], ['rgba(170,110,255,0.15)', 470, 0.2, 130]];
+    for (i = 0; i < blobs.length; i++) {
+      var bx = ((blobs[i][1] - d * 0.05) % (W0 + 300) + W0 + 300) % (W0 + 300) - 150;
+      var byy = CEIL_Y + (FLOOR_Y - CEIL_Y) * blobs[i][2];
+      ctx.fillStyle = rad(ctx, bx, byy, 0, blobs[i][3], [[0, blobs[i][0]], [1, 'rgba(0,0,0,0)']], blobs[i][0]);
+      ctx.beginPath(); ctx.arc(bx, byy, blobs[i][3], 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = col;
+    for (i = 0; i < 40; i++) {
+      x = ((i * 47 - d * 0.12) % W0 + W0) % W0;
+      ctx.fillRect(x, CEIL_Y + 6 + ((i * 89) % (FLOOR_Y - CEIL_Y - 12)), i % 5 === 0 ? 2.5 : 1.5, i % 5 === 0 ? 2.5 : 1.5);
+    }
   } else if (theme.deco === 'flakes') {
     for (i = 0; i < 26; i++) {
       x = ((i * 61 - d * 0.15) % W0 + W0) % W0;
@@ -1832,7 +2068,10 @@ function drawScreens(ctx, state, view, phase, theme, best, t) {
     else if (hasCoins) rows.push({ text: 'Cüzdan ★ ' + view.coins, font: font(700, 15), color: GOLD, h: 30 });
     rows = rows.concat(questLines(view));
     if (view.revive) {
-      rows.push({ text: '❤ Devam: aşağıdaki düğme (★ ' + view.revive.cost + ')' + (view.touch ? '' : ' · C'), font: font(800, 16), color: PINK, h: 34 });
+      var rv = view.revive;
+      var adWord = rv.noads ? 'bedava' : 'reklamla';
+      var how = rv.cost && rv.ad ? '★ ' + rv.cost + ' ya da ' + adWord : rv.cost ? '★ ' + rv.cost : adWord;
+      rows.push({ text: '❤ Devam: ' + how + ' · aşağıda' + (view.touch || !rv.cost ? '' : ' · C'), font: font(800, 16), color: PINK, h: 34 });
     }
     rows.push(view.canRestart
       ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': tekrar oyna', font: font(800, 17), color: tc.edge, glow: tc.edge, h: 38 }
@@ -1910,6 +2149,30 @@ function bootstrap() {
   var daily = Quests && profile ? Quests.load(window.localStorage) : null;
   var questDone = [];
   var notice = '';
+  // Gerçek para ve ödüllü reklam (monetize.js). Android'de window.BopgateNative, tarayıcıda kapalı;
+  // ?demo-odeme ile sahte sağlayıcı (gerçek para yok). Testler window.BopgateTestProvider verebilir.
+  var Mon = window.GameMonetize || null;
+  var prov = null;
+  var prices = {};
+  if (Mon && profile) {
+    var demo = false;
+    try { demo = /[?&]demo-odeme/.test(window.location.search || ''); } catch (e) {}
+    prov = window.BopgateTestProvider || (window.BopgateNative ? Mon.provider(window.BopgateNative)
+      : demo ? Mon.mockProvider() : Mon.provider(null));
+    if (prov.canBuy) {
+      prov.products(Mon.ids()).then(function (list) {
+        (list || []).forEach(function (it) { if (it && it.id) prices[it.id] = it.price; });
+        if (shopOpen) renderShop();
+      });
+      // Yeniden kurulumda / başka cihazda alınmış ürünler: eksik hakları uygula
+      prov.restore().then(function (list) {
+        var changed = false;
+        (list || []).forEach(function (id) { if (Mon.grant(Shop, profile, id)) changed = true; });
+        if (changed) { Shop.save(window.localStorage, profile); if (shopOpen) renderShop(); }
+      });
+    }
+  }
+  function todayKey() { return Quests ? Quests.dayKey(new Date()) : ''; }
   function checkDay() {
     if (!daily) return;
     var lr = Quests.ensureDay(daily, Quests.dayKey(new Date()));
@@ -2080,6 +2343,10 @@ function bootstrap() {
     settle(true); // devam teklifi açıkken yeniden başlanırsa ödül yine de yazılsın
     earned = 0;
     settled = false;
+    runReward = 0;
+    doubled = false;
+    adRevived = false;
+    adBusy = false;
     questDone = [];
     notice = '';
     checkDay();
@@ -2164,12 +2431,23 @@ function bootstrap() {
   // Ölünce devam hakkı: yıldız yetiyorsa REVIVE_MS boyunca ❤ Devam düğmesi görünür.
   // Teklif açıkken ödül yazılmaz (koşu sürebilir); süre dolunca ya da yeniden başlayınca yazılır.
   var devamBtn = document.getElementById('devamBtn');
+  var reklamDevamBtn = document.getElementById('reklamDevamBtn');
+  var ikiKatBtn = document.getElementById('ikiKatBtn');
+  var runReward = 0;     // koşunun kendi ödülü (görevler hariç): ★ x2 bunu bir kez daha verir
+  var doubled = false;
+  var adRevived = false; // reklamla bedava devam: koşu başına 1
+  var adBusy = false;    // reklam gösterilirken teklif kapanmasın, ödül yazılmasın
+  function adsUsable() { return !!(Mon && prov && (Mon.hasNoAds(profile) || prov.canAds)); }
+  function starReviveOk() { return Shop.canRevive(profile, state.revives); }
+  function adReviveOk() { return adsUsable() && !adRevived && (state.revives || 0) < Shop.REVIVE_MAX; }
   function reviveOpen() {
-    return !!profile && !settled && state.status === 'over' && Shop.canRevive(profile, state.revives) &&
-      nowMs() - overAt < REVIVE_MS;
+    if (!profile || settled || state.status !== 'over') return false;
+    if (adBusy) return true;
+    return (starReviveOk() || adReviveOk()) && nowMs() - overAt < REVIVE_MS;
   }
-  function doRevive() {
-    if (!reviveOpen() || !Shop.payRevive(profile, state.revives)) return;
+  function doRevive(free) {
+    if (!reviveOpen()) return false;
+    if (free !== true && !Shop.payRevive(profile, state.revives)) return false;
     Shop.save(window.localStorage, profile);
     window.GameLogic.revive(state);
     var left = Shop.REVIVE_MAX - state.revives;
@@ -2179,13 +2457,46 @@ function bootstrap() {
     input.action = false;
     acc = 0;
     phase = 'playing';
+    return true;
   }
-  if (devamBtn) devamBtn.addEventListener('click', doRevive);
+  if (devamBtn) devamBtn.addEventListener('click', function () { doRevive(false); });
+  function adRevive() {
+    if (adBusy || !reviveOpen() || !adReviveOk()) return;
+    adBusy = true;
+    Mon.rewardedOrSkip(prov, profile, 'devam').then(function (r) {
+      adBusy = false;
+      // Reklam uzun sürebilir (teklif süresinden uzun): izlendiyse teklif süresi tazelenir.
+      // Hak ancak devam gerçekten olunca harcanır.
+      if (r && r.rewarded) { overAt = nowMs(); if (doRevive(true)) adRevived = true; }
+      else overAt = Math.max(overAt, nowMs() - REVIVE_MS + 2000); // izlenmediyse 2 sn daha süre
+    });
+  }
+  if (reklamDevamBtn) reklamDevamBtn.addEventListener('click', adRevive);
+  function canDouble() {
+    return settled && !doubled && !adBusy && runReward > 0 && adsUsable() && Mon.x2Left(profile, todayKey()) > 0 &&
+      (state.status === 'over' || state.status === 'won');
+  }
+  function doubleStars() {
+    if (!canDouble()) return;
+    adBusy = true;
+    Mon.rewardedOrSkip(prov, profile, 'iki_kat').then(function (r) {
+      adBusy = false;
+      if (!r || !r.rewarded || doubled || !Mon.useX2(profile, todayKey())) return;
+      doubled = true;
+      profile.coins += runReward;
+      earned += runReward;
+      Shop.save(window.localStorage, profile);
+      sfx('quest');
+      burst(C.BALL_X, state.y, 30, '#ffd166', 300);
+    });
+  }
+  if (ikiKatBtn) ikiKatBtn.addEventListener('click', doubleStars);
   function settle(force) {
     if (!profile || settled || (state.status !== 'over' && state.status !== 'won')) return;
     if (!force && reviveOpen()) return;
     settled = true;
     earned = Shop.reward(state);
+    runReward = earned;
     if (daily) {
       questDone = Quests.applyRun(daily, state);
       for (var qi = 0; qi < questDone.length; qi++) earned += questDone[qi].reward;
@@ -2292,6 +2603,7 @@ function bootstrap() {
     list.innerHTML = '';
     if (shopTab === 'quests') { if (daily) renderQuests(list); return; }
     if (shopTab === 'upg') { renderUpgrades(list); return; }
+    if (shopTab === 'premium') { renderPremium(list); return; }
     Shop.CATALOG[shopTab].forEach(function (item) {
       var row = document.createElement('div');
       row.className = 'urun';
@@ -2303,10 +2615,14 @@ function bootstrap() {
       var b = document.createElement('button');
       var owned = Shop.owns(profile, shopTab, item.id);
       var on = profile.equipped[shopTab] === item.id;
+      var prem = Shop.isPremium(item);
+      if (prem) row.className += ' premium';
       if (on) { b.textContent = 'Kuşanıldı'; b.disabled = true; b.className = 'kusanildi'; }
       else if (owned) { b.textContent = 'Kuşan'; }
+      else if (prem) { b.textContent = '💎 ' + priceText(item.premiumBy[0]); b.disabled = !prov || !prov.canBuy; b.className = 'para'; }
       else { b.textContent = '★ ' + item.price; b.disabled = profile.coins < item.price; b.className = 'al'; }
       b.addEventListener('click', function () {
+        if (prem && !Shop.owns(profile, shopTab, item.id)) { buyProduct(item.premiumBy[0], [shopTab, item.id]); return; }
         if (Shop.owns(profile, shopTab, item.id)) Shop.equip(profile, shopTab, item.id);
         else if (!Shop.buy(profile, shopTab, item.id).ok) return;
         Shop.save(window.localStorage, profile);
@@ -2316,6 +2632,68 @@ function bootstrap() {
       row.appendChild(b);
       list.appendChild(row);
     });
+  }
+  function priceText(id) {
+    if (!prov || !prov.canBuy) return 'Uygulamada';
+    return prices[id] || (Mon.product(id) ? Mon.product(id).suggest : '?');
+  }
+  // equipAfter: [tür, kimlik] — tek ürün alınınca hemen kuşanılsın
+  var buying = false;
+  function buyProduct(id, equipAfter) {
+    if (!prov || !prov.canBuy || buying || Mon.owned(profile, id)) return;
+    buying = true;
+    prov.buy(id).then(function (r) {
+      buying = false;
+      if (!r || !r.ok) return;
+      Mon.grant(Shop, profile, id);
+      if (equipAfter) Shop.equip(profile, equipAfter[0], equipAfter[1]);
+      Shop.save(window.localStorage, profile);
+      sfx('buy');
+      renderShop();
+    });
+  }
+  function renderPremium(list) {
+    Mon.PRODUCTS.forEach(function (pr) {
+      var row = document.createElement('div');
+      row.className = 'urun paket' + (pr.best ? ' en-iyi' : '');
+      var icon = document.createElement('span');
+      icon.className = 'paket-ikon';
+      icon.textContent = pr.grants.noads ? (pr.grants.items ? '👑' : '🚫') : pr.grants.maxUpgrades ? '⚡' : '💎';
+      var info = document.createElement('div');
+      var name = document.createElement('span');
+      name.className = 'ad';
+      name.textContent = pr.name + (pr.best ? '  · en iyi' : '');
+      var d = document.createElement('span');
+      d.className = 'etki';
+      d.textContent = pr.desc;
+      info.appendChild(name); info.appendChild(d);
+      var b = document.createElement('button');
+      if (Mon.owned(profile, pr.id)) { b.textContent = 'Sahipsin'; b.disabled = true; b.className = 'kusanildi'; }
+      else { b.textContent = priceText(pr.id); b.disabled = !prov || !prov.canBuy; b.className = 'para'; }
+      b.addEventListener('click', function () { buyProduct(pr.id, null); });
+      row.appendChild(icon); row.appendChild(info); row.appendChild(b);
+      list.appendChild(row);
+    });
+    var foot = document.createElement('p');
+    foot.className = 'not';
+    foot.textContent = prov && prov.canBuy
+      ? 'Tek seferlik satın alımlar; telefon değiştirince geri yüklenir. Yıldız ve görevler gerçek paradan bağımsızdır.'
+      : 'Satın alma yalnız Android uygulamasında (Google Play). Tarayıcı sürümünde gerçek para yok.';
+    list.appendChild(foot);
+    if (prov && prov.canBuy) {
+      var rb = document.createElement('button');
+      rb.className = 'geri-yukle';
+      rb.textContent = 'Satın alımları geri yükle';
+      rb.addEventListener('click', function () {
+        prov.restore().then(function (ids) {
+          var changed = false;
+          (ids || []).forEach(function (id) { if (Mon.grant(Shop, profile, id)) changed = true; });
+          if (changed) Shop.save(window.localStorage, profile);
+          renderShop();
+        });
+      });
+      list.appendChild(rb);
+    }
   }
   function openShop(tab) {
     if (!shopEl || phase === 'playing') return;
@@ -2464,9 +2842,19 @@ function bootstrap() {
     musicTick();
     settle();
     var rOpen = reviveOpen();
+    var secs = Math.max(0, Math.ceil((REVIVE_MS - (nowMs() - overAt)) / 1000));
     if (devamBtn) {
-      devamBtn.hidden = !rOpen;
-      if (rOpen) devamBtn.textContent = '❤ Devam  ★ ' + Shop.reviveCost(state.revives) + '  (' + Math.ceil((REVIVE_MS - (nowMs() - overAt)) / 1000) + ')';
+      devamBtn.hidden = !rOpen || adBusy || !starReviveOk();
+      if (!devamBtn.hidden) devamBtn.textContent = '❤ ★ ' + Shop.reviveCost(state.revives) + ' · ' + secs;
+    }
+    if (reklamDevamBtn) {
+      reklamDevamBtn.hidden = !rOpen || adBusy || !adReviveOk();
+      if (!reklamDevamBtn.hidden) reklamDevamBtn.textContent = (Mon.hasNoAds(profile) ? '❤ Bedava' : '📺 Devam') + ' · ' + secs;
+    }
+    var dbl = !rOpen && canDouble() && !shopOpen;
+    if (ikiKatBtn) {
+      ikiKatBtn.hidden = !dbl;
+      if (dbl) ikiKatBtn.textContent = (Mon.hasNoAds(profile) ? '★ x2' : '📺 ★ x2') + '  +' + runReward;
     }
     var showBtns = !rOpen && !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
     if (shopBtn) shopBtn.hidden = !showBtns;
@@ -2488,7 +2876,7 @@ function bootstrap() {
       earned: phase === 'over' || phase === 'won' ? earned : 0,
       questDone: phase === 'over' || phase === 'won' ? questDone : [],
       notice: phase === 'ready' ? notice : '',
-      revive: rOpen ? { cost: Shop.reviveCost(state.revives), touch: touch } : null
+      revive: rOpen ? { cost: starReviveOk() ? Shop.reviveCost(state.revives) : 0, ad: adReviveOk(), noads: !!(Mon && Mon.hasNoAds(profile)), touch: touch } : null
     });
     window.requestAnimationFrame(frame);
   }

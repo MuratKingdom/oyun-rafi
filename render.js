@@ -164,11 +164,38 @@ function drawBall(ctx, shape, r, color, opts) {
     ctx.closePath();
   } else if (shape === 'star') {
     starPath(ctx, 0, 0, r * 1.25);
+  } else if (shape === 'hex') {
+    for (var hi = 0; hi < 6; hi++) {
+      var ha = Math.PI / 6 + hi * Math.PI / 3;
+      if (hi === 0) ctx.moveTo(Math.cos(ha) * r * 1.1, Math.sin(ha) * r * 1.1); else ctx.lineTo(Math.cos(ha) * r * 1.1, Math.sin(ha) * r * 1.1);
+    }
+    ctx.closePath();
+  } else if (shape === 'flame') {
+    // Damla: altta yuvarlak gövde, üstte sivri alev ucu
+    ctx.arc(0, r * 0.2, r * 0.9, Math.PI * 0.05, Math.PI * 0.95);
+    ctx.lineTo(-r * 0.55, -r * 0.35);
+    ctx.lineTo(0, -r * 1.35);
+    ctx.lineTo(r * 0.55, -r * 0.35);
+    ctx.closePath();
   } else {
     ctx.arc(0, 0, r, 0, Math.PI * 2);
   }
   ctx.fill();
   noGlow(ctx);
+  if (shape === 'flame') {
+    // İç alev
+    ctx.fillStyle = mix(color, '#ffe08a', 0.7);
+    ctx.beginPath();
+    ctx.arc(0, r * 0.35, r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (shape === 'hex') {
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.55, -r * 0.95); ctx.lineTo(r * 0.55, r * 0.95);
+    ctx.moveTo(r * 0.55, -r * 0.95); ctx.lineTo(-r * 0.55, r * 0.95);
+    ctx.stroke();
+  }
   if (shape === 'ring') {
     ctx.strokeStyle = mix(color, '#ffffff', 0.25);
     ctx.lineWidth = 2;
@@ -223,6 +250,20 @@ function drawDeco(ctx, theme, dist, geo) {
     var off = (d * 0.5) % 40;
     for (x = -off; x < W0; x += 40) { ctx.beginPath(); ctx.moveTo(x, CEIL_Y); ctx.lineTo(x, FLOOR_Y); ctx.stroke(); }
     for (var y = CEIL_Y; y < FLOOR_Y; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W0, y); ctx.stroke(); }
+  } else if (theme.deco === 'nebula') {
+    // Yavaş kayan renkli bulutsular + yıldız tozu
+    var blobs = [['rgba(255,90,210,0.16)', 0, 0.3, 150], ['rgba(90,220,255,0.13)', 260, 0.55, 180], ['rgba(170,110,255,0.15)', 470, 0.2, 130]];
+    for (i = 0; i < blobs.length; i++) {
+      var bx = ((blobs[i][1] - d * 0.05) % (W0 + 300) + W0 + 300) % (W0 + 300) - 150;
+      var byy = CEIL_Y + (FLOOR_Y - CEIL_Y) * blobs[i][2];
+      ctx.fillStyle = rad(ctx, bx, byy, 0, blobs[i][3], [[0, blobs[i][0]], [1, 'rgba(0,0,0,0)']], blobs[i][0]);
+      ctx.beginPath(); ctx.arc(bx, byy, blobs[i][3], 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = col;
+    for (i = 0; i < 40; i++) {
+      x = ((i * 47 - d * 0.12) % W0 + W0) % W0;
+      ctx.fillRect(x, CEIL_Y + 6 + ((i * 89) % (FLOOR_Y - CEIL_Y - 12)), i % 5 === 0 ? 2.5 : 1.5, i % 5 === 0 ? 2.5 : 1.5);
+    }
   } else if (theme.deco === 'flakes') {
     for (i = 0; i < 26; i++) {
       x = ((i * 61 - d * 0.15) % W0 + W0) % W0;
@@ -708,7 +749,10 @@ function drawScreens(ctx, state, view, phase, theme, best, t) {
     else if (hasCoins) rows.push({ text: 'Cüzdan ★ ' + view.coins, font: font(700, 15), color: GOLD, h: 30 });
     rows = rows.concat(questLines(view));
     if (view.revive) {
-      rows.push({ text: '❤ Devam: aşağıdaki düğme (★ ' + view.revive.cost + ')' + (view.touch ? '' : ' · C'), font: font(800, 16), color: PINK, h: 34 });
+      var rv = view.revive;
+      var adWord = rv.noads ? 'bedava' : 'reklamla';
+      var how = rv.cost && rv.ad ? '★ ' + rv.cost + ' ya da ' + adWord : rv.cost ? '★ ' + rv.cost : adWord;
+      rows.push({ text: '❤ Devam: ' + how + ' · aşağıda' + (view.touch || !rv.cost ? '' : ' · C'), font: font(800, 16), color: PINK, h: 34 });
     }
     rows.push(view.canRestart
       ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': tekrar oyna', font: font(800, 17), color: tc.edge, glow: tc.edge, h: 38 }
