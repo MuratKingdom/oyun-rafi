@@ -449,7 +449,7 @@ function drawDeco(ctx, theme, dist, geo, t) {
     }
   } else {
     // Gece: hilal ay, iki kat yıldız (uzak küçük, yakın büyük) ve pırıltı
-    var mx = wrapX(420, 0.02, d, W0 + 120) - 60, my = CEIL_Y + Math.min(90, span * 0.16);
+    var mx = wrapX(480, 0.02, d, W0 + 120) - 60, my = CEIL_Y + Math.min(90, span * 0.16);
     // Gerçek hilal: iç daire kırpılarak oyulur (gökyüzü gradyanı görünür kalır)
     glow(ctx, '#cfe3ff', 16);
     ctx.fillStyle = 'rgba(225,236,255,0.85)';

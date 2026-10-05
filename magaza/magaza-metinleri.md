@@ -21,7 +21,8 @@ Hold to rise. Release to fall. Slip through the gate.
 Bopgate is a one-touch neon arcade game. Your ball bounces on its own — you only decide how high. Hold anywhere on the screen to rise, let go to drop, and thread each glowing gate before the walls close in.
 
 EASY TO LEARN, HARD TO PUT DOWN
-• One finger, no tutorial needed
+• One finger: your first gates open wide and the game shows you when to hold and when to let go
+• Easy mode for relaxed play: slower world, wider gates, its own best score
 • Endless mode: every 10 levels is a milestone, and the challenge slowly climbs
 • New surprises unlock as you go: stars that become shields, moving gates, breathing gates, double walls, floor spikes and power-ups that slow time or shrink your ball
 
@@ -31,6 +32,8 @@ MAKE IT YOURS
 • Permanent boosts: shield capacity, starting shield, longer power-ups, star magnet
 
 EVERY DAY, SOMETHING NEW
+• Daily challenge: everyone gets the same course today — race the ghost of your best run
+• Hit a gate dead center to chain PERFECT combos
 • 3 daily quests and a login streak
 • Global leaderboard and cloud save with Google Play Games
 
@@ -43,7 +46,7 @@ Plays offline. Available in English and Turkish.
 ```
 
 **What's new (first release):**
-`First release: endless neon gates, shop, daily quests, leaderboard and cloud save.`
+`First release: endless neon gates, daily challenge with ghost replay, easy mode, shop, daily quests, leaderboard and cloud save.`
 
 ---
 
@@ -62,7 +65,8 @@ Basılı tut, yüksel. Bırak, düş. Kapıdan geç.
 Bopgate tek dokunuşla oynanan bir neon arcade oyunu. Top kendiliğinden zıplar; sen yalnız ne kadar yükseleceğine karar verirsin. Ekranın herhangi bir yerine basılı tutarak yüksel, bırakarak alçal ve duvarlar yaklaşırken her parlayan kapıdan geç.
 
 ÖĞRENMESİ KOLAY, BIRAKMASI ZOR
-• Tek parmak, öğretici gerekmez
+• Tek parmak: ilk kapılar geniş açılır, oyun ne zaman basılı tutup ne zaman bırakacağını gösterir
+• Rahat oynamak isteyene kolay mod: yavaş dünya, geniş kapılar, ayrı rekor
 • Sonsuz mod: her 10 bölüm bir eşik, zorluk yavaş yavaş artar
 • Bölüm ilerledikçe yenileri açılır: kalkana dönüşen yıldızlar, hareketli kapılar, daralıp genişleyen kapılar, çift duvarlar, zemin dikenleri, zamanı yavaşlatan ve topu küçülten güçler
 
@@ -72,6 +76,8 @@ SENİN TARZIN
 • Kalıcı güçlendirmeler: kalkan kapasitesi, başlangıç kalkanı, uzun güçler, yıldız mıknatısı
 
 HER GÜN YENİ BİR ŞEY
+• Günlük meydan okuma: bugün herkes aynı parkurda — en iyi koşunun hayaletiyle yarış
+• Kapının tam ortasından geç, MÜKEMMEL serisi yap
 • Günde 3 görev ve giriş serisi
 • Google Play Games ile liderlik tablosu ve bulut kayıt
 
@@ -84,7 +90,7 @@ ADİL TASARIM
 ```
 
 **Yenilikler (ilk sürüm):**
-`İlk sürüm: sonsuz neon kapılar, mağaza, günlük görevler, liderlik tablosu ve bulut kayıt.`
+`İlk sürüm: sonsuz neon kapılar, hayaletli günlük meydan okuma, kolay mod, mağaza, günlük görevler, liderlik tablosu ve bulut kayıt.`
 
 ---
 
@@ -94,8 +100,8 @@ ADİL TASARIM
 |---|---|---|
 | Uygulama simgesi | `android-paket/kaynak/ikon-512.png` | 512×512 |
 | Öne çıkan görsel | `android-paket/kaynak/tanitim-1024x500.png` | 1024×500 |
-| Telefon ekran görüntüleri (EN) | `magaza/ekran/en-1…5-*.png` | 1080×1920 |
-| Telefon ekran görüntüleri (TR) | `magaza/ekran/tr-1…5-*.png` | 1080×1920 |
+| Telefon ekran görüntüleri (EN) | `magaza/ekran/en-1…6-*.png` | 1080×1920 |
+| Telefon ekran görüntüleri (TR) | `magaza/ekran/tr-1…6-*.png` | 1080×1920 |
 
 Not: öne çıkan görseldeki alt yazı Türkçe ("Bas · sek · kapıdan geç"); İngilizce mağaza için ayrı bir
 öne çıkan görsel gerekirse `android-paket/ikon-uret.js` İngilizce metinle yeniden çalıştırılmalı.
