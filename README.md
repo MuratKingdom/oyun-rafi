@@ -94,7 +94,8 @@ diken çarpmasını da yutar. Etkin güçler ve kalan süreleri zeminin altında
 
 ## Mağaza (2 Ekim 2026)
 Başlangıç ve oyun sonu ekranındaki **🛒 Mağaza** düğmesiyle açılır. Para birimi **yıldız**dır:
-oyunda topladığın yıldızlar + her 10 bölümlük eşik için 5 + günlük görev ve giriş ödülleri. Gerçek para yok.
+oyunda topladığın yıldızlar + her 10 bölümlük eşik için 5 + günlük görev ve giriş ödülleri. Yıldız tek başına
+satılmaz; yalnız Destekçi paketi hediye olarak ★ 1000 içerir (bkz. Para kazanma).
 
 | Top | Fiyat | | Harita | Fiyat |
 |---|---|---|---|---|
@@ -161,6 +162,60 @@ Açık renkli haritada (Buz) ışıma kapalıdır. Gradyan/gölge desteklemeyen 
 düşer (T22'deki sahte bağlam bu yolu, T5b gradyanlı yolu sınar).
 Bilinen risk: ışıma (`shadowBlur`) eski/zayıf telefonlarda kare hızını düşürebilir; gerçek cihazda
 ölçülmedi.
+
+## Para kazanma: satın alma ve ödüllü reklam (4 Ekim 2026)
+`monetize.js` ürün kataloğunu, hakları ve sağlayıcıyı tutar. Tüm ürünler **tek seferlik**
+(Play'de "yönetilen, tüketilmeyen"); fiyatı Play Console belirler, aşağıdakiler öneridir:
+
+| Ürün kimliği (Play Console) | Ad | Verdiği | Önerilen |
+|---|---|---|---|
+| `bopgate.reklamsiz` | Reklamsız | Reklam izlemeden ödül (bedava devam, ★ x2 anında) | ₺49,99 |
+| `bopgate.destekci` | Destekçi paketi | Reklamsız + Alev topu + Nebula haritası + ★ 1000 | ₺149,99 |
+| `bopgate.ozellik.paket` | Güç paketi | Bütün güçlendirmeler son basamakta | ₺99,99 |
+| `bopgate.top.alev` | Alev topu | Yalnız parayla alınan top (alev şekli) | ₺29,99 |
+| `bopgate.top.kristal` | Kristal topu | Yalnız parayla alınan top (altıgen kristal) | ₺29,99 |
+| `bopgate.harita.nebula` | Nebula haritası | Yalnız parayla alınan harita, kendi müziğiyle | ₺39,99 |
+
+- **Ödüllü reklam** (ara reklam ve banner yok): ölünce **📺 Devam** (koşu başına 1, yıldız harcamaz)
+  ve oyun sonunda **📺 ★ x2** (koşunun yıldızını bir kez daha verir; görev ödülleri hariç; günde en
+  çok 5). Reklamsız hakkı olan oyuncu aynı ödülü reklamsız alır ("❤ Bedava", "★ x2").
+- Reklam uzun sürse de (teklif süresi 5 sn) izlenince devam hakkı geçerli kalır (T5k).
+- Premium top/harita yıldızla alınamaz; mağazanın **💎** sekmesinde ve kendi sekmelerinde fiyatla
+  görünür. "Satın alımları geri yükle" düğmesi ve açılışta otomatik geri yükleme var.
+- **Sağlayıcı:** Android paketinde `window.BopgateNative` (Play Billing + AdMob, `android-paket/`).
+  **Tarayıcıda gerçek para ve reklam yok**: düğmeler "Uygulamada" yazar ve kapalıdır. Elle denemek
+  için adrese `?demo-odeme` eklenir (sahte sağlayıcı, her şey anında, para yok).
+- Kayıt güvenliği: haklar profilde (`ent`); kurcalanmış kayıt premium ürünü ya da reklamsızı
+  sahiplenemez (T37). Köprü hata verse ya da anında fırlatsa da oyun bozulmaz (T38).
+- Bilinen sınır: gerçek doğrulama (sunucu tarafı satın alma doğrulaması) yok; hak cihazda tutulur ve
+  Play'den geri yüklenir.
+
+## Dil: Türkçe / İngilizce (4 Ekim 2026)
+`i18n.js`: kaynak dil Türkçe; kod metni `L('Türkçe metin', { parametre })` ile gösterir, İngilizce
+seçiliyse `EN` sözlüğünden karşılığı gelir. Dil ilk açılışta cihaz dilinden seçilir (Türkçe değilse
+İngilizce); alttaki **TR/EN** düğmesi değiştirir ve tercihi saklar (`bopgate-dil`). Saf modüller
+(`shop.js`, `quests.js`) metinlerini aynı yoldan çevirir; Node testlerinde i18n yüklü değilse Türkçe kalır.
+T39 sözlüğün ürün/görev/güçlendirme/ölüm metinlerini eksiksiz kapsadığını ve parametrelerin iki dilde
+aynı olduğunu denetler; eksik çeviri `GameI18n.missing`'de birikir (tarayıcıda İngilizce tam turda boş çıktı).
+
+## Çevrimiçi: liderlik tablosu ve bulut kayıt (4 Ekim 2026)
+**Sunucu yok.** Yalnız Android paketinde, Google'ın ücretsiz Play Games Services altyapısı kullanılır
+(köprü: `window.BopgateNative.games`, `android-paket/bridge.js`). Tarayıcı sürümünde çevrimiçi yoktur.
+- **🏆 Liderlik tablosu:** alt çubukta (yalnız uygulamada görünür); rekor kırılınca skor gönderilir.
+  Play Console'da bir liderlik tablosu açılıp kimliği `bridge.js` → `YAPILANDIRMA`'ya yazılmalı.
+- **Bulut kayıt (`cloud.js`):** açılışta Play Games kayıtlı oyunu yüklenir ve bu cihazınkiyle
+  birleştirilir: görünümler ve satın alma hakları birleşimi, güçlendirme basamakları ve rekor en büyüğü,
+  cüzdan en büyüğü (iki cihazdaki yıldız toplanmaz, çift sayım olmasın), kuşanılan görünüm bu cihazınki.
+  Koşu sonunda, satın almadan sonra ve mağaza kapanınca buluta yazılır. Bulut verisi de kayıt
+  doğrulamasından geçer; kurcalanmış bulut premium ürün ya da reklamsız veremez (T40).
+- Köprü hata verse ya da anında fırlatsa da oyun sürer (T5l). Gerçek cihazda denenmedi.
+
+## Play Store hazırlığı (4 Ekim 2026)
+`magaza/` klasörü: mağaza metinleri (EN/TR, `magaza-metinleri.md`), gizlilik politikası (`gizlilik.html`,
+EN+TR; yayından önce `ILETISIM_EPOSTA` doldurulmalı), Play Console form cevapları (`play-formlari.md`:
+içerik derecelendirme, hedef kitle, veri güvenliği, ürün listesi, yayın sırası) ve 1080×1920 ekran görüntüleri
+(`ekran/`, TR ve EN 5'er). Görüntüler gerçek oyun kodundan üretilir:
+`PLAYWRIGHT=… CHROMIUM=… node magaza/ekran-goruntusu-uret.js`.
 
 ## NE ÇALIŞIYOR
 - Zıplama fiziği, basılı-tutma ile yükseklik kontrolü, kapı/duvar çarpışması ve kayıp sebebi gösterimi (kanıt: T1, T2, T3, T5c, tarayıcı)

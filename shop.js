@@ -9,6 +9,19 @@
 // window.Game* ve module.exports çıkar.
 (function () {
 
+// Dil: i18n.js yüklüyse çevirir, değilse Türkçe metni parametreleriyle doldurur
+function tx(s, p) {
+  var I = typeof window !== 'undefined' && window.GameI18n;
+  if (I) return I.L(s, p);
+  return String(s).replace(/\{(\w+)\}/g, function (m, k) { return p && p[k] != null ? String(p[k]) : m; });
+}
+
+// Ondalık ayırıcı dile göre: Türkçede virgül, İngilizcede nokta
+function decimal(v) {
+  var I = typeof window !== 'undefined' && window.GameI18n;
+  return I && I.getLang() === 'en' ? String(v) : String(v).replace('.', ',');
+}
+
 var STORAGE_KEY = 'sekmeguc-profil';
 
 // Top görünümleri. shape: circle | square | diamond | star | ring
@@ -19,7 +32,10 @@ var BALLS = [
   { id: 'kup', name: 'Küp', price: 150, shape: 'square', color: '#f2f2f2' },
   { id: 'elmas', name: 'Elmas', price: 250, shape: 'diamond', color: '#7fe3ff' },
   { id: 'yildiz', name: 'Yıldız', price: 400, shape: 'star', color: '#ff8ee8' },
-  { id: 'gezegen', name: 'Gezegen', price: 600, shape: 'ring', color: '#c49bff' }
+  { id: 'gezegen', name: 'Gezegen', price: 600, shape: 'ring', color: '#c49bff' },
+  // Yalnız gerçek parayla (monetize.js): yıldızla alınamaz; premiumBy = bu hakkı veren ürünler
+  { id: 'alev', name: 'Alev', price: null, shape: 'flame', color: '#ff6b2c', premiumBy: ['bopgate.top.alev', 'bopgate.destekci'] },
+  { id: 'kristal', name: 'Kristal', price: null, shape: 'hex', color: '#9ef0ff', premiumBy: ['bopgate.top.kristal'] }
 ];
 
 // Harita temaları. deco: arka plan süsü (dots | sun | trees | grid | flakes)
@@ -33,7 +49,9 @@ var MAPS = [
   { id: 'neon', name: 'Neon', price: 350, deco: 'grid',
     c: { bg: '#07050f', line: '#ff2bd6', wall: '#1a0f33', wallPassed: '#120a24', wallMove: '#2a0f3a', edge: '#2bf0ff', edgeMove: '#ff2bd6', deco: 'rgba(255,43,214,0.18)' } },
   { id: 'buz', name: 'Buz', price: 450, deco: 'flakes',
-    c: { bg: '#e8f3fb', line: '#9ac0da', wall: '#b9d6ea', wallPassed: '#d3e5f2', wallMove: '#c9c2ec', edge: '#2a7fb8', edgeMove: '#6a4fc4', deco: 'rgba(120,170,210,0.6)', text: '#12324a', textDim: '#4f7591' } }
+    c: { bg: '#e8f3fb', line: '#9ac0da', wall: '#b9d6ea', wallPassed: '#d3e5f2', wallMove: '#c9c2ec', edge: '#2a7fb8', edgeMove: '#6a4fc4', deco: 'rgba(120,170,210,0.6)', text: '#12324a', textDim: '#4f7591' } },
+  { id: 'nebula', name: 'Nebula', price: null, deco: 'nebula', premiumBy: ['bopgate.harita.nebula', 'bopgate.destekci'],
+    c: { bg: '#0d0820', line: '#3a2560', wall: '#2a1748', wallPassed: '#1b1030', wallMove: '#3a1650', edge: '#ff7ad9', edgeMove: '#7af0ff', deco: 'rgba(255,170,240,0.4)' } }
 ];
 
 var CATALOG = { ball: BALLS, map: MAPS };
@@ -43,13 +61,13 @@ var CATALOG = { ball: BALLS, map: MAPS };
 // Bunlar yalnız oynayarak kazanılan yıldızla alınır; gerçek parayla yıldız satılmaz.
 var UPGRADES = [
   { id: 'kalkan', name: 'Kalkan kapasitesi', prices: [200, 600], values: [1, 2, 3],
-    desc: function (v) { return 'Aynı anda en çok ' + v + ' kalkan'; } },
+    desc: function (v) { return tx('Aynı anda en çok {v} kalkan', { v: v }); } },
   { id: 'baslangic', name: 'Başlangıç kalkanı', prices: [450], values: [0, 1],
-    desc: function (v) { return v ? 'Her koşuya 1 kalkanla başla' : 'Koşuya kalkansız başla'; } },
+    desc: function (v) { return tx(v ? 'Her koşuya 1 kalkanla başla' : 'Koşuya kalkansız başla'); } },
   { id: 'sure', name: 'Uzun güçler', prices: [150, 400], values: [1, 1.25, 1.5],
-    desc: function (v) { return v === 1 ? 'Güçler normal süre (4 / 6 sn)' : 'Güçler %' + Math.round((v - 1) * 100) + ' daha uzun'; } },
+    desc: function (v) { return v === 1 ? tx('Güçler normal süre (4 / 6 sn)') : tx('Güçler %{p} daha uzun', { p: Math.round((v - 1) * 100) }); } },
   { id: 'miknatis', name: 'Yıldız mıknatısı', prices: [250, 650], values: [1, 1.6, 2.2],
-    desc: function (v) { return v === 1 ? 'Yıldız ve güç normal alanda alınır' : 'Yıldız ve güç ' + String(v).replace('.', ',') + ' kat geniş alandan alınır'; } }
+    desc: function (v) { return v === 1 ? tx('Yıldız ve güç normal alanda alınır') : tx('Yıldız ve güç {v} kat geniş alandan alınır', { v: decimal(v) }); } }
 ];
 
 // Ölünce devam: koşu başına en çok REVIVE_MAX kez, fiyat her seferinde ikiye katlanır
@@ -70,7 +88,16 @@ function findUpgrade(id) {
 function createProfile() {
   var upg = {};
   UPGRADES.forEach(function (u) { upg[u.id] = 0; });
-  return { coins: 0, owned: { ball: ['klasik'], map: ['gece'] }, equipped: { ball: 'klasik', map: 'gece' }, upg: upg };
+  return { coins: 0, owned: { ball: ['klasik'], map: ['gece'] }, equipped: { ball: 'klasik', map: 'gece' }, upg: upg,
+    ent: { noads: false, products: [] } };
+}
+
+function isPremium(item) { return !!(item && item.premiumBy); }
+// Gerçek parayla alınan ürünün hakkı kayıtta var mı (kurcalanmış kayıt premium ürünü sahiplenemesin)
+function premiumAllowed(ent, item) {
+  if (!isPremium(item)) return true;
+  for (var i = 0; i < item.premiumBy.length; i++) if (ent.products.indexOf(item.premiumBy[i]) >= 0) return true;
+  return false;
 }
 
 // Dışarıdan gelen (localStorage) veriyi doğrular; tanınmayan her şeyi atar.
@@ -79,10 +106,21 @@ function sanitize(raw) {
   if (!raw || typeof raw !== 'object') return p;
   var coins = Math.floor(Number(raw.coins));
   p.coins = isFinite(coins) && coins > 0 ? Math.min(coins, 999999) : 0;
+  var re = /^bopgate\.[a-z.]{3,40}$/;
+  var rawEnt = raw.ent && typeof raw.ent === 'object' ? raw.ent : {};
+  (Array.isArray(rawEnt.products) ? rawEnt.products : []).forEach(function (id) {
+    if (typeof id === 'string' && re.test(id) && p.ent.products.indexOf(id) < 0 && p.ent.products.length < 20) p.ent.products.push(id);
+  });
+  p.ent.noads = rawEnt.noads === true && p.ent.products.length > 0;
+  if (raw.ads && typeof raw.ads === 'object' && typeof raw.ads.day === 'string' && raw.ads.day.length <= 10) {
+    var x2 = Math.floor(Number(raw.ads.x2));
+    p.ads = { day: raw.ads.day, x2: isFinite(x2) && x2 > 0 ? Math.min(x2, 99) : 0 };
+  }
   ['ball', 'map'].forEach(function (kind) {
     var owned = raw.owned && Array.isArray(raw.owned[kind]) ? raw.owned[kind] : [];
     owned.forEach(function (id) {
-      if (find(kind, id) && p.owned[kind].indexOf(id) < 0) p.owned[kind].push(id);
+      var it = find(kind, id);
+      if (it && premiumAllowed(p.ent, it) && p.owned[kind].indexOf(id) < 0) p.owned[kind].push(id);
     });
     var eq = raw.equipped && raw.equipped[kind];
     if (eq && p.owned[kind].indexOf(eq) >= 0) p.equipped[kind] = eq;
@@ -111,11 +149,12 @@ function owns(p, kind, id) {
   return p.owned[kind].indexOf(id) >= 0;
 }
 
-// { ok, reason } — reason: 'yok' | 'zaten-var' | 'yetersiz'
+// { ok, reason } — reason: 'yok' | 'zaten-var' | 'premium' (yıldızla alınmaz) | 'yetersiz'
 function buy(p, kind, id) {
   var item = find(kind, id);
   if (!item) return { ok: false, reason: 'yok' };
   if (owns(p, kind, id)) return { ok: false, reason: 'zaten-var' };
+  if (isPremium(item)) return { ok: false, reason: 'premium' };
   if (p.coins < item.price) return { ok: false, reason: 'yetersiz' };
   p.coins -= item.price;
   p.owned[kind].push(id);
@@ -180,7 +219,7 @@ function equippedMap(p) { return find('map', p.equipped.map) || MAPS[0]; }
 var Shop = {
   STORAGE_KEY: STORAGE_KEY, CATALOG: CATALOG, find: find,
   createProfile: createProfile, sanitize: sanitize, load: load, save: save,
-  owns: owns, buy: buy, equip: equip, reward: reward, MILESTONE_BONUS: MILESTONE_BONUS,
+  owns: owns, buy: buy, equip: equip, isPremium: isPremium, reward: reward, MILESTONE_BONUS: MILESTONE_BONUS,
   equippedBall: equippedBall, equippedMap: equippedMap,
   UPGRADES: UPGRADES, findUpgrade: findUpgrade, buyUpgrade: buyUpgrade, upgradeValue: upgradeValue, mods: mods,
   REVIVE_BASE: REVIVE_BASE, REVIVE_MAX: REVIVE_MAX, reviveCost: reviveCost, canRevive: canRevive, payRevive: payRevive

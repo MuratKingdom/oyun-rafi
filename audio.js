@@ -49,7 +49,8 @@ var TUNES = {
   gunbatimi: { root: 60, scale: MAJOR, prog: [0, 4, 5, 3], lead: 'sine' },     // Do majör
   orman: { root: 62, scale: DORIAN, prog: [0, 3, 0, 4], lead: 'triangle' },    // Re dorian
   neon: { root: 55, scale: MINOR, prog: [0, 6, 5, 4], lead: 'square' },        // Sol minör
-  buz: { root: 64, scale: PENTA, prog: [0, 3, 4, 2], lead: 'sine' }            // Mi pentatonik
+  buz: { root: 64, scale: PENTA, prog: [0, 3, 4, 2], lead: 'sine' },           // Mi pentatonik
+  nebula: { root: 53, scale: DORIAN, prog: [0, 2, 5, 3], lead: 'sine' }         // Fa dorian (premium harita)
 };
 
 function tune(mapId) { return TUNES[mapId] || TUNES.gece; }

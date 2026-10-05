@@ -9,6 +9,13 @@
 // window.Game* ve module.exports çıkar.
 (function () {
 
+// Dil: i18n.js yüklüyse çevirir, değilse Türkçe metni parametreleriyle doldurur
+function tx(s, p) {
+  var I = typeof window !== 'undefined' && window.GameI18n;
+  if (I) return I.L(s, p);
+  return String(s).replace(/\{(\w+)\}/g, function (m, k) { return p && p[k] != null ? String(p[k]) : m; });
+}
+
 var DAILY_KEY = 'sekmeguc-gunluk';
 var QUESTS_PER_DAY = 3;
 
@@ -46,7 +53,7 @@ function hash(str) {
 function describe(q) {
   var tpl = null;
   for (var i = 0; i < TEMPLATES.length; i++) if (TEMPLATES[i].kind === q.kind) tpl = TEMPLATES[i];
-  return tpl ? tpl.text.replace('{n}', q.target) : q.kind;
+  return tpl ? tx(tpl.text, { n: q.target }) : q.kind;
 }
 
 // Günün 3 görevi: farklı türlerden, tarihten deterministik

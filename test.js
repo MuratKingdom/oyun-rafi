@@ -463,6 +463,110 @@ var Shop = require('./shop.js');
     E.players.map(function (r) { return r.id + ': ilk ' + r.firstBuy + '. gün, güçler ' + r.upgrades + ', hepsi ' + (r.all === null ? '90+' : r.all); }).join(' · '));
 })();
 
+// --- Gerçek para ve ödüllü reklam (monetize.js) ---------------------------------
+var Mon = require('./monetize.js');
+var pending = [];
+
+// T37 — satın alma hakları: premium ürün yıldızla alınmaz, paket haklarını bir kez verir, kurcalanmış kayıt premium sahiplenemez
+(function t37() {
+  var p = Shop.createProfile(); p.coins = 5000;
+  var starTry = Shop.buy(p, 'ball', 'alev');
+  var premOk = !starTry.ok && starTry.reason === 'premium' && p.coins === 5000 && !Shop.owns(p, 'ball', 'alev');
+  var g1 = Mon.grant(Shop, p, 'bopgate.destekci');
+  var after1 = p.coins;
+  var g2 = Mon.grant(Shop, p, 'bopgate.destekci');
+  var packOk = g1 && !g2 && after1 === 6000 && p.coins === 6000 && Mon.hasNoAds(p) &&
+    Shop.owns(p, 'ball', 'alev') && Shop.owns(p, 'map', 'nebula') && !Shop.owns(p, 'ball', 'kristal');
+  var q = Shop.createProfile();
+  Mon.grant(Shop, q, 'bopgate.ozellik.paket');
+  var m = Shop.mods(q);
+  var powerOk = Shop.UPGRADES.every(function (u) { return q.upg[u.id] === u.prices.length; }) && m.maxShield === 3 && m.startShield === 1 && !Mon.hasNoAds(q);
+  var unknown = !Mon.grant(Shop, Shop.createProfile(), 'bopgate.yok.boyle');
+  // kalıcı kayıt: haklar ve premium ürünler gidiş-dönüşte korunur
+  var round = Shop.sanitize(JSON.parse(JSON.stringify(p)));
+  var roundOk = round.ent.noads && round.ent.products.indexOf('bopgate.destekci') >= 0 && Shop.owns(round, 'ball', 'alev');
+  // kurcalanmış: hak olmadan premium top, sahte ürün adı, hakkı olmayan reklamsız
+  var hacked = Shop.sanitize({ coins: 1, owned: { ball: ['alev', 'kristal'], map: ['nebula'] }, ent: { noads: true, products: ['<script>', 42] } });
+  var hackOk = !Shop.owns(hacked, 'ball', 'alev') && !Shop.owns(hacked, 'ball', 'kristal') && !Shop.owns(hacked, 'map', 'nebula') &&
+    !hacked.ent.noads && hacked.ent.products.length === 0;
+  var partial = Shop.sanitize({ owned: { ball: ['alev', 'kristal'] }, ent: { products: ['bopgate.top.kristal'] } });
+  var partialOk = Shop.owns(partial, 'ball', 'kristal') && !Shop.owns(partial, 'ball', 'alev');
+  report('T37 satın alma hakları ve kayıt güvenliği', premOk && packOk && powerOk && unknown && roundOk && hackOk && partialOk,
+    'yıldızla premium=' + starTry.reason + ' paket bir kez=' + packOk + ' güç paketi=' + powerOk + ' gidiş-dönüş=' + roundOk +
+    ' kurcalanmış=' + hackOk + ' kısmi hak=' + partialOk);
+})();
+
+// T38 — ödüllü reklam: günlük ★ x2 sınırı, reklamsız hakkı reklamı atlar, tarayıcıda reklam yok, sağlayıcı hatası oyunu bozmaz
+(function t38() {
+  var p = Shop.createProfile();
+  var uses = 0;
+  while (Mon.useX2(p, '2026-10-04')) uses++;
+  var limitOk = uses === Mon.AD_X2_PER_DAY && Mon.x2Left(p, '2026-10-04') === 0 && Mon.x2Left(p, '2026-10-05') === Mon.AD_X2_PER_DAY;
+  var mock = Mon.mockProvider();
+  var noads = Shop.createProfile(); Mon.grant(Shop, noads, 'bopgate.reklamsiz');
+  var web = Mon.provider(null);
+  var broken = Mon.provider({ iap: { products: function () { throw new Error('x'); }, buy: function () { return Promise.reject(new Error('y')); }, restore: function () { return Promise.reject(1); } },
+    ads: { rewarded: function () { return Promise.reject(new Error('z')); } } });
+  pending.push(Promise.all([
+    Mon.rewardedOrSkip(mock, noads, 'iki_kat'),
+    Mon.rewardedOrSkip(mock, Shop.createProfile(), 'iki_kat'),
+    Mon.rewardedOrSkip(web, Shop.createProfile(), 'devam'),
+    broken.rewarded('devam'), broken.buy('bopgate.reklamsiz'), broken.products(), broken.restore()
+  ]).then(function (r) {
+    var skipOk = r[0].rewarded && r[0].skipped && r[1].rewarded && !r[1].skipped && mock.calls.ads === 1;
+    var webOk = !r[2].rewarded && !web.canBuy && !web.canAds;
+    var softOk = r[3].rewarded === false && r[4].ok === false && Array.isArray(r[5]) && Array.isArray(r[6]);
+    report('T38 ödüllü reklam kuralları', limitOk && skipOk && webOk && softOk,
+      'günlük sınır=' + limitOk + ' reklamsız atlar=' + skipOk + ' tarayıcıda kapalı=' + webOk + ' hata yumuşak=' + softOk);
+  }));
+})();
+
+// --- Dil (i18n.js) -------------------------------------------------------------
+// T39 — İngilizce sözlük: katalog, görev, güçlendirme, ürün ve ölüm metinlerinin hepsinin karşılığı var;
+// parametreler iki dilde aynı; dil seçimi cihaz diline ve kayıtlı tercihe uyar
+(function t39() {
+  var I = require('./i18n.js');
+  var Q2 = require('./quests.js');
+  var src = [];
+  ['ball', 'map'].forEach(function (k) { Shop.CATALOG[k].forEach(function (it) { src.push(it.name); }); });
+  Shop.UPGRADES.forEach(function (u) { src.push(u.name); });
+  Q2.TEMPLATES.forEach(function (t) { src.push(t.text); });
+  Mon.PRODUCTS.forEach(function (p) { src.push(p.name, p.desc); });
+  src.push('Dikene düştün', 'Tavana çarptın', 'Duvara çarptın');
+  var lacking = src.filter(function (k) { return !Object.prototype.hasOwnProperty.call(I.EN, k); });
+  var params = function (x) { return (x.match(/\{\w+\}/g) || []).sort().join(','); };
+  var badParams = Object.keys(I.EN).filter(function (k) { return params(k) !== params(I.EN[k]); });
+  var mem = { v: null, getItem: function () { return this.v; }, setItem: function (k, v) { this.v = v; } };
+  var det = I.detect(null, { language: 'tr-TR' }) === 'tr' && I.detect(null, { language: 'en-US' }) === 'en' &&
+    I.detect(null, { language: 'de-DE' }) === 'en' && I.detect(null, {}) === 'en';
+  I.setLang('en', mem);
+  var saved = mem.v === 'en' && I.detect(mem, { language: 'tr-TR' }) === 'en' && I.detect({ getItem: function () { return 'xx'; } }, { language: 'tr' }) === 'tr';
+  var en = I.L('Bölüm {n}', { n: 3 }) === 'Level 3' && I.L('Kuşan') === 'Equip';
+  I.setLang('tr', null);
+  var tr = I.L('Bölüm {n}', { n: 3 }) === 'Bölüm 3' && I.L('olmayan {x}', { x: 1 }) === 'olmayan 1';
+  report('T39 İngilizce sözlük ve dil seçimi', lacking.length === 0 && badParams.length === 0 && det && saved && en && tr,
+    'eksik=' + JSON.stringify(lacking) + ' parametre uyumsuz=' + JSON.stringify(badParams) + ' algılama=' + det + ' kayıt=' + saved + ' en=' + en + ' tr=' + tr);
+})();
+
+// --- Çevrimiçi: bulut kayıt (cloud.js) ------------------------------------------
+// T40 — iki cihazın kaydı birleşir, hiçbir kazanım kaybolmaz, yıldız çift sayılmaz; bozuk/kurcalanmış bulut zarar veremez
+(function t40() {
+  var Cl = require('./cloud.js');
+  var a = Shop.createProfile(); a.coins = 300; a.owned.ball.push('kor'); a.upg.kalkan = 1; a.equipped.ball = 'kor';
+  var b = Shop.createProfile(); b.coins = 500; b.owned.map.push('neon'); b.upg.kalkan = 0; b.upg.sure = 2;
+  Mon.grant(Shop, b, 'bopgate.top.kristal');
+  var m = Cl.merge(Shop, a, 12, Cl.unpack(Shop, Cl.pack(b, 40)));
+  var p = m.profile;
+  var ok = m.changed && p.coins === 500 && m.best === 40 && Shop.owns(p, 'ball', 'kor') && Shop.owns(p, 'map', 'neon') &&
+    Shop.owns(p, 'ball', 'kristal') && p.upg.kalkan === 1 && p.upg.sure === 2 && p.equipped.ball === 'kor';
+  var same = Cl.merge(Shop, p, 40, Cl.unpack(Shop, Cl.pack(p, 40)));
+  var junk = Cl.unpack(Shop, '{bozuk') === null && Cl.unpack(Shop, JSON.stringify({ v: 99, profile: {} })) === null && Cl.merge(Shop, a, 12, null).changed === false;
+  var hacked = Cl.unpack(Shop, JSON.stringify({ v: 1, best: 'x', profile: { coins: 1e12, owned: { ball: ['alev'] }, ent: { noads: true, products: ['zz'] } } }));
+  var safe = hacked.profile.coins === 999999 && !Shop.owns(hacked.profile, 'ball', 'alev') && !hacked.profile.ent.noads && hacked.best === 0;
+  report('T40 bulut kayıt birleştirme', ok && !same.changed && junk && safe,
+    'birleşim=' + ok + ' (★' + p.coins + ', rekor ' + m.best + ') aynı kayıt değişmez=' + !same.changed + ' bozuk=' + junk + ' kurcalanmış=' + safe);
+})();
+
 // --- Dikey ekran (uzun alan) ---------------------------------------------------
 // T16 — ölçek eşdeğerliği: uzun alanda top, kare alandakiyle normalize edildiğinde birebir aynı hareket eder
 (function t16() {
@@ -501,7 +605,7 @@ var Shop = require('./shop.js');
     localStorage: { getItem: function (k) { return store[k] === undefined ? null : store[k]; }, setItem: function (k, v) { store[k] = String(v); } } };
   ctx.window = ctx;
   vm.createContext(ctx);
-  ['logic.js', 'shop.js', 'quests.js', 'audio.js', 'render.js'].forEach(function (f) {
+  ['i18n.js', 'logic.js', 'shop.js', 'monetize.js', 'cloud.js', 'quests.js', 'audio.js', 'render.js'].forEach(function (f) {
     var file = path.join(__dirname, f);
     if (fs.existsSync(file)) vm.runInContext(fs.readFileSync(file, 'utf8'), ctx, { filename: f });
   });
@@ -642,5 +746,7 @@ var A = require('./audio.js');
     'çöp→varsayılan=' + bad + ' tercih korunur=' + keep + ' kayıt=' + round + ' bozuk kayıt=' + corrupt + ' efektler=' + sfxOk);
 })();
 
-console.log('--- özet: ' + (fails === 0 ? 'tüm testler PASS' : fails + ' test FAIL'));
-process.exit(fails === 0 ? 0 : 1);
+Promise.all(pending).then(function () {
+  console.log('--- özet: ' + (fails === 0 ? 'tüm testler PASS' : fails + ' test FAIL'));
+  process.exit(fails === 0 ? 0 : 1);
+}, function (e) { console.log('FAIL bekleyen test hata verdi — ' + (e && e.stack || e)); process.exit(1); });

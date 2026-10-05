@@ -10,6 +10,13 @@
 // window.Game* ve module.exports çıkar.
 (function () {
 
+// Dil: i18n.js yüklüyse çevirir, değilse Türkçe metni parametreleriyle doldurur
+function L(s, p) {
+  var I = typeof window !== 'undefined' && window.GameI18n;
+  if (I) return I.L(s, p);
+  return String(s).replace(/\{(\w+)\}/g, function (m, k) { return p && p[k] != null ? String(p[k]) : m; });
+}
+
 var TITLE = 'BOPGATE';
 var FONT = "ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif";
 var W0 = 520;
@@ -164,11 +171,38 @@ function drawBall(ctx, shape, r, color, opts) {
     ctx.closePath();
   } else if (shape === 'star') {
     starPath(ctx, 0, 0, r * 1.25);
+  } else if (shape === 'hex') {
+    for (var hi = 0; hi < 6; hi++) {
+      var ha = Math.PI / 6 + hi * Math.PI / 3;
+      if (hi === 0) ctx.moveTo(Math.cos(ha) * r * 1.1, Math.sin(ha) * r * 1.1); else ctx.lineTo(Math.cos(ha) * r * 1.1, Math.sin(ha) * r * 1.1);
+    }
+    ctx.closePath();
+  } else if (shape === 'flame') {
+    // Damla: altta yuvarlak gövde, üstte sivri alev ucu
+    ctx.arc(0, r * 0.2, r * 0.9, Math.PI * 0.05, Math.PI * 0.95);
+    ctx.lineTo(-r * 0.55, -r * 0.35);
+    ctx.lineTo(0, -r * 1.35);
+    ctx.lineTo(r * 0.55, -r * 0.35);
+    ctx.closePath();
   } else {
     ctx.arc(0, 0, r, 0, Math.PI * 2);
   }
   ctx.fill();
   noGlow(ctx);
+  if (shape === 'flame') {
+    // İç alev
+    ctx.fillStyle = mix(color, '#ffe08a', 0.7);
+    ctx.beginPath();
+    ctx.arc(0, r * 0.35, r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (shape === 'hex') {
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.55, -r * 0.95); ctx.lineTo(r * 0.55, r * 0.95);
+    ctx.moveTo(r * 0.55, -r * 0.95); ctx.lineTo(-r * 0.55, r * 0.95);
+    ctx.stroke();
+  }
   if (shape === 'ring') {
     ctx.strokeStyle = mix(color, '#ffffff', 0.25);
     ctx.lineWidth = 2;
@@ -223,6 +257,20 @@ function drawDeco(ctx, theme, dist, geo) {
     var off = (d * 0.5) % 40;
     for (x = -off; x < W0; x += 40) { ctx.beginPath(); ctx.moveTo(x, CEIL_Y); ctx.lineTo(x, FLOOR_Y); ctx.stroke(); }
     for (var y = CEIL_Y; y < FLOOR_Y; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W0, y); ctx.stroke(); }
+  } else if (theme.deco === 'nebula') {
+    // Yavaş kayan renkli bulutsular + yıldız tozu
+    var blobs = [['rgba(255,90,210,0.16)', 0, 0.3, 150], ['rgba(90,220,255,0.13)', 260, 0.55, 180], ['rgba(170,110,255,0.15)', 470, 0.2, 130]];
+    for (i = 0; i < blobs.length; i++) {
+      var bx = ((blobs[i][1] - d * 0.05) % (W0 + 300) + W0 + 300) % (W0 + 300) - 150;
+      var byy = CEIL_Y + (FLOOR_Y - CEIL_Y) * blobs[i][2];
+      ctx.fillStyle = rad(ctx, bx, byy, 0, blobs[i][3], [[0, blobs[i][0]], [1, 'rgba(0,0,0,0)']], blobs[i][0]);
+      ctx.beginPath(); ctx.arc(bx, byy, blobs[i][3], 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = col;
+    for (i = 0; i < 40; i++) {
+      x = ((i * 47 - d * 0.12) % W0 + W0) % W0;
+      ctx.fillRect(x, CEIL_Y + 6 + ((i * 89) % (FLOOR_Y - CEIL_Y - 12)), i % 5 === 0 ? 2.5 : 1.5, i % 5 === 0 ? 2.5 : 1.5);
+    }
   } else if (theme.deco === 'flakes') {
     for (i = 0; i < 26; i++) {
       x = ((i * 61 - d * 0.15) % W0 + W0) % W0;
@@ -330,7 +378,7 @@ function questLines(view) {
   var q = view.questDone || [];
   var out = [];
   for (var i = 0; i < q.length && i < 3; i++) {
-    out.push({ text: '✓ ' + q[i].text + '  +' + q[i].reward + ' ★', font: font(600, 15), color: '#46d39a', h: 24 });
+    out.push({ text: L('✓ {t}  +{r} ★', { t: q[i].text, r: q[i].reward }), font: font(600, 15), color: '#46d39a', h: 24 });
   }
   return out;
 }
@@ -576,7 +624,8 @@ function draw(ctx, state, view) {
     ctx.fillStyle = textCol;
     ctx.font = font(900, 40);
     glow(ctx, tc.edge, 20);
-    ctx.fillText(view.banner.title.toLocaleUpperCase('tr'), W0 / 2, by);
+    var I = typeof window !== 'undefined' && window.GameI18n;
+    ctx.fillText(view.banner.title.toLocaleUpperCase(I && I.getLang() === 'en' ? 'en' : 'tr'), W0 / 2, by);
     noGlow(ctx);
     if (view.banner.sub) {
       ctx.font = font(700, 17);
@@ -589,7 +638,7 @@ function draw(ctx, state, view) {
   if (view.muted) {
     ctx.fillStyle = textDim;
     ctx.font = font(600, 14);
-    ctx.fillText('sessiz', 14, FLOOR_Y + 28);
+    ctx.fillText(L('sessiz'), 14, FLOOR_Y + 28);
   }
 
   drawScreens(ctx, state, view, phase, theme, best, t);
@@ -612,7 +661,7 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   ctx.textAlign = 'left';
   ctx.font = font(800, 12);
   ctx.fillStyle = textDim;
-  ctx.fillText('BÖLÜM ' + state.level, 14, 10);
+  ctx.fillText(L('BÖLÜM {n}', { n: state.level }), 14, 10);
   var done = state.score % per;
   for (var s = 0; s < per; s++) {
     ctx.fillStyle = s < done ? tc.edge : rgba(tc.edge, 0.2);
@@ -623,7 +672,7 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   ctx.textAlign = 'right';
   ctx.font = font(800, 12);
   ctx.fillStyle = textDim;
-  ctx.fillText('REKOR', W0 - 14, 10);
+  ctx.fillText(L('REKOR'), W0 - 14, 10);
   ctx.font = font(800, 14);
   ctx.fillStyle = textCol;
   ctx.fillText(String(view.best || 0), W0 - 14, 22);
@@ -650,7 +699,7 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
 
 function drawScreens(ctx, state, view, phase, theme, best, t) {
   var tc = theme.c, light = isLight(theme);
-  var tapWord = view.touch ? 'Dokun' : 'Boşluk / dokun';
+  var tapWord = L(view.touch ? 'Dokun' : 'Boşluk / dokun');
   var hasCoins = typeof view.coins === 'number';
   if (phase === 'ready') {
     dim(ctx, light);
@@ -661,15 +710,15 @@ function drawScreens(ctx, state, view, phase, theme, best, t) {
     ctx.textBaseline = 'middle';
     ctx.font = font(600, 17);
     ctx.fillStyle = tc.textDim || '#9fb3d1';
-    ctx.fillText('Basılı tut · yüksel · kapıdan geç', W0 / 2, ly + 52);
+    ctx.fillText(L('Basılı tut · yüksel · kapıdan geç'), W0 / 2, ly + 52);
     ctx.restore();
     var by = Math.min(ly + 170, H0 - 230);
-    pillButton(ctx, W0 / 2, by, 230, 66, '▶  OYNA', t);
+    pillButton(ctx, W0 / 2, by, 230, 66, L('▶  OYNA'), t);
     ctx.save();
     ctx.textAlign = 'center';
     ctx.font = font(600, 15);
     ctx.fillStyle = tc.textDim || '#9fb3d1';
-    ctx.fillText(tapWord + ' ve başla', W0 / 2, by + 58);
+    ctx.fillText(L('{w} ve başla', { w: tapWord }), W0 / 2, by + 58);
     ctx.restore();
     var cy = by + 104;
     chip(ctx, W0 / 2 - 82, cy, '🏆 ' + best, tc.edge, light);
@@ -686,8 +735,8 @@ function drawScreens(ctx, state, view, phase, theme, best, t) {
   } else if (phase === 'paused') {
     dim(ctx, light);
     card(ctx, [
-      { text: 'DURAKLATILDI', font: font(900, 28), glow: tc.edge, h: 46 },
-      { text: tapWord + ' ve devam et', font: font(600, 17), color: tc.edge, h: 30 }
+      { text: L('DURAKLATILDI'), font: font(900, 28), glow: tc.edge, h: 46 },
+      { text: L('{w} ve devam et', { w: tapWord }), font: font(600, 17), color: tc.edge, h: 30 }
     ], tc.edge, light, 360);
   } else if (phase === 'over' || phase === 'won') {
     // Oyun sonsuz: tek bitiş ekranı. 'won' yalnız eski durumlar için aynı ekrana düşer.
@@ -696,22 +745,25 @@ function drawScreens(ctx, state, view, phase, theme, best, t) {
     var body = light ? '#12324a' : '#e8ecf1';
     var muted = light ? '#4f7591' : '#9fb3d1';
     var rows = [
-      { text: 'OYUN BİTTİ', font: font(900, 30), color: '#ff5d7a', glow: '#ff5d7a', h: 44 },
-      { text: state.overReason, font: font(500, 16), color: muted, h: 26 },
+      { text: L('OYUN BİTTİ'), font: font(900, 30), color: '#ff5d7a', glow: '#ff5d7a', h: 44 },
+      { text: L(state.overReason), font: font(500, 16), color: muted, h: 26 },
       { text: String(state.score), font: font(900, 76), color: body, glow: tc.edge, h: 84 },
-      { text: 'KAPI', font: font(800, 13), color: muted, h: 22 }
+      { text: L('KAPI'), font: font(800, 13), color: muted, h: 22 }
     ];
-    if (view.newBest) rows.push({ text: '★ YENİ REKOR ★', font: font(900, 18), color: GOLD, glow: GOLD, pill: GOLD, pillW: 210, h: 40 });
-    else rows.push({ text: 'Rekor: ' + best, font: font(700, 16), color: body, h: 32 });
-    rows.push({ text: 'Bölüm ' + state.level + (ms ? '  ·  ' + ms + ' eşik' : ''), font: font(600, 15), color: ms ? GOLD : muted, h: 28 });
-    if (hasCoins && view.earned) rows.push({ text: '+' + view.earned + ' ★   (cüzdan ★ ' + view.coins + ')', font: font(800, 18), color: GOLD, h: 34 });
-    else if (hasCoins) rows.push({ text: 'Cüzdan ★ ' + view.coins, font: font(700, 15), color: GOLD, h: 30 });
+    if (view.newBest) rows.push({ text: L('★ YENİ REKOR ★'), font: font(900, 18), color: GOLD, glow: GOLD, pill: GOLD, pillW: 210, h: 40 });
+    else rows.push({ text: L('Rekor: {n}', { n: best }), font: font(700, 16), color: body, h: 32 });
+    rows.push({ text: L('Bölüm {n}', { n: state.level }) + (ms ? '  ·  ' + L('{n} eşik', { n: ms }) : ''), font: font(600, 15), color: ms ? GOLD : muted, h: 28 });
+    if (hasCoins && view.earned) rows.push({ text: L('+{e} ★   (cüzdan ★ {c})', { e: view.earned, c: view.coins }), font: font(800, 18), color: GOLD, h: 34 });
+    else if (hasCoins) rows.push({ text: L('Cüzdan ★ {n}', { n: view.coins }), font: font(700, 15), color: GOLD, h: 30 });
     rows = rows.concat(questLines(view));
     if (view.revive) {
-      rows.push({ text: '❤ Devam: aşağıdaki düğme (★ ' + view.revive.cost + ')' + (view.touch ? '' : ' · C'), font: font(800, 16), color: PINK, h: 34 });
+      var rv = view.revive;
+      var adWord = L(rv.noads ? 'bedava' : 'reklamla');
+      var how = rv.cost && rv.ad ? L('★ {n} ya da {ad}', { n: rv.cost, ad: adWord }) : rv.cost ? '★ ' + rv.cost : adWord;
+      rows.push({ text: L('❤ Devam: {how} · aşağıda', { how: how }) + (view.touch || !rv.cost ? '' : ' · C'), font: font(800, 16), color: PINK, h: 34 });
     }
     rows.push(view.canRestart
-      ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': tekrar oyna', font: font(800, 17), color: tc.edge, glow: tc.edge, h: 38 }
+      ? { text: L('{w}: tekrar oyna', { w: L(view.touch ? 'Dokun' : 'Dokun ya da R') }), font: font(800, 17), color: tc.edge, glow: tc.edge, h: 38 }
       : { text: ' ', h: 38 });
     card(ctx, rows, view.newBest ? GOLD : '#ff5d7a', light, 420);
   }
