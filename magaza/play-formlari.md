@@ -63,6 +63,7 @@ Hepsi **tek seferlik, yönetilen (tüketilmeyen)** ürün. Kimlikler oyun koduyl
 
 | Ürün kimliği | Ad (EN / TR) | Önerilen fiyat |
 |---|---|---|
+| `bopgate.baslangic` | Starter Pack / Başlangıç paketi | ₺19,99 |
 | `bopgate.reklamsiz` | No Ads / Reklamsız | ₺49,99 |
 | `bopgate.destekci` | Supporter Pack / Destekçi paketi | ₺149,99 |
 | `bopgate.ozellik.paket` | Boost Pack / Güç paketi | ₺99,99 |

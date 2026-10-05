@@ -20,6 +20,9 @@ var AD_X2_PER_DAY = 5;
 var PRODUCT_RE = /^bopgate\.[a-z.]{3,40}$/;
 
 var PRODUCTS = [
+  // İlk alım: düşük fiyatlı, içeriği belli paket (rekoru 10'u geçen oyuncuya açılışta bir kez hatırlatılır)
+  { id: 'bopgate.baslangic', name: 'Başlangıç paketi', suggest: '₺19,99', starter: true,
+    desc: '★ 400 + Kor ve Nane topları', grants: { items: [['ball', 'kor'], ['ball', 'nane']], coins: 400 } },
   { id: 'bopgate.reklamsiz', name: 'Reklamsız', suggest: '₺49,99',
     desc: 'Reklam izlemeden ödül: bedava devam ve ★ x2 anında', grants: { noads: true } },
   { id: 'bopgate.destekci', name: 'Destekçi paketi', suggest: '₺149,99', best: true,

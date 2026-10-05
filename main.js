@@ -189,6 +189,18 @@ function bootstrap() {
   var tutorialDone = lsGet('bopgate-rehber') === '1' || best > 0;
   var TUTORIAL_GATES = 3;
   function shownBest() { return easy ? easyBest : best; }
+  // İlk alım hatırlatması: satın alma açıksa (Android), rekor 10+ ise, paket alınmadıysa ve o açılışta
+  // başka bildirim yoksa açılış ekranında bir kez; ardından bir hafta gösterilmez (bopgate-teklif)
+  function starterNotice() {
+    try {
+      if (notice || !Mon || !prov || !prov.canBuy || !profile || best < 10 || Mon.owned(profile, 'bopgate.baslangic')) return;
+      var last = parseInt(lsGet('bopgate-teklif') || '0', 10) || 0;
+      if (Date.now() - last < 7 * 86400000) return;
+      lsSet('bopgate-teklif', String(Date.now()));
+      notice = L('🎁 Başlangıç paketi mağazada: ★ 400 + 2 top');
+    } catch (e) {}
+  }
+  starterNotice();
   if (games && Cloud && profile) {
     soft(function () { return games.loadGame(); }).then(function (text) {
       var m = Cloud.merge(Shop, profile, best, typeof text === 'string' ? Cloud.unpack(Shop, text) : null);
@@ -801,7 +813,7 @@ function bootstrap() {
       row.className = 'urun paket' + (pr.best ? ' en-iyi' : '');
       var icon = document.createElement('span');
       icon.className = 'paket-ikon';
-      icon.textContent = pr.grants.noads ? (pr.grants.items ? '👑' : '🚫') : pr.grants.maxUpgrades ? '⚡' : '💎';
+      icon.textContent = pr.starter ? '🎁' : pr.grants.noads ? (pr.grants.items ? '👑' : '🚫') : pr.grants.maxUpgrades ? '⚡' : '💎';
       var info = document.createElement('div');
       var name = document.createElement('span');
       name.className = 'ad';

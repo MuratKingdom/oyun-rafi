@@ -179,7 +179,7 @@ Davranış ayrıntıları:
 - **Hiçbir çağrı reddedilmez (reject) ya da hata fırlatmaz**; her hata olumsuz sonuçla çözülür.
   Eklenti yoksa (ör. tarayıcıda) tüm çağrılar olumsuz/boş döner.
 - `products(ids)`: Play'de fiyatı gelmeyen ürün listede yer almaz. Boş/geçersiz `ids` verilirse
-  bilinen altı ürün sorgulanır.
+  bilinen yedi ürün sorgulanır.
 - `buy(id)`: zaten sahipse `{ ok: true }`. Kullanıcı kapatırsa `reason: 'iptal'`. Bekleyen
   (geciken) ödemeler `reason: 'hata'` döner; ödeme sonradan tamamlanınca köprü
   `window` üzerinde `bopgate-satinalma` olayı yayar (`event.detail.id`) ve `restore()` ürünü döndürür.

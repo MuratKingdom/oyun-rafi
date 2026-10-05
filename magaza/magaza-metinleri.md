@@ -40,7 +40,7 @@ EVERY DAY, SOMETHING NEW
 FAIR BY DESIGN
 • Ads are optional: watch one only if you want a free continue or double stars
 • No interstitials, no banners
-• One-time purchases for those who want to support the game: No Ads, Supporter Pack, Boost Pack and exclusive balls and maps
+• One-time purchases for those who want to support the game: Starter Pack, No Ads, Supporter Pack, Boost Pack and exclusive balls and maps
 
 Plays offline. Available in English and Turkish.
 ```
@@ -84,7 +84,7 @@ HER GÜN YENİ BİR ŞEY
 ADİL TASARIM
 • Reklam isteğe bağlı: yalnız bedava devam ya da yıldızı ikiye katlamak istersen izlersin
 • Ara reklam yok, banner yok
-• Oyunu desteklemek isteyenlere tek seferlik satın alımlar: Reklamsız, Destekçi paketi, Güç paketi ve yalnız satın alınabilen toplar ile harita
+• Oyunu desteklemek isteyenlere tek seferlik satın alımlar: Başlangıç paketi, Reklamsız, Destekçi paketi, Güç paketi ve yalnız satın alınabilen toplar ile harita
 
 İnternetsiz oynanır. Türkçe ve İngilizce.
 ```
