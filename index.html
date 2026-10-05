@@ -86,13 +86,22 @@
   #gorevBtn[hidden], #liderBtn[hidden], #gunlukBtn[hidden] { display: none; }
   #gunlukBtn { border-color: rgba(179,157,250,0.6) !important; box-shadow: 0 0 12px rgba(179,157,250,0.3); }
   #gunlukBtn.acik { background: rgba(179,157,250,0.25); }
-  #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn {
+  #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn, #duraklatBtn, #yaziBtn {
     font: inherit; font-size: 18px; width: 44px; height: 44px; padding: 0; border-radius: 50%;
     border: 1px solid rgba(143,163,196,0.35); background: var(--cam); color: var(--metin); cursor: pointer;
   }
   #dilBtn { font: 900 13px var(--font); letter-spacing: 0.04em; }
   #muzikBtn.kapali { opacity: 0.45; text-decoration: line-through; }
-  #kolayBtn { opacity: 0.55; }
+  #kolayBtn, #yaziBtn { opacity: 0.55; }
+  #yaziBtn { font: 900 15px var(--font); }
+  #yaziBtn.acik { opacity: 1; border-color: var(--cyan); box-shadow: 0 0 12px rgba(90,200,250,0.5); }
+  #duraklatBtn[hidden] { display: none; }
+  /* Büyük yazı: mağaza ve görev paneli */
+  html.buyuk-yazi #magaza .ad { font-size: 19px; }
+  html.buyuk-yazi #magaza .etki, html.buyuk-yazi #magaza .not { font-size: 15px; }
+  html.buyuk-yazi #magaza [data-sekme] { font-size: 16px; }
+  html.buyuk-yazi #magaza .urun button { font-size: 16px; min-height: 48px; }
+  html.buyuk-yazi #magaza .gorev .odul { font-size: 15px; }
   #kolayBtn.acik { opacity: 1; border-color: var(--yesil); box-shadow: 0 0 12px rgba(70,211,154,0.5); }
   .ayar-kutu { position: relative; display: flex; }
   #ayarBtn[aria-expanded="true"] { border-color: var(--cyan); box-shadow: 0 0 12px rgba(90,200,250,0.45); }
@@ -232,17 +241,17 @@
   @media (max-width: 440px) {
     .dugmeler { gap: 5px; padding: 0 6px; }
     #magazaBtn, #gorevBtn { padding: 8px 10px; font-size: 12.5px; }
-    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn { width: 34px; height: 34px; font-size: 15px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn, #duraklatBtn, #yaziBtn { width: 34px; height: 34px; font-size: 15px; }
     #dilBtn { font-size: 11px; }
   }
   @media (max-width: 380px) {
     #magazaBtn, #gorevBtn { padding: 7px 8px; font-size: 12px; }
-    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn { width: 31px; height: 31px; font-size: 14px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn, #duraklatBtn, #yaziBtn { width: 31px; height: 31px; font-size: 14px; }
   }
   @media (max-width: 340px) {
     .dugmeler { gap: 3px; padding: 0 3px; }
     #magazaBtn, #gorevBtn { padding: 6px 7px; font-size: 11px; letter-spacing: 0; }
-    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn { width: 27px; height: 27px; font-size: 12px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn, #duraklatBtn, #yaziBtn { width: 27px; height: 27px; font-size: 12px; }
     #dilBtn { font-size: 10px; }
   }
 </style>
@@ -251,7 +260,7 @@
 <div id="wrap">
   <canvas id="game" width="520" height="540"></canvas>
   <div id="hint"><span data-i18n="Ekranın herhangi bir yerine basılı tut: yükseklik kazan">Ekranın herhangi bir yerine basılı tut: yükseklik kazan</span><span class="kb" data-i18n=" · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
-  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="reklamDevamBtn" type="button" data-ui hidden>📺 Reklamla devam</button><button id="ikiKatBtn" type="button" data-ui hidden>📺 ★ x2</button><button id="magazaBtn" type="button" data-ui hidden data-i18n="🛒 Mağaza">🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="gunlukBtn" class="ikon" type="button" data-ui hidden aria-label="Günlük meydan okuma">📅</button><button id="liderBtn" class="ikon" type="button" data-ui hidden aria-label="Liderlik tablosu" data-i18n-aria="Liderlik tablosu">🏆</button><span class="ayar-kutu" data-ui><button id="ayarBtn" class="ikon" type="button" data-ui aria-label="Ayarlar" data-i18n-aria="Ayarlar" aria-expanded="false" aria-controls="ayarlar">⚙</button><span id="ayarlar" data-ui hidden><button id="kolayBtn" class="ikon" type="button" data-ui aria-label="Kolay mod" data-i18n-aria="Kolay mod">🐢</button><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik" data-i18n-aria="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri" data-i18n-aria="Efekt sesleri">🔊</button><button id="dilBtn" class="ikon" type="button" data-ui aria-label="Dil" data-i18n-aria="Dil">TR</button></span></span></div>
+  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="reklamDevamBtn" type="button" data-ui hidden>📺 Reklamla devam</button><button id="ikiKatBtn" type="button" data-ui hidden>📺 ★ x2</button><button id="magazaBtn" type="button" data-ui hidden data-i18n="🛒 Mağaza">🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="gunlukBtn" class="ikon" type="button" data-ui hidden aria-label="Günlük meydan okuma">📅</button><button id="liderBtn" class="ikon" type="button" data-ui hidden aria-label="Liderlik tablosu" data-i18n-aria="Liderlik tablosu">🏆</button><button id="duraklatBtn" class="ikon" type="button" data-ui hidden aria-label="Duraklat">⏸</button><span class="ayar-kutu" data-ui><button id="ayarBtn" class="ikon" type="button" data-ui aria-label="Ayarlar" data-i18n-aria="Ayarlar" aria-expanded="false" aria-controls="ayarlar">⚙</button><span id="ayarlar" data-ui hidden><button id="yaziBtn" class="ikon" type="button" data-ui aria-label="Büyük yazı" data-i18n-aria="Büyük yazı">Aa</button><button id="kolayBtn" class="ikon" type="button" data-ui aria-label="Kolay mod" data-i18n-aria="Kolay mod">🐢</button><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik" data-i18n-aria="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri" data-i18n-aria="Efekt sesleri">🔊</button><button id="dilBtn" class="ikon" type="button" data-ui aria-label="Dil" data-i18n-aria="Dil">TR</button></span></span></div>
 </div>
 <div id="magaza" data-ui hidden role="dialog" aria-label="Mağaza">
   <div class="panel">

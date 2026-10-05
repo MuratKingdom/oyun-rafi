@@ -832,6 +832,28 @@ function bootstrap() {
     phase = 'paused';
     release();
   }
+  // Ekrandaki ⏸ düğmesi (telefonda klavye yok): oyunda duraklatır, duraklatılmışken devam ettirir
+  var duraklatBtn = document.getElementById('duraklatBtn');
+  if (duraklatBtn) duraklatBtn.addEventListener('click', function () {
+    if (phase === 'playing') pause();
+    else if (phase === 'paused') startPlaying();
+  });
+  // Büyük yazı (⚙ → Aa): oyun içi yazılar ve mağaza paneli büyür
+  var bigText = lsGet('bopgate-buyuk-yazi') === '1';
+  var yaziBtn = document.getElementById('yaziBtn');
+  function applyBigText() {
+    if (document.documentElement && document.documentElement.classList) document.documentElement.classList.toggle('buyuk-yazi', bigText);
+    if (!yaziBtn) return;
+    yaziBtn.className = bigText ? 'ikon acik' : 'ikon';
+    yaziBtn.setAttribute('aria-pressed', String(bigText));
+    yaziBtn.title = L('Büyük yazı: {d}', { d: L(bigText ? 'açık' : 'kapalı') });
+  }
+  if (yaziBtn) yaziBtn.addEventListener('click', function () {
+    bigText = !bigText;
+    lsSet('bopgate-buyuk-yazi', bigText ? '1' : '0');
+    applyBigText();
+  });
+  applyBigText();
 
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
@@ -1021,6 +1043,12 @@ function bootstrap() {
     var showBtns = !rOpen && !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
     if (shopBtn) shopBtn.hidden = !showBtns;
     if (gunlukBtn) gunlukBtn.hidden = !showBtns || !Quests;
+    if (duraklatBtn) {
+      duraklatBtn.hidden = !(phase === 'playing' || phase === 'paused') || shopOpen;
+      var pz = phase === 'paused';
+      if (duraklatBtn.textContent !== (pz ? '▶' : '⏸')) duraklatBtn.textContent = pz ? '▶' : '⏸';
+      duraklatBtn.setAttribute('aria-label', L(pz ? 'Devam et' : 'Duraklat'));
+    }
     if (liderBtn) liderBtn.hidden = !showBtns || !games;
     var qb = document.getElementById('gorevBtn');
     if (qb) {
@@ -1033,7 +1061,7 @@ function bootstrap() {
     }
     window.GameRender.draw(ctx, state, {
       best: shownBest(), muted: muted, phase: phase, fx: fx, touch: touch, time: ts / 1000, viewX0: viewX0,
-      easy: easy && !dailyMode, guide: guideFor(), lite: lite,
+      easy: easy && !dailyMode, guide: guideFor(), lite: lite, bigText: bigText,
       daily: dailyMode ? { best: challenge.best, newBest: newDaily } : null,
       ghost: dailyMode && Quests && phase === 'playing' ? ghostY() : null,
       newBest: newBest, canRestart: (phase === 'over' || phase === 'won') && canRestart(),
