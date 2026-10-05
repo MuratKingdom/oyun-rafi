@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kayar Taş</title>
+<style>
+  html, body { margin: 0; background: #12141b; color: #ddd; font-family: system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; align-items: center; padding-top: 12px; }
+  canvas { max-width: 100%; background: #1b1f2a; touch-action: none; }
+  p { margin: 8px 0; font-size: 15px; }
+</style>
+</head>
+<body>
+<canvas id="game" width="900" height="360"></canvas>
+<p id="hint">Boşluğu basılı tut: güç dolar. Bırak: taş kayar. Yeşil bölgede dur.</p>
+<script>
+'use strict';
+// Saf oyun mantigi: DOM yok, canvas yok. Rastgelelik state icindeki seed'den gelir.
+const GameLogicApi = (function () {
+  const C = { TRACK: 900, START: 30, A: 200, VMAX: 800, CHARGE: 0.6, WIN_LEVEL: 12, RESULT_T: 0.6, MIN_POWER: 0.05 };
+
+  function rnd(s) {
+    s.rng = (s.rng + 0x6D2B79F5) | 0;
+    let t = s.rng;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  function genLevel(s) {
+    const L = s.level;
+    s.tw = Math.max(60, 120 - L * 6);
+    s.tx = Math.round(260 + rnd(s) * (770 - 260 - s.tw));
+    s.patches = [];
+    const n = L < 2 ? 0 : (L < 6 ? 1 : 2);
+    for (let i = 0; i < n; i++) {
+      const len = Math.round(100 + rnd(s) * 80);
+      const x0 = Math.round(90 + rnd(s) * (820 - len - 90));
+      const k = rnd(s) < 0.5 ? 0.6 : 1.8;
+      s.patches.push({ x0: x0, x1: x0 + len, k: k });
+    }
+    s.x = C.START; s.v = 0; s.power = 0; s.holding = false; s.phase = 'aim'; s.timer = 0;
+  }
+
+  function createState(seed) {
+    const s = {
+      seed: seed, rng: seed | 0, status: 'playing', overReason: '', score: 0, level: 0,
+      phase: 'aim', power: 0, holding: false, x: C.START, v: 0, tx: 0, tw: 0, patches: [],
+      timer: 0, t: 0, flash: 0, event: ''
+    };
+    genLevel(s);
+    return s;
+  }
+
+  function kAt(s, x) {
+    for (let i = 0; i < s.patches.length; i++) {
+      if (x >= s.patches[i].x0 && x <= s.patches[i].x1) return s.patches[i].k;
+    }
+    return 1;
+  }
+
+  function lose(s, reason, ev) {
+    s.status = 'over'; s.overReason = reason; s.event = ev; s.flash = 0.2;
+  }
+
+  function resolveStop(s) {
+    if (s.x >= s.tx && s.x <= s.tx + s.tw) {
+      const mid = s.tx + s.tw / 2;
+      const bonus = Math.round(50 * (1 - Math.abs(s.x - mid) / (s.tw / 2)));
+      s.score += 100 + bonus;
+      s.level += 1;
+      s.event = 'hit';
+      s.flash = 0.15;
+      if (s.level >= C.WIN_LEVEL) { s.status = 'won'; return; }
+      s.phase = 'result'; s.timer = C.RESULT_T;
+    } else if (s.x < s.tx) {
+      lose(s, 'Hedefe ulaşmadın', 'miss');
+    } else {
+      lose(s, 'Hedefi geçtin', 'miss');
+    }
+  }
+
+  function step(s, input, dt) {
+    s.event = '';
+    if (s.status !== 'playing') return s;
+    s.t += dt;
+    if (s.flash > 0) s.flash -= dt;
+    if (s.phase === 'aim') {
+      if (input.action) {
+        s.holding = true;
+        s.power = Math.min(1, s.power + C.CHARGE * dt);
+      } else if (s.holding) {
+        s.holding = false;
+        if (s.power < C.MIN_POWER) { s.power = 0; }
+        else { s.v = s.power * C.VMAX; s.phase = 'slide'; s.event = 'launch'; }
+      }
+    } else if (s.phase === 'slide') {
+      s.v -= C.A * kAt(s, s.x) * dt;
+      if (s.v <= 0) { s.v = 0; resolveStop(s); }
+      else {
+        s.x += s.v * dt;
+        if (s.x > C.TRACK) { s.x = C.TRACK; lose(s, 'Pistten düştün', 'fall'); }
+      }
+    } else if (s.phase === 'result') {
+      s.timer -= dt;
+      if (s.timer <= 0) genLevel(s);
+    }
+    return s;
+  }
+
+  return { createState: createState, step: step, C: C };
+})();
+const createState = GameLogicApi.createState, step = GameLogicApi.step;
+if (typeof module !== 'undefined') module.exports = { createState, step, C: GameLogicApi.C };
+if (typeof window !== 'undefined') window.GameLogic = { createState, step, C: GameLogicApi.C };
+
+</script>
+<script>
+'use strict';
+// Sadece cizim: state'i degistirmez.
+const GameRenderApi = (function () {
+  function draw(ctx, s, view) {
+    const w = view.w, h = view.h;
+    const TR = 900, PAD = 30, sx = (w - PAD * 2) / TR;
+    const X = function (u) { return PAD + u * sx; };
+    const ty = h * 0.62, th = 46;
+    ctx.fillStyle = s.flash > 0 ? '#3a3350' : '#1b1f2a';
+    ctx.fillRect(0, 0, w, h);
+    // pist
+    ctx.fillStyle = '#4a5063';
+    ctx.fillRect(X(0), ty, TR * sx, th);
+    for (let i = 0; i < s.patches.length; i++) {
+      const p = s.patches[i];
+      ctx.fillStyle = p.k < 1 ? '#8fd3f0' : '#c9a66b';
+      ctx.fillRect(X(p.x0), ty, (p.x1 - p.x0) * sx, th);
+    }
+    // hedef bolge
+    ctx.fillStyle = 'rgba(80,220,120,0.55)';
+    ctx.fillRect(X(s.tx), ty - 10, s.tw * sx, th + 20);
+    ctx.fillStyle = '#e8ffee';
+    ctx.fillRect(X(s.tx + s.tw / 2) - 1, ty - 14, 2, th + 28);
+    // baslangic cizgisi
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(X(30) - 1, ty - 4, 2, th + 8);
+    // tas
+    ctx.fillStyle = s.status === 'over' ? '#d44' : '#ffd24a';
+    ctx.beginPath();
+    ctx.arc(X(s.x), ty - 11, 11, 0, Math.PI * 2);
+    ctx.fill();
+    // guc cubugu
+    ctx.fillStyle = '#2c3242';
+    ctx.fillRect(PAD, 24, 220, 16);
+    ctx.fillStyle = '#ff7a45';
+    ctx.fillRect(PAD, 24, 220 * s.power, 16);
+    // metinler
+    ctx.fillStyle = '#e8e8f0';
+    ctx.font = '16px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Skor ' + s.score + '   Seviye ' + (Math.min(s.level + 1, 12)) + '/12   Rekor ' + view.best, PAD, 64);
+    ctx.textAlign = 'right';
+    ctx.fillText(view.muted ? 'Ses kapalı (M)' : 'Ses açık (M)', w - PAD, 38);
+    ctx.textAlign = 'center';
+    if (s.status === 'over') {
+      ctx.font = '28px system-ui, sans-serif';
+      ctx.fillStyle = '#ff8a8a';
+      ctx.fillText(s.overReason, w / 2, h * 0.3);
+      ctx.font = '16px system-ui, sans-serif';
+      ctx.fillStyle = '#e8e8f0';
+      ctx.fillText('Yeniden başlamak için R / boşluk / tıkla', w / 2, h * 0.3 + 28);
+    } else if (s.status === 'won') {
+      ctx.font = '28px system-ui, sans-serif';
+      ctx.fillStyle = '#9dffb0';
+      ctx.fillText('12 hedefi tuttun', w / 2, h * 0.3);
+      ctx.font = '16px system-ui, sans-serif';
+      ctx.fillStyle = '#e8e8f0';
+      ctx.fillText('Yeniden başlamak için R / boşluk / tıkla', w / 2, h * 0.3 + 28);
+    }
+  }
+  return { draw: draw };
+})();
+if (typeof module !== 'undefined') module.exports = { draw: GameRenderApi.draw };
+if (typeof window !== 'undefined') window.GameRender = { draw: GameRenderApi.draw };
+
+</script>
+<script>
+'use strict';
+// Dongu, girdi, ses. Mantik logic.js'te, cizim render.js'te.
+function bootstrap() {
+  const L = window.GameLogic, R = window.GameRender;
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const DT = 1 / 60;
+  const KEY = 'kayartas-best';
+  let best = 0;
+  try { best = parseInt(window.localStorage.getItem(KEY), 10) || 0; } catch (e) { best = 0; }
+  let muted = false, audio = null;
+  let state = L.createState((Date.now() % 1000000) + 1);
+  const input = { action: false, restart: false };
+  let held = false, blockHeld = false, acc = 0, last = null;
+
+  function beep(freq, dur, type) {
+    if (muted) return;
+    try {
+      if (!audio) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audio = new AC(); }
+      if (!audio) return;
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = type || 'square'; o.frequency.value = freq;
+      g.gain.value = 0.06;
+      o.connect(g); g.connect(audio.destination);
+      o.start(); o.stop(audio.currentTime + dur);
+    } catch (e) { /* sessiz devam */ }
+  }
+
+  function restart() {
+    state = L.createState((Date.now() % 1000000) + 1);
+    blockHeld = true;
+  }
+
+  function press() {
+    if (state.status !== 'playing') { restart(); return; }
+    held = true;
+  }
+  function release() { held = false; blockHeld = false; }
+
+  function onKeyDown(e) {
+    const k = e.key;
+    if (k === ' ' || k === 'ArrowUp' || k === 'Enter') { if (e.preventDefault) e.preventDefault(); if (!e.repeat) press(); }
+    else if (k === 'r' || k === 'R') { restart(); }
+    else if (k === 'm' || k === 'M') { muted = !muted; }
+  }
+  function onKeyUp(e) {
+    const k = e.key;
+    if (k === ' ' || k === 'ArrowUp' || k === 'Enter') release();
+  }
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  if (canvas.addEventListener) {
+    canvas.addEventListener('pointerdown', function (e) { if (e.preventDefault) e.preventDefault(); press(); });
+    canvas.addEventListener('pointerup', release);
+  }
+
+  function update() {
+    input.action = held && !blockHeld;
+    const before = state.status;
+    L.step(state, input, DT);
+    const ev = state.event;
+    if (ev === 'launch') beep(220, 0.08, 'sawtooth');
+    else if (ev === 'hit') beep(660, 0.15, 'square');
+    else if (ev === 'miss') beep(150, 0.25, 'triangle');
+    else if (ev === 'fall') beep(90, 0.3, 'sawtooth');
+    if (before === 'playing' && state.score > best) {
+      best = state.score;
+      try { window.localStorage.setItem(KEY, String(best)); } catch (e) { /* kayit yok */ }
+    }
+  }
+
+  function frame(ts) {
+    if (last === null) last = ts;
+    acc += Math.min(0.25, (ts - last) / 1000);
+    last = ts;
+    let n = 0;
+    while (acc >= DT && n < 5) { update(); acc -= DT; n++; }
+    if (n === 5) acc = 0;
+    R.draw(ctx, state, { w: canvas.width, h: canvas.height, best: best, muted: muted });
+    window.requestAnimationFrame(frame);
+  }
+  window.requestAnimationFrame(frame);
+  return { getState: function () { return state; } };
+}
+let GameMainInstance = null;
+if (typeof window !== 'undefined') {
+  window.GameMain = { bootstrap: function () { GameMainInstance = bootstrap(); window.GameMain.getState = GameMainInstance.getState; return GameMainInstance; } };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', window.GameMain.bootstrap);
+  else window.GameMain.bootstrap();
+}
+if (typeof module !== 'undefined') module.exports = { bootstrap: bootstrap };
+
+</script>
+</body>
+</html>

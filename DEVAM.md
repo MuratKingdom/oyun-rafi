@@ -1,6 +1,6 @@
 # Oyun Rafı — devam notu (handoff)
 
-Hazırlanma: 3 Ekim 2026 · son güncelleme: 4 Ekim 2026. Bu dosya rafla ilgili işi yeni bir sohbet/oturumda kaldığı yerden sürdürmek
+Hazırlanma: 3 Ekim 2026 · son güncelleme: 5 Ekim 2026. Bu dosya rafla ilgili işi yeni bir sohbet/oturumda kaldığı yerden sürdürmek
 içindir. Önce bunu, sonra `README.md`'yi oku.
 
 ## Depo nasıl çalışıyor (kısa)
@@ -8,7 +8,8 @@ içindir. Önce bunu, sonra `README.md`'yi oku.
 - `main` = raf: `index.html` (vitrin kartları), `oyunlar/<ad>/index.html` (oynanabilir kopyalar),
   `tools/raf-tazelik.sh`, `.github/workflows/raf-tazelik.yml`.
 - `oyun/<ad>` = her oyunun kaynağı, testleri, README'si ve `oyun-tek-dosya.html` derlemesi.
-  Oyun dallarında CI yok; testler yerelde koşturulur.
+  Oyun dallarında genel CI yok; testler yerelde koşturulur. İstisna: `oyun/sekmeguc`'ta
+  `.github/workflows/bopgate-android.yml` (testler + Android APK derlemesi, aşağıda).
 - Raftaki kopya ile dalın `oyun-tek-dosya.html`'i **bayt bayt aynı** olmalı. CI
   ("raf dallarla tutarlı mı") her `main` push'unda ve salı/cuma günleri kontrol eder; eskime CI'ı kırar.
 - Oyun dalları `main`'in fetch refspec'ine girmez. Önce:
@@ -32,8 +33,9 @@ içindir. Önce bunu, sonra `README.md`'yi oku.
 |---|---|---|
 | Yerçekimi Tüneli | `oyun/gravtunel` | Rutin üretimi, dokunulmadı |
 | Son Kuyu | `oyun/sonkuyu` | Rutin üretimi, dokunulmadı |
-| **Sekme Gücü** (global ad: **Bopgate**) | `oyun/sekmeguc` | 2–4 Ekim'de elle geliştirildi (aşağıda) |
+| **Sekme Gücü** (global ad: **Bopgate**) | `oyun/sekmeguc` | 2–5 Ekim'de elle geliştirildi (aşağıda) |
 | Tohum Payı | `oyun/tohumpayi` | Rutin üretimi, dokunulmadı |
+| Kayar Taş | `oyun/kayartas` | Rutin üretimi (5 Ekim), dokunulmadı; rafa 5 Ekim'de eklendi |
 
 ## Sekme Gücü — mevcut durum
 
@@ -44,14 +46,20 @@ dışarıya yalnız `window.Game*` ve `module.exports` çıkar; yeni dosya da b�
 | Dosya | Ne |
 |---|---|
 | `logic.js` | Saf, belirlenimli fizik ve dünya (tohumlu RNG). Bölümler, güçler, engeller, sonsuz mod, devam |
-| `shop.js` | Mağaza kataloğu (7 top, 5 harita), cüzdan, kalıcı güçlendirmeler, devam bedeli |
+| `i18n.js` | Türkçe kaynak → İngilizce sözlük, `L(s, p)`, dil seçimi (`bopgate-dil`) |
+| `shop.js` | Mağaza kataloğu (9 top, 6 harita; 2 top + 1 harita yalnız satın almayla), cüzdan, kalıcı güçlendirmeler, devam bedeli; her topun canlı efekti (`fx`) |
+| `monetize.js` | 6 uygulama içi ürün, hak verme, ödüllü reklam kuralları (günde 5 ★ x2), sahte sağlayıcı |
+| `cloud.js` | Play Games bulut kaydı için paketle/aç/birleştir (kazanım kaybolmaz, yıldız çift sayılmaz) |
 | `quests.js` | Günlük 3 görev ve giriş serisi |
 | `audio.js` | Ses ayarları, efekt tablosu, prosedürel müzik ve sıralayıcı |
 | `render.js` | Yalnız çizim |
-| `main.js` | Döngü, girdi, ses çalma, mağaza/görev arayüzü, devam düğmesi |
+| `main.js` | Döngü, girdi, ses çalma, mağaza/görev arayüzü, devam ve reklam düğmeleri, ⚙ ayarlar, güvenli alan (çentik/çubuk) ölçümü |
 | `build-single.js` | Betikleri `index.html`'e gömüp `oyun-tek-dosya.html` üretir (dosya listesi içinde) |
-| `test.js` | T1–T36 (mantık, mağaza, görev, ses, sonsuzluk, güçlendirme, ekonomi hızı) |
-| `test-dom.js` | T5a–T5j (sahte DOM ile bağlantı testleri) |
+| `test.js` | T1–T40 (mantık, mağaza, görev, ses, sonsuzluk, güçlendirme, ekonomi hızı, para kazanma, dil, bulut) |
+| `test-dom.js` | T5a–T5l (sahte DOM ile bağlantı testleri) |
+| `android-paket/` | Capacitor 8 projesi (`com.cozulur.bopgate`), `bridge.js` (AdMob/Billing/Play Games köprüsü, yalnız test kimlikleri), `hazirla.js`, simgeler, README |
+| `magaza/` | Play Store metinleri (TR/EN), gizlilik politikası, Play Console form cevapları, ekran görüntüleri |
+| `.github/workflows/bopgate-android.yml` | Testler → debug APK (eser `bopgate-debug-apk`); imza sırları varsa imzalı AAB. Debug anahtarı Actions önbelleğinde sabit (SHA-256 `baacb2ae…`) |
 | `tools/kazanilabilirlik.js` | İleriye bakan bot: `--kalkansiz`, `--guclu`, `--yukseklik N`, `--hedef N` |
 | `tools/ekonomi.js` | Yıldız ekonomisi simülasyonu: oyuncu tipi başına ilk alım / güçlendirmeler / her şey günü |
 | `docs/isim-arastirmasi.md` | Global isim araştırması ve karar |
@@ -71,20 +79,43 @@ Oyun özeti (2 Ekim itibarıyla, oyun-rafi #5–#19):
   ışık kuyruğu, kapı halkası; BOPGATE logolu açılış, sonuç kartı, cam görünümlü mağaza. Işıma
   gerçek telefonda ölçülmedi (eski cihazda kare hızı riski).
 - Günlük görevler + giriş serisi; harita başına prosedürel müzik; 🎵/🔊 düğmeleri, M tuşu.
-- `localStorage` anahtarları: `sekmeguc-best`, `sekmeguc-profil`, `sekmeguc-gunluk`, `sekmeguc-ses`
-  (hepsi bozuk/kurcalanmış veride güvenli varsayılana döner).
+- `localStorage` anahtarları: `sekmeguc-best`, `sekmeguc-profil`, `sekmeguc-gunluk`, `sekmeguc-ses`,
+  `bopgate-dil` (hepsi bozuk/kurcalanmış veride güvenli varsayılana döner).
+- **4 Ekim (#25–#29):** satın alma + ödüllü reklam altyapısı, TR/EN, liderlik + bulut kayıt (sunucusuz,
+  Play Games), Play Store hazırlığı (`magaza/`), Android paketi ve CI'da APK derlemesi (#26).
+- **5 Ekim (#30–#34):** APK Murat'ın telefonunda kuruldu ve ekran görüntüleriyle bakıldı:
+  - #30 oyun alanı telefonun durum/gezinme çubuklarının altına taşıyordu → güvenli alan payı düşülüyor
+    (telefonda doğrulandı).
+  - #31 açılış ekranı (zıplayan top, ortalı düzen, "Dokun ve başla"), müzik/ses/dil tek ⚙ altında,
+    yıldızı yetmeyen fiyatlar okunur.
+  - #33 geçilen kapı parlar, kapının ortasından geçiş "MÜKEMMEL xN" serisi (yalnız görsel).
+  - #34 her topa canlı efekt (kıvılcım, dönme, uydu, pırıltı…), haritalara iki katmanlı paralaks
+    (ay, dağlar, çam sırası + ateş böcekleri, şehir silueti, kar, bulutsu).
+  - #32 debug APK her derlemede aynı anahtarla imzalanıyor → telefona `adb install -r` ile
+    üstüne kurulur, ilerleme silinmez.
 
-Doğrulama sınırı: **gerçek telefonda elle oynanmadı.** Denge bot ve headless tarayıcıyla ölçüldü.
+Doğrulama sınırı: debug APK telefonda açıldı, ekrana sığdığı görüldü; uzun süreli elle oynanış ve
+denge insanla ayarlanmadı. Reklam/satın alma yalnız test kimlikleriyle, gerçek cihazda denenmedi.
+
+Telefona kurma (Windows, PowerShell; `gh` ve `platform-tools` kurulu):
+`gh run download <run_id> -R MuratKingdom/oyun-rafi -n bopgate-debug-apk; & "$env:USERPROFILE\platform-tools\adb.exe" install -r .\app-debug.apk`
 
 ## Bekleyen kararlar (Murat'ta)
 
 - **Play Store adı — karar verildi (4 Ekim):** **Bopgate**, paket `com.cozulur.bopgate` (#22).
   Murat'ın elle yapacağı 4 kontrol bekliyor: Play Console'da paket adı, Play/App Store içi arama,
   USPTO/EUIPO/TÜRKPATENT "BOPGATE" (sınıf 9 ve 41), `bopgate.com` WHOIS. İkon henüz yok.
-- **Para kazanma — karar verildi (4 Ekim):** uygulama içi satın alma ile **ücretli toplar, haritalar,
-  özellikler** ve **reklamı kapatan paket**; reklam türü yalnız **ödüllü reklam** (ara reklam ve banner
-  yok). Uygulanmadı: sıradaki iş oyun içi altyapı (sahte sağlayıcıyla, testli), sonra Capacitor +
-  Play Billing + AdMob paketi.
+- **Para kazanma — karar verildi ve uygulandı (4 Ekim):** ücretli toplar/harita/özellikler, reklamı kapatan
+  paket, yalnız ödüllü reklam. Kod hazır; gerçek kimlikler bekleniyor (aşağıda).
+- **Murat'tan beklenenler (yayın için):**
+  - Gizlilik sayfası için herkese açık iletişim e-postası (`gizlilik/bopgate.html` ve
+    `magaza/gizlilik.html`'deki `ILETISIM_EPOSTA` yer tutucusu) ve depo için GitHub Pages
+    (Ayarlar → Pages → `main` / kök) → adres `https://muratkingdom.github.io/oyun-rafi/gizlilik/bopgate.html`.
+  - GitHub Secrets'a 4 imza sırrı (`BOPGATE_KEYSTORE_BASE64`, `_KEYSTORE_PASSWORD`, `_KEY_ALIAS`,
+    `_KEY_PASSWORD`) → CI imzalı AAB üretir.
+  - AdMob uygulama + ödüllü reklam birimi kimlikleri; Play Games proje ve liderlik kimlikleri;
+    Play Console'da 6 ürünün girilmesi (`magaza/play-formlari.md` §7). Kimlikler `android-paket/bridge.js`
+    YAPILANDIRMA bölümüne girilir (kimlik sır değildir, ama şifre/anahtar asla).
 
 ## Gamer rutini
 
@@ -96,8 +127,10 @@ Doğrulama sınırı: **gerçek telefonda elle oynanmadı.** Denge bot ve headle
 
 ## Olası sonraki işler
 
-- Sekme Gücü / Bopgate: para kazanma altyapısı (ücretli ürünler, reklamı kapatan paket, ödüllü reklam);
-  Capacitor paketi (`com.cozulur.bopgate`); ikon; gerçek cihazda elle deneme (denge + neon kare hızı).
+- Bopgate: kimlikler gelince dahili test kanalı (AAB) → satın alma/reklam/liderlik telefonda denemesi.
+- Bopgate: İngilizce öne çıkan görsel; AdMob maksimum reklam içerik derecesi G (`bridge.js`, tek satır);
+  CI eylemlerinin Node 24 sürümlerine yükseltilmesi (uyarı veriyor, derlemeyi bozmuyor).
+- Kayar Taş: dokunmatik düzen ve can sayacı (README'deki ilk adım).
 - Diğer üç oyuna benzer cila (mobil dokunma, ses) — istenirse.
 
 ## Kurallar
