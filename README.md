@@ -1,58 +1,59 @@
-# 🕹️ Oyun Rafı
+# Kayar Taş
 
-Gamer rutininin ürettiği küçük ama **bitmiş** tarayıcı oyunlarının rafı.
-Haftada iki oyun (pazartesi ve perşembe); her biri kurulumsuz, sunucusuz, derlemesiz — tek dosya HTML.
+**Kanat:** arcade/fizik
+**Tek cümle:** Boşluk tuşunu basılı tutarak güç doldurup taşı bırakıyorsun; sürtünmeyle kayıp yeşil hedef bölgede durması gerekiyor.
 
-**→ [Rafı aç: `index.html`](index.html)**
+## Nasıl oynanır
+**Tarayıcıda oyna (kurulumsuz):**
+https://htmlpreview.github.io/?https://github.com/MuratKingdom/oyun-rafi/blob/oyun/kayartas/index.html
+Bu, üçüncü taraf bir görüntüleyicidir; kurulum gerektirmez ama garanti edilmez ve bu link
+tarayıcıda elle denenmemiştir.
 
-GitHub Pages açıksa raf doğrudan `https://muratkingdom.github.io/oyun-rafi/`
-adresinde oynanır. Açık değilse: depoyu klonla, `index.html`'i tarayıcıda aç.
+**Yerelde oynamak istersen:** `oyun-rafi` deposunda `oyun/kayartas` dalını seç → Code →
+Download ZIP (veya dalı klonla), `index.html` dosyasını herhangi bir modern tarayıcıda aç.
+Tek dosya isteyen için `oyun-tek-dosya.html` tek başına çalışır. Kurulum, derleme, sunucu,
+internet bağlantısı gerekmez.
 
-## Oyunlar
+## Kontroller
+- Boşluk / Yukarı ok / Enter / canvas'a basılı tutma: güç doldur; bırakınca taş kayar
+- R: yeniden başlat (kayıp ekranında boşluk veya tıklama da başlatır)
+- M: sesi aç/kapat
 
-| Oyun | Kanat | Ne | Oyna | Kaynak |
-|---|---|---|---|---|
-| Yerçekimi Tüneli | arcade/fizik | Tek tuşla yerçekimini ters çevirip dar bir tünelde engellerden kaçıyorsun. | [`oyunlar/gravtunel/`](oyunlar/gravtunel/index.html) | [`oyun/gravtunel`](../../tree/oyun/gravtunel) |
-| Son Kuyu | sandbox/inşa | 5×5 karede kolektör kurup kuyu inşa ederek tükenen suyu dengeliyorsun. | [`oyunlar/sonkuyu/`](oyunlar/sonkuyu/index.html) | [`oyun/sonkuyu`](../../tree/oyun/sonkuyu) |
-| Sekme Gücü (Bopgate) | arcade/fizik | Zıplayan topu tek tuşla havada tutup dar kapılardan geçiriyorsun; sonsuz mod, mağaza, günlük görevler, neon görünüm. | [`oyunlar/sekmeguc/`](oyunlar/sekmeguc/index.html) | [`oyun/sekmeguc`](../../tree/oyun/sekmeguc) |
-| Tohum Payı | sandbox/inşa | Altı tarlada tohum ayırıp her akşam artan yemek payını karşılıyorsun. | [`oyunlar/tohumpayi/`](oyunlar/tohumpayi/index.html) | [`oyun/tohumpayi`](../../tree/oyun/tohumpayi) |
+## Ana mekanik, amaç ve kurallar
+Güç çubuğu basılı tutma süresiyle dolar (tam doluluk ~1,7 sn). Bırakınca taş o güçle fırlar ve sabit
+sürtünmeyle yavaşlar. Mavi (buz) bölgede sürtünme azalır, kum bölgesinde artar. Taşın durduğu nokta
+yeşil hedefin içindeyse seviye geçilir: 100 puan + ortaya yakınlığa göre en çok 50 bonus. Hedef her
+seviyede daralır (120 → 60) ve 2. seviyeden sonra buz/kum yamaları çıkar. Hedefe ulaşmazsan, geçersen
+veya pistten düşersen oyun biter; sebep ekranda yazar. 12 hedefi tutarsan kazanırsın. En yüksek skor
+`localStorage`'da tutulur.
 
-Her oyunun ayrıntılı kaydı — ana mekanik, ne çalışıyor / ne eksik,
-geliştirmek için ilk adım, doğrulama durumu — katalog issue'sundadır.
+## NE ÇALIŞIYOR
+- Güç doldurma, fırlatma, sürtünmeyle durma, hedefte durma kontrolü (kanıt: T1, T3, T5c)
+- Üç kayıp sebebi ekrana yazılıyor: "Hedefe ulaşmadın", "Hedefi geçtin", "Pistten düştün" (kanıt: T2)
+- 12 hedefin tamamı bir bot tarafından tutulabiliyor, kazanma erişilebilir (kanıt: T3, 3 seed)
+- Tek tuşla temiz yeniden başlatma (kanıt: T4, T5d)
+- Canvas çizimi ve skor/seviye/rekor göstergesi (kanıt: T5b, W3, headless Chromium ile tek sayfa açılışı ve ekran görüntüsü)
 
-## Bu depo nasıl düzenlenmiş
+## NE EKSİK / İSKELE
+- Dokunmatik için ayrı kontrol düzeni yok; canvas'a basılı tutma aynı işi yapıyor, mobilde denenmedi
+- İnsan oynanışına göre zorluk dengesi ayarlanmadı (özellikle ilerleyen seviyelerde hedef dar)
+- Görsel çeşitlilik minimal (düz renkli şekiller)
+- Başarısız denemede can yok: ilk hata oyunu bitirir
 
-- **`main`** — rafın kendisi. `index.html` (vitrin), `oyunlar/<ad>/index.html`
-  (oynanabilir kopyalar), `tools/`, `.github/`.
-- **`oyun/<ad>`** — her oyunun kendi dalı: kaynak dosyalar, testler, kendi
-  README'si, LICENSE ve `oyun-tek-dosya.html` (tek dosya derlemesi).
-- **[issue #2 — 🕹️ Katalog](../../issues/2)** — rutinin okuduğu kalıcı katalog.
-  Aynı fikri iki kez kurmamak ve üst üste aynı türden oyun yapmamak için var.
-- **[issue #1 — 🎮 Koşu raporları](../../issues/1)** — her koşunun arşivi.
+## Doğrulama durumu
+node --check tüm JS dosyalarında çıkış 0; `node test.js` T1–T4 PASS (çıkış 0); `node test-dom.js`
+T5a–T5d PASS (çıkış 0); ağ/`file://` ve telif taramaları 0 eşleşme. Headless Chromium ile `file://`
+üzerinden sayfa açıldı ve ilk ekranın çizildiği ekran görüntüsünde görüldü; oyun akışı tarayıcıda
+denenmedi. Oynanabilirliği tarayıcıda elle doğrulanmadı; headless mantık ve yükleme testleri geçti.
 
-`main`'deki oynanabilir kopyalar, oyun dallarındaki `oyun-tek-dosya.html`
-dosyalarının birebir kopyalarıdır. Rutin yalnız dallara ve issue'lara yazar,
-`main`'i hiç bilmez — bu yüzden kopyaların eskimesi gerçek bir risk.
-`tools/raf-tazelik.sh` bunu denetler ve `.github/workflows/raf-tazelik.yml`
-her `main` push'unda, ayrıca rutin koşularının ertesi günü (salı ve cuma)
-otomatik çalıştırır. Eskime sessiz kalmaz, CI'ı kırar.
+## Varlıklar ve telif
+Tüm görseller Canvas ile, sesler WebAudio ile kod içinde üretilmiştir. Dış varlık, dış font,
+CDN bağımlılığı yoktur. Bu oyun hiçbir tescilli oyunun klonu değildir; sürtünmeyle duruş
+noktası tutturma mekaniğinden esinlenilmiştir.
 
-Yeni bir oyun dalı eklendiğinde rafı güncellemek için:
+## Bilinen sınır
+`file://` altında en yüksek skor kaydı bazı tarayıcılarda çalışmayabilir; oyun yine oynanır.
 
-```bash
-git fetch origin '+refs/heads/oyun/*:refs/remotes/origin/oyun/*'
-git show origin/oyun/<ad>:oyun-tek-dosya.html > oyunlar/<ad>/index.html
-# sonra index.html'e oyunun kartını ekle
-./tools/raf-tazelik.sh   # yeşil olmalı
-```
-
-## Dürüstlük notu
-
-Oyunların hiçbiri bir insan tarafından uzun süre elle oynanarak test
-edilmedi. Doğrulama, her oyunun kendi dalındaki mantık ve DOM testleriyle
-(hepsi PASS, çıkış kodu 0) ve headless tarayıcıda açılış + girdi + ekran
-görüntüsü kontrolleriyle yapıldı. Her oyunun README'si ve katalog satırı
-"NE ÇALIŞIYOR" ile "NE EKSİK" bölümlerini ayrı ayrı listeler.
-
-Tüm görseller Canvas ile, sesler WebAudio ile kod içinde üretilir. Dış varlık,
-dış font, dış kütüphane yoktur.
+## Geliştirmek isteyen için ilk adım
+`logic.js` içindeki `C.A`, `C.CHARGE` ve `genLevel()` içindeki yama `k` değerlerini değiştir veya
+`step()`'e can sayacı ekle.
