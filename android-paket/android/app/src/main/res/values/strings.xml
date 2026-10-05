@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Bopgate</string>
+    <string name="title_activity_main">Bopgate</string>
+    <string name="package_name">com.cozulur.bopgate</string>
+    <string name="custom_url_scheme">com.cozulur.bopgate</string>
+
+    <!-- AdMob UYGULAMA kimliği. Şu an Google'ın resmi TEST kimliği.
+         Yayın öncesi AdMob > Uygulamalar > Uygulama ayarları'ndaki gerçek kimlikle değiştirin
+         (ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY biçiminde). Ödüllü reklam BİRİMİ kimliği ise bridge.js içindedir. -->
+    <string name="admob_app_id" translatable="false">ca-app-pub-3940256099942544~3347511713</string>
+
+    <!-- Play Games Services v2 proje kimliği (Play Console > Play Games Hizmetleri > Yapılandırma,
+         yalnızca rakamlardan oluşan "Proje kimliği"). -->
+    <string name="game_services_project_id" translatable="false">PLAY_GAMES_PROJECT_ID</string>
+</resources>

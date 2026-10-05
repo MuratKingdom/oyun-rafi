@@ -1,0 +1,11 @@
+# Bopgate Android paketi
+node_modules/
+# hazirla.js üretir
+www/
+# İmza anahtarları ve gizli dosyalar ASLA depoya girmez
+*.jks
+*.keystore
+*.p12
+keystore.properties
+google-services.json
+.env

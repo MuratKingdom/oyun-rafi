@@ -1,0 +1,23 @@
+{
+  "name": "bopgate-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bopgate (Sekme Gücü) Android paketi — Capacitor sarmalayıcı",
+  "license": "MIT",
+  "scripts": {
+    "hazirla": "node hazirla.js",
+    "ikon": "node ikon-uret.js",
+    "sync": "node hazirla.js && npx cap sync android",
+    "ac": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "^8.1.0",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@modbender/capacitor-play-games": "^0.5.0",
+    "cordova-plugin-purchase": "^13.18.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2"
+  }
+}

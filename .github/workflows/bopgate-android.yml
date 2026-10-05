@@ -1,0 +1,113 @@
+# Bopgate Android derlemesi (GitHub'ın sunucularında; bilgisayarda Android Studio gerekmez)
+#
+# Her çalışmada:
+#   • Oyun testleri (node test.js, node test-dom.js) — kırmızıysa derleme yapılmaz.
+#   • Debug APK → "bopgate-debug-apk" eseri. Telefona doğrudan kurulur (bilinmeyen kaynak izni).
+# İmza sırları tanımlıysa ek olarak:
+#   • İmzalı AAB → "bopgate-release-aab" eseri. Play Console'a (dahili test) yüklenir.
+#
+# Gerekli GitHub Secrets (yalnız imzalı AAB için; ASLA dosyaya ya da sohbete yazılmaz):
+#   BOPGATE_KEYSTORE_BASE64   upload keystore dosyasının base64 hali
+#   BOPGATE_KEYSTORE_PASSWORD keystore şifresi
+#   BOPGATE_KEY_ALIAS         anahtar adı
+#   BOPGATE_KEY_PASSWORD      anahtar şifresi
+# Kurulum adımları: android-paket/README.md → "GitHub Actions ile derleme".
+name: Bopgate Android
+
+on:
+  push:
+    branches: [oyun/sekmeguc]
+  pull_request:
+    branches: [oyun/sekmeguc]
+  workflow_dispatch:
+
+concurrency:
+  group: bopgate-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  derle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    env:
+      KS_B64: ${{ secrets.BOPGATE_KEYSTORE_BASE64 }}
+      # versionCode: her çalışmada artar (Play aynı numarayı ikinci kez kabul etmez)
+      BOPGATE_VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Oyun testleri
+        run: |
+          node test.js
+          node test-dom.js
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # Yalnız gereken paketler: eski 'tools' paketi artık yok, varsayılan kurulum onu isteyip düşüyor
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Capacitor bağımlılıkları
+        working-directory: android-paket
+        run: npm ci
+
+      - name: Oyunu pakete hazırla (www/) ve eşitle
+        working-directory: android-paket
+        run: |
+          node hazirla.js
+          npx cap sync android
+
+      - name: Debug APK
+        working-directory: android-paket/android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bopgate-debug-apk
+          path: android-paket/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+      - name: İmza dosyasını sırlardan kur (yalnız sırlar varsa)
+        if: env.KS_B64 != ''
+        working-directory: android-paket/android
+        env:
+          KS_PASS: ${{ secrets.BOPGATE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.BOPGATE_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.BOPGATE_KEY_PASSWORD }}
+        run: |
+          echo "$KS_B64" | base64 -d > bopgate-upload.jks
+          {
+            echo "storeFile=bopgate-upload.jks"
+            echo "storePassword=$KS_PASS"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASS"
+          } > keystore.properties
+
+      - name: İmzalı AAB (Play Console için)
+        if: env.KS_B64 != ''
+        working-directory: android-paket/android
+        run: ./gradlew --no-daemon bundleRelease
+
+      - uses: actions/upload-artifact@v4
+        if: env.KS_B64 != ''
+        with:
+          name: bopgate-release-aab
+          path: android-paket/android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      - name: İmza dosyalarını sil
+        if: always()
+        working-directory: android-paket/android
+        run: rm -f bopgate-upload.jks keystore.properties

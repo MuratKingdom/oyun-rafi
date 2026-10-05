@@ -1,0 +1,12 @@
+{
+  "appId": "com.cozulur.bopgate",
+  "appName": "Bopgate",
+  "webDir": "www",
+  "backgroundColor": "#0b1220",
+  "loggingBehavior": "debug",
+  "android": {
+    "backgroundColor": "#0b1220",
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  }
+}
