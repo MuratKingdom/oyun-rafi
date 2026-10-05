@@ -40,9 +40,9 @@ jobs:
       # versionCode: her çalışmada artar (Play aynı numarayı ikinci kez kabul etmez)
       BOPGATE_VERSION_CODE: ${{ github.run_number }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
 
@@ -51,7 +51,7 @@ jobs:
           node test.js
           node test-dom.js
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
