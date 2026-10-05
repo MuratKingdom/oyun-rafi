@@ -51,15 +51,15 @@
     box-shadow: 0 0 28px rgba(90,200,250,0.16), inset 0 0 0 1px rgba(255,255,255,0.03);
     /* Mantıksal alan 520 x --h (main.js ayarlar: 540–1000). Oranı koruyarak ekrana sığ;
        uzun telefonda alan da uzadığı için üstte/altta boşluk kalmaz. */
-    --h: 540;
+    --h: 540; --w: 520; /* görünen mantıksal genişlik: büyük görünümde 420 (main.js) */
     /* Durum/gezinme çubuğu payı (Android edge-to-edge) düşülür; tarayıcıda env() 0'dır */
     width: min(calc((100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) * 0.98), 760px,
-      calc((100dvh - var(--hud) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 520 / var(--h)));
-    aspect-ratio: 520 / var(--h);
+      calc((100dvh - var(--hud) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * var(--w) / var(--h)));
+    aspect-ratio: var(--w) / var(--h);
     height: auto;
   }
   @supports not (height: 100dvh) {
-    canvas { width: min(98vw, 760px, calc((100vh - var(--hud) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 520 / var(--h))); }
+    canvas { width: min(98vw, 760px, calc((100vh - var(--hud) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * var(--w) / var(--h))); }
   }
   #hint {
     font-size: 11.5px;
@@ -83,13 +83,26 @@
     color: var(--metin); background: var(--cam); border: 1px solid var(--cizgi); border-radius: 999px;
     padding: 10px 18px; cursor: pointer; box-shadow: 0 0 14px rgba(90,200,250,0.18);
   }
-  #gorevBtn[hidden], #liderBtn[hidden] { display: none; }
-  #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn {
+  #gorevBtn[hidden], #liderBtn[hidden], #gunlukBtn[hidden] { display: none; }
+  #gunlukBtn { border-color: rgba(179,157,250,0.6) !important; box-shadow: 0 0 12px rgba(179,157,250,0.3); }
+  #gunlukBtn.acik { background: rgba(179,157,250,0.25); }
+  #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn, #duraklatBtn, #yaziBtn, #titresimBtn {
     font: inherit; font-size: 18px; width: 44px; height: 44px; padding: 0; border-radius: 50%;
     border: 1px solid rgba(143,163,196,0.35); background: var(--cam); color: var(--metin); cursor: pointer;
   }
   #dilBtn { font: 900 13px var(--font); letter-spacing: 0.04em; }
-  #muzikBtn.kapali { opacity: 0.45; text-decoration: line-through; }
+  #muzikBtn.kapali, #titresimBtn.kapali { opacity: 0.45; text-decoration: line-through; }
+  #kolayBtn, #yaziBtn { opacity: 0.55; }
+  #yaziBtn { font: 900 15px var(--font); }
+  #yaziBtn.acik { opacity: 1; border-color: var(--cyan); box-shadow: 0 0 12px rgba(90,200,250,0.5); }
+  #duraklatBtn[hidden] { display: none; }
+  /* Büyük yazı: mağaza ve görev paneli */
+  html.buyuk-yazi #magaza .ad { font-size: 19px; }
+  html.buyuk-yazi #magaza .etki, html.buyuk-yazi #magaza .not { font-size: 15px; }
+  html.buyuk-yazi #magaza [data-sekme] { font-size: 16px; }
+  html.buyuk-yazi #magaza .urun button { font-size: 16px; min-height: 48px; }
+  html.buyuk-yazi #magaza .gorev .odul { font-size: 15px; }
+  #kolayBtn.acik { opacity: 1; border-color: var(--yesil); box-shadow: 0 0 12px rgba(70,211,154,0.5); }
   .ayar-kutu { position: relative; display: flex; }
   #ayarBtn[aria-expanded="true"] { border-color: var(--cyan); box-shadow: 0 0 12px rgba(90,200,250,0.45); }
   #ayarlar {
@@ -228,17 +241,17 @@
   @media (max-width: 440px) {
     .dugmeler { gap: 5px; padding: 0 6px; }
     #magazaBtn, #gorevBtn { padding: 8px 10px; font-size: 12.5px; }
-    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn { width: 34px; height: 34px; font-size: 15px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn, #duraklatBtn, #yaziBtn, #titresimBtn { width: 34px; height: 34px; font-size: 15px; }
     #dilBtn { font-size: 11px; }
   }
   @media (max-width: 380px) {
     #magazaBtn, #gorevBtn { padding: 7px 8px; font-size: 12px; }
-    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn { width: 31px; height: 31px; font-size: 14px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn, #duraklatBtn, #yaziBtn, #titresimBtn { width: 31px; height: 31px; font-size: 14px; }
   }
   @media (max-width: 340px) {
     .dugmeler { gap: 3px; padding: 0 3px; }
     #magazaBtn, #gorevBtn { padding: 6px 7px; font-size: 11px; letter-spacing: 0; }
-    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn { width: 27px; height: 27px; font-size: 12px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn, #duraklatBtn, #yaziBtn, #titresimBtn { width: 27px; height: 27px; font-size: 12px; }
     #dilBtn { font-size: 10px; }
   }
 </style>
@@ -247,7 +260,7 @@
 <div id="wrap">
   <canvas id="game" width="520" height="540"></canvas>
   <div id="hint"><span data-i18n="Ekranın herhangi bir yerine basılı tut: yükseklik kazan">Ekranın herhangi bir yerine basılı tut: yükseklik kazan</span><span class="kb" data-i18n=" · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
-  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="reklamDevamBtn" type="button" data-ui hidden>📺 Reklamla devam</button><button id="ikiKatBtn" type="button" data-ui hidden>📺 ★ x2</button><button id="magazaBtn" type="button" data-ui hidden data-i18n="🛒 Mağaza">🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="liderBtn" class="ikon" type="button" data-ui hidden aria-label="Liderlik tablosu" data-i18n-aria="Liderlik tablosu">🏆</button><span class="ayar-kutu" data-ui><button id="ayarBtn" class="ikon" type="button" data-ui aria-label="Ayarlar" data-i18n-aria="Ayarlar" aria-expanded="false" aria-controls="ayarlar">⚙</button><span id="ayarlar" data-ui hidden><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik" data-i18n-aria="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri" data-i18n-aria="Efekt sesleri">🔊</button><button id="dilBtn" class="ikon" type="button" data-ui aria-label="Dil" data-i18n-aria="Dil">TR</button></span></span></div>
+  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="reklamDevamBtn" type="button" data-ui hidden>📺 Reklamla devam</button><button id="ikiKatBtn" type="button" data-ui hidden>📺 ★ x2</button><button id="magazaBtn" type="button" data-ui hidden data-i18n="🛒 Mağaza">🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="gunlukBtn" class="ikon" type="button" data-ui hidden aria-label="Günlük meydan okuma">📅</button><button id="liderBtn" class="ikon" type="button" data-ui hidden aria-label="Liderlik tablosu" data-i18n-aria="Liderlik tablosu">🏆</button><button id="duraklatBtn" class="ikon" type="button" data-ui hidden aria-label="Duraklat">⏸</button><span class="ayar-kutu" data-ui><button id="ayarBtn" class="ikon" type="button" data-ui aria-label="Ayarlar" data-i18n-aria="Ayarlar" aria-expanded="false" aria-controls="ayarlar">⚙</button><span id="ayarlar" data-ui hidden><button id="yaziBtn" class="ikon" type="button" data-ui aria-label="Büyük yazı" data-i18n-aria="Büyük yazı">Aa</button><button id="kolayBtn" class="ikon" type="button" data-ui aria-label="Kolay mod" data-i18n-aria="Kolay mod">🐢</button><button id="titresimBtn" class="ikon" type="button" data-ui aria-label="Titreşim" data-i18n-aria="Titreşim">📳</button><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik" data-i18n-aria="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri" data-i18n-aria="Efekt sesleri">🔊</button><button id="dilBtn" class="ikon" type="button" data-ui aria-label="Dil" data-i18n-aria="Dil">TR</button></span></span></div>
 </div>
 <div id="magaza" data-ui hidden role="dialog" aria-label="Mağaza">
   <div class="panel">
@@ -339,6 +352,39 @@ var EN = {
   'Efekt sesleri': 'Sound effects',
   'Dil': 'Language',
   'Ayarlar': 'Settings',
+  'Kolay mod': 'Easy mode',
+  'Titreşim': 'Vibration',
+  'Titreşim: {d}': 'Vibration: {d}',
+  'Başlangıç paketi': 'Starter pack',
+  '★ 400 + Kor ve Nane topları': '★ 400 + Ember and Mint balls',
+  '🎁 Başlangıç paketi mağazada: ★ 400 + 2 top': '🎁 Starter pack in the shop: ★ 400 + 2 balls',
+  '🏅 Başarımlar: {d}/{n}': '🏅 Achievements: {d}/{n}',
+  'İlk kapını geç': 'Pass your first gate',
+  '30. bölümü geç': 'Clear level 30',
+  '{n} kez üst üste MÜKEMMEL geç': 'Hit {n} PERFECT gates in a row',
+  'Toplam {n} kapı geç': 'Pass {n} gates in total',
+  '{n} farklı gün günlük meydan okuma oyna': 'Play the daily challenge on {n} different days',
+  '{n} topa sahip ol': 'Own {n} balls',
+  'Büyük yazı': 'Large text',
+  'Büyük yazı: {d}': 'Large text: {d}',
+  'Duraklat': 'Pause',
+  'Devam et': 'Resume',
+  'Normal oyuna dön': 'Back to normal play',
+  'Günlük meydan okuma: herkes aynı parkur, rekorunun hayaletiyle yarış': 'Daily challenge: same course for everyone, race your best run\'s ghost',
+  'GÜNLÜK REKOR': 'DAILY BEST',
+  '📅 Günün parkuru · rekorun {n}': '📅 Today\'s course · your best {n}',
+  '📅 GÜNÜN REKORU!': '📅 NEW DAILY BEST!',
+  'Günlük rekor: {n}': 'Daily best: {n}',
+  'Kolay mod: {d}': 'Easy mode: {d}',
+  'yavaş, geniş kapılar; ayrı rekor, ★ %60': 'slower, wider gates; separate best, ★ 60%',
+  'Kolay mod açık': 'Easy mode on',
+  'Basılı tut: yüksel · bırak: alçal': 'Hold: rise · release: drop',
+  'Kolay mod kapalı': 'Easy mode off',
+  '🐢 Kolay mod': '🐢 Easy mode',
+  'KOLAY REKOR': 'EASY BEST',
+  'BASILI TUT ↑': 'HOLD ↑',
+  'BIRAK ↓': 'RELEASE ↓',
+  'İYİ ✓': 'GOOD ✓',
   'Liderlik tablosu': 'Leaderboard',
   // index.html
   'Ekranın herhangi bir yerine basılı tut: yükseklik kazan': 'Hold anywhere on the screen to gain height',
@@ -542,6 +588,13 @@ var MARGIN = 40;
 // kapıdan hemen sonra çok yüksek bir kapı hızlanan oyunda fiziksel olarak
 // yetişilemez olabiliyordu. Bu sınır her dizilimi oynanabilir tutar.
 var MAX_JUMP = 150;
+// Erişilebilirlik:
+// Kolay mod (ayarlardan): dünya daha yavaş akar, kapılar daha geniş, aralar biraz daha uzun.
+// İlk oyun rehberi: ilk TUTORIAL kapı daha geniş açılır (yalnız rehber açıkken; main.js ilk oyunda açar).
+var EASY_SPEED_F = 0.82;
+var EASY_GAP_F = 1.25;
+var EASY_SPAWN_F = 1.12;
+var TUTORIAL_GAP_F = 1.4;
 
 // --- Geometri --------------------------------------------------------------
 // Oyun alanının mantıksal yüksekliği cihaza göre değişebilir (dikey telefonda uzun).
@@ -559,15 +612,20 @@ function makeGeo(height) {
 
 // opts.height: mantıksal alan yüksekliği (540–1000); verilmezse 540 (klasik kare alan)
 // opts.mods: mağazadaki kalıcı güçlendirmeler { maxShield, startShield, powerMul, magnet }
+// opts.easy: kolay mod · opts.tutorial: ilk kaç kapı rehber genişliğinde açılsın (0 = rehber yok)
 function createState(seed, opts) {
   var g = makeGeo(opts && opts.height);
   var m = (opts && opts.mods) || {};
+  var easy = !!(opts && opts.easy);
+  var tutorial = Math.max(0, Math.floor((opts && opts.tutorial) || 0));
   var maxShield = typeof m.maxShield === 'number' ? m.maxShield : MAX_SHIELD;
   return {
     maxShield: maxShield,
     powerMul: m.powerMul || 1,
     magnet: m.magnet || 1,
     revives: 0,
+    easy: easy,
+    tutorialLeft: tutorial,
     geo: g,
     rngA: (seed || 1) >>> 0,
     y: g.floorY - BALL_R - 60 * g.k,
@@ -631,6 +689,11 @@ function makeWall(state, x, baseY, gapH) {
 function spawn(state) {
   var g = state.geo;
   var gapH = state.gapH;
+  if (state.tutorialLeft > 0) {
+    // Rehber kapısı: daha geniş; alan dışına taşmasın
+    gapH = Math.min(gapH * TUTORIAL_GAP_F, (g.floorY - g.ceilY) - 2 * MARGIN * g.k);
+    state.tutorialLeft--;
+  }
   var minTop = g.ceilY + MARGIN * g.k;
   var maxTop = g.floorY - MARGIN * g.k - gapH;
   var span = Math.max(10, maxTop - minTop);
@@ -716,6 +779,7 @@ function step(state, input, dt) {
   var e = endless(state.level);
   state.speed = SPEED0 + (SPEED_MAX + ENDLESS_SPEED * e - SPEED0) * d;
   state.gapH = (GAP_H0 - (GAP_H0 - (GAP_MIN - ENDLESS_GAP * e)) * d) * g.k;
+  if (state.easy) { state.speed *= EASY_SPEED_F; state.gapH *= EASY_GAP_F; }
 
   state.spawnTimer -= dt * wf;
   if (state.spawnTimer <= 0) {
@@ -723,6 +787,7 @@ function step(state, input, dt) {
     var interval = SPAWN_INTERVAL_MAX - state.t * SPAWN_RAMP;
     var imin = SPAWN_INTERVAL_MIN - (SPAWN_INTERVAL_MIN - ENDLESS_SPAWN_MIN) * e;
     if (interval < imin) interval = imin;
+    if (state.easy) interval *= EASY_SPAWN_F;
     state.spawnTimer = interval + extra;
   }
 
@@ -837,7 +902,8 @@ var CONST = {
   ENDLESS_LEVELS: ENDLESS_LEVELS, ENDLESS_SPEED: ENDLESS_SPEED, ENDLESS_GAP: ENDLESS_GAP, ENDLESS_SPAWN_MIN: ENDLESS_SPAWN_MIN,
   PULSE_FROM: PULSE_FROM, POWER_FROM: POWER_FROM, SPIKE_FROM: SPIKE_FROM, PULSE_MIN: PULSE_MIN,
   POWER_SLOW_F: POWER_SLOW_F, POWER_SLOW_T: POWER_SLOW_T, POWER_SMALL_F: POWER_SMALL_F, POWER_SMALL_T: POWER_SMALL_T,
-  SPIKE_DX: SPIKE_DX, SPIKE_W: SPIKE_W, MAX_SHIELD: MAX_SHIELD, REVIVE_CLEAR: REVIVE_CLEAR
+  SPIKE_DX: SPIKE_DX, SPIKE_W: SPIKE_W, MAX_SHIELD: MAX_SHIELD, REVIVE_CLEAR: REVIVE_CLEAR,
+  EASY_SPEED_F: EASY_SPEED_F, EASY_GAP_F: EASY_GAP_F, EASY_SPAWN_F: EASY_SPAWN_F, TUTORIAL_GAP_F: TUTORIAL_GAP_F
 };
 var API = { createState: createState, step: step, difficulty: difficulty, endless: endless, revive: revive, makeGeo: makeGeo, radius: radius, CONST: CONST };
 if (typeof module !== 'undefined') module.exports = API;
@@ -1021,10 +1087,13 @@ function equip(p, kind, id) {
 // Bölüm başına ayrı ödül yok: kazanç, ekranda toplanan yıldızla aynı kalsın.
 // Oyun sonsuzdur; eşik sayısı state.milestones'ta, eski kayıtlar için bölümden de hesaplanır.
 var MILESTONE_BONUS = 5;
+// Kolay modda koşu ödülü EASY_REWARD_F ile çarpılır (aşağı yuvarlanır): kolay mod ekonomiyi hızlandırmasın
+var EASY_REWARD_F = 0.6;
 function reward(state) {
   var levelsDone = Math.max(0, (state.level || 1) - 1);
   var ms = typeof state.milestones === 'number' ? state.milestones : Math.floor(levelsDone / 10);
-  return (state.stars || 0) + MILESTONE_BONUS * ms;
+  var r = (state.stars || 0) + MILESTONE_BONUS * ms;
+  return state.easy ? Math.floor(r * EASY_REWARD_F) : r;
 }
 
 // { ok, reason } — reason: 'yok' | 'tamam' (son basamak) | 'yetersiz'
@@ -1101,6 +1170,9 @@ var AD_X2_PER_DAY = 5;
 var PRODUCT_RE = /^bopgate\.[a-z.]{3,40}$/;
 
 var PRODUCTS = [
+  // İlk alım: düşük fiyatlı, içeriği belli paket (rekoru 10'u geçen oyuncuya açılışta bir kez hatırlatılır)
+  { id: 'bopgate.baslangic', name: 'Başlangıç paketi', suggest: '₺19,99', starter: true,
+    desc: '★ 400 + Kor ve Nane topları', grants: { items: [['ball', 'kor'], ['ball', 'nane']], coins: 400 } },
   { id: 'bopgate.reklamsiz', name: 'Reklamsız', suggest: '₺49,99',
     desc: 'Reklam izlemeden ödül: bedava devam ve ★ x2 anında', grants: { noads: true } },
   { id: 'bopgate.destekci', name: 'Destekçi paketi', suggest: '₺149,99', best: true,
@@ -1440,7 +1512,123 @@ function applyRun(d, run) {
   return done;
 }
 
+// --- Günlük meydan okuma ve rekor hayaleti -------------------------------------
+// Günün parkuru herkes için aynı: tohum gün anahtarından türetilir. Parkur (duvarlar, kapılar, öğeler)
+// yalnız tohuma ve geçen zamana bağlıdır, oyuncunun girdisine değil; bu yüzden en iyi koşunun top
+// yüksekliği zamanla kaydedilip sonraki denemelerde "hayalet" olarak aynı yerlerde gösterilebilir.
+// Yükseklik 0..1 arasına normalize saklanır (tavan 0, zemin 1): ekran yüksekliği değişse de geçerli.
+var CHALLENGE_KEY = 'bopgate-gunluk-meydan';
+var GHOST_STEP = 0.1;       // kayıt aralığı (sn)
+var GHOST_MAX = 3600;       // en çok 6 dakika
+function dailySeed(day) {
+  var h = 2166136261;
+  var s = 'bopgate:' + day;
+  for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0) || 1;
+}
+function loadChallenge(storage, day) {
+  try {
+    var d = JSON.parse(storage.getItem(CHALLENGE_KEY));
+    if (!d || d.day !== day || !validKey(d.day)) return { day: day, best: 0, path: [] };
+    var best = Math.max(0, Math.min(1e6, Math.floor(Number(d.best)) || 0));
+    var path = Array.isArray(d.path) ? d.path.slice(0, GHOST_MAX).map(function (v) {
+      var n = Number(v); return isFinite(n) ? Math.max(0, Math.min(1, n)) : 0.5;
+    }) : [];
+    return { day: day, best: best, path: path };
+  } catch (e) {
+    return { day: day, best: 0, path: [] };
+  }
+}
+function saveChallenge(storage, rec) {
+  try {
+    storage.setItem(CHALLENGE_KEY, JSON.stringify({ day: rec.day, best: rec.best,
+      path: rec.path.slice(0, GHOST_MAX).map(function (v) { return Math.round(v * 1000) / 1000; }) }));
+  } catch (e) {}
+}
+// t saniyedeki hayalet yüksekliği (0..1) ya da kayıt bittiyse null
+function ghostAt(path, t) {
+  if (!path || !path.length || !(t >= 0)) return null;
+  var f = t / GHOST_STEP, i = Math.floor(f);
+  if (i >= path.length - 1) return null;
+  return path[i] + (path[i + 1] - path[i]) * (f - i);
+}
+
+// --- Başarımlar ------------------------------------------------------------------
+// Kalıcı, bir kez kazanılan hedefler; küçük yıldız ödülü (toplam ★143, ekonomiyi hızlandırmayacak kadar).
+// kind: run_* tek koşuda, total_* birikimli sayaç, milestone eşik, combo en uzun MÜKEMMEL serisi,
+// daily_days günlük meydan okumanın oynandığı farklı gün sayısı, balls sahip olunan top sayısı.
+var ACH_KEY = 'bopgate-basarim';
+var ACHIEVEMENTS = [
+  { id: 'ilk_kapi', kind: 'run_gates', target: 1, reward: 2, text: 'İlk kapını geç' },
+  { id: 'kapi_25', kind: 'run_gates', target: 25, reward: 5, text: 'Bir koşuda {n} kapı geç' },
+  { id: 'kapi_50', kind: 'run_gates', target: 50, reward: 10, text: 'Bir koşuda {n} kapı geç' },
+  { id: 'kapi_100', kind: 'run_gates', target: 100, reward: 20, text: 'Bir koşuda {n} kapı geç' },
+  { id: 'esik_1', kind: 'milestone', target: 1, reward: 10, text: '10. bölümü geç (ilk eşik)' },
+  { id: 'esik_3', kind: 'milestone', target: 3, reward: 25, text: '30. bölümü geç' },
+  { id: 'seri_5', kind: 'combo', target: 5, reward: 8, text: '{n} kez üst üste MÜKEMMEL geç' },
+  { id: 'toplam_500', kind: 'total_gates', target: 500, reward: 10, text: 'Toplam {n} kapı geç' },
+  { id: 'toplam_2000', kind: 'total_gates', target: 2000, reward: 25, text: 'Toplam {n} kapı geç' },
+  { id: 'kalkan_10', kind: 'total_shield', target: 10, reward: 8, text: 'Kalkanla {n} çarpmadan kurtul' },
+  { id: 'gunluk_7', kind: 'daily_days', target: 7, reward: 10, text: '{n} farklı gün günlük meydan okuma oyna' },
+  { id: 'koleksiyon_5', kind: 'balls', target: 5, reward: 10, text: '{n} topa sahip ol' }
+];
+function achFresh() { return { done: [], gates: 0, shields: 0, dailyDays: 0, lastDaily: '', bestCombo: 0, bestGates: 0, bestMs: 0 }; }
+function achNum(v, max) { var n = Math.floor(Number(v)); return isFinite(n) && n > 0 ? Math.min(n, max) : 0; }
+function loadAch(storage) {
+  try {
+    var d = JSON.parse(storage.getItem(ACH_KEY));
+    if (!d || typeof d !== 'object') return achFresh();
+    var ids = ACHIEVEMENTS.map(function (a) { return a.id; });
+    return {
+      done: Array.isArray(d.done) ? d.done.filter(function (x, i, arr) { return ids.indexOf(x) >= 0 && arr.indexOf(x) === i; }) : [],
+      gates: achNum(d.gates, 1e9), shields: achNum(d.shields, 1e6), dailyDays: achNum(d.dailyDays, 1e5),
+      lastDaily: validKey(d.lastDaily) ? d.lastDaily : '', bestCombo: achNum(d.bestCombo, 1e5),
+      bestGates: achNum(d.bestGates, 1e6), bestMs: achNum(d.bestMs, 1e5)
+    };
+  } catch (e) {
+    return achFresh();
+  }
+}
+function saveAch(storage, a) { try { storage.setItem(ACH_KEY, JSON.stringify(a)); } catch (e) {} }
+function achProgress(a, def, extra) {
+  switch (def.kind) {
+    case 'run_gates': return a.bestGates;
+    case 'milestone': return a.bestMs;
+    case 'combo': return a.bestCombo;
+    case 'total_gates': return a.gates;
+    case 'total_shield': return a.shields;
+    case 'daily_days': return a.dailyDays;
+    case 'balls': return (extra && extra.balls) || 0;
+    default: return 0;
+  }
+}
+function describeAch(def) { return tx(def.text, { n: def.target }); }
+// run: bitmiş koşunun durumu; extra: { combo (koşudaki en uzun seri), daily (günlük mod mu), day, balls }
+// Döner: bu koşuda yeni kazanılanlar [{ id, text, reward }]
+function applyAch(a, run, extra) {
+  extra = extra || {};
+  a.gates += run.score || 0;
+  a.shields += run.shieldUsed || 0;
+  a.bestGates = Math.max(a.bestGates, run.score || 0);
+  a.bestMs = Math.max(a.bestMs, run.milestones || 0);
+  a.bestCombo = Math.max(a.bestCombo, extra.combo || 0);
+  if (extra.daily && validKey(extra.day) && extra.day !== a.lastDaily) { a.dailyDays++; a.lastDaily = extra.day; }
+  var got = [];
+  ACHIEVEMENTS.forEach(function (def) {
+    if (a.done.indexOf(def.id) >= 0) return;
+    if (achProgress(a, def, extra) >= def.target) {
+      a.done.push(def.id);
+      got.push({ id: def.id, text: describeAch(def), reward: def.reward });
+    }
+  });
+  return got;
+}
+
 var Quests = {
+  ACH_KEY: ACH_KEY, ACHIEVEMENTS: ACHIEVEMENTS, loadAch: loadAch, saveAch: saveAch, applyAch: applyAch,
+  achProgress: achProgress, describeAch: describeAch,
+  CHALLENGE_KEY: CHALLENGE_KEY, GHOST_STEP: GHOST_STEP, GHOST_MAX: GHOST_MAX,
+  dailySeed: dailySeed, loadChallenge: loadChallenge, saveChallenge: saveChallenge, ghostAt: ghostAt,
   DAILY_KEY: DAILY_KEY, TEMPLATES: TEMPLATES, dayKey: dayKey, dayDiff: dayDiff,
   generate: generate, describe: describe, fresh: fresh, sanitize: sanitize,
   load: load, save: save, ensureDay: ensureDay, applyRun: applyRun, loginRewardFor: loginRewardFor
@@ -1631,6 +1819,9 @@ function L(s, p) {
 var TITLE = 'BOPGATE';
 var FONT = "ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif";
 var W0 = 520;
+// Görünen pencere: [VX, VX + VW]. Büyük görünümde (view.viewX0) topun arkasındaki şerit kırpılır;
+// dünya hâlâ 0..W0 koordinatlarında çizilir, ekrana ait yazılar (skor, kartlar) pencereye ortalanır.
+var VX = 0, VW = W0, CX = W0 / 2, VR = W0;
 // Dikey ölçüler oyun durumunun geometrisinden gelir (uzun telefonda alan uzar); setGeo ayarlar.
 var DEFAULT_GEO = { H: 540, ceilY: 30, floorY: 480 };
 var H0 = 540;
@@ -1650,7 +1841,10 @@ var GOLD = '#ffd166';
 var PINK = '#ff7a90';
 
 function ballR(state) { return state.smallT > 0 ? BALL_R * SMALL_F : BALL_R; }
-function font(weight, size) { return weight + ' ' + size + 'px ' + FONT; }
+// Büyük yazı ayarı (view.bigText): oyun içi bütün yazılar FS kat büyür (logo hariç)
+var FS = 1;
+function font(weight, size) { return weight + ' ' + Math.round(size * FS) + 'px ' + FONT; }
+function fontRaw(weight, size) { return weight + ' ' + size + 'px ' + FONT; }
 
 // --- Renk ve çizim yardımcıları ----------------------------------------------
 function hexRgb(h) {
@@ -2057,13 +2251,21 @@ function drawDeco(ctx, theme, dist, geo, t) {
     }
   } else {
     // Gece: hilal ay, iki kat yıldız (uzak küçük, yakın büyük) ve pırıltı
-    var mx = wrapX(420, 0.02, d, W0 + 120) - 60, my = CEIL_Y + Math.min(90, span * 0.16);
+    var mx = wrapX(480, 0.02, d, W0 + 120) - 60, my = CEIL_Y + Math.min(90, span * 0.16);
+    // Gerçek hilal: iç daire kırpılarak oyulur (gökyüzü gradyanı görünür kalır)
     glow(ctx, '#cfe3ff', 16);
     ctx.fillStyle = 'rgba(225,236,255,0.85)';
+    ctx.save();
+    if (ctx.clip) {
+      // Kırpma: iç dairenin dışı (evenodd) → dış daire boyanınca hilal kalır
+      ctx.beginPath();
+      ctx.rect(mx - 60, my - 60, 120, 120);
+      ctx.arc(mx + 9, my - 6, 18, 0, Math.PI * 2);
+      ctx.clip('evenodd');
+    }
     ctx.beginPath(); ctx.arc(mx, my, 20, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
     noGlow(ctx);
-    ctx.fillStyle = theme.c.bg;
-    ctx.beginPath(); ctx.arc(mx + 9, my - 6, 18, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = col;
     for (i = 0; i < 30; i++) {
       x = wrapX(i * 53, 0.1, d, W0);
@@ -2111,10 +2313,10 @@ function drawStage(ctx, theme, dist, t) {
   ctx.lineWidth = 1;
   var off = ((dist || 0) * 0.6) % 48;
   for (var i = -12; i <= 12; i++) {
-    var xt = W0 / 2 + i * 48 - off;
+    var xt = CX + i * 48 - off;
     ctx.beginPath();
     ctx.moveTo(xt, FLOOR_Y);
-    ctx.lineTo(W0 / 2 + (xt - W0 / 2) * 3.2, H0);
+    ctx.lineTo(CX + (xt - CX) * 3.2, H0);
     ctx.stroke();
   }
   for (var k = 1; k <= 4; k++) {
@@ -2193,10 +2395,10 @@ function questLines(view) {
 // Ortalanmış yarı saydam kart; satırlar { text, font, color, h, glow, pill }
 function card(ctx, rows, accent, light, w) {
   var pad = 26, total = 0, i;
-  for (i = 0; i < rows.length; i++) total += rows[i].h || 30;
-  w = w || 420;
+  for (i = 0; i < rows.length; i++) total += (rows[i].h || 30) * FS;
+  w = Math.min(w || 420, VW - 16);
   var h = total + pad * 2;
-  var x = (W0 - w) / 2, y = Math.max(CEIL_Y + 10, (H0 - h) / 2);
+  var x = CX - w / 2, y = Math.max(CEIL_Y + 10, (H0 - h) / 2);
   ctx.save();
   glow(ctx, accent, 24);
   ctx.fillStyle = light ? 'rgba(255,255,255,0.92)' : lin(ctx, 0, y, 0, y + h, [[0, 'rgba(22,30,52,0.94)'], [1, 'rgba(10,14,26,0.94)']], 'rgba(14,20,36,0.94)');
@@ -2211,17 +2413,17 @@ function card(ctx, rows, accent, light, w) {
   ctx.textBaseline = 'middle';
   var cy = y + pad;
   for (i = 0; i < rows.length; i++) {
-    var r = rows[i], rh = r.h || 30;
+    var r = rows[i], rh = (r.h || 30) * FS;
     if (r.text) {
       if (r.pill) {
         ctx.fillStyle = rgba(r.pill, 0.18);
-        rrect(ctx, W0 / 2 - r.pillW / 2, cy + 3, r.pillW, rh - 6, (rh - 6) / 2);
+        rrect(ctx, CX - r.pillW / 2, cy + 3, r.pillW, rh - 6, (rh - 6) / 2);
         ctx.fill();
       }
       ctx.font = r.font || font(500, 17);
       ctx.fillStyle = r.color || (light ? '#12324a' : '#e8ecf1');
       if (r.glow) glow(ctx, r.glow, 16);
-      ctx.fillText(r.text, W0 / 2, cy + rh / 2);
+      ctx.fillText(r.text, CX, cy + rh / 2);
       noGlow(ctx);
     }
     cy += rh;
@@ -2236,7 +2438,7 @@ function drawLogo(ctx, cx, cy, theme, t) {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = font(900, 66);
+  ctx.font = fontRaw(900, 66);
   var a = tc.edge, b = tc.edgeMove;
   // Arkadaki geniş ışık + önde gradyan dolgu
   glow(ctx, a, 28 + 6 * Math.sin(t * 2));
@@ -2297,13 +2499,15 @@ function draw(ctx, state, view) {
   var t = view.time || state.t || 0;
   setGeo(state.geo);
   // Canvas piksel boyutu main.js'de DPR'ye göre ayarlanır; burada mantıksal 520 x H ile çizilir.
-  var scale = ctx.canvas.width / W0;
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  FS = view.bigText ? 1.2 : 1;
+  VX = Math.max(0, Math.min(200, view.viewX0 || 0)); VW = W0 - VX; CX = VX + VW / 2; VR = W0;
+  var scale = ctx.canvas.width / VW;
+  ctx.setTransform(scale, 0, 0, scale, -VX * scale, 0);
 
   var theme = view.theme || DEFAULT_THEME;
   var tc = theme.c;
   var light = isLight(theme);
-  glowOn = !light;
+  glowOn = !light && !view.lite;
   var skin = view.skin || DEFAULT_SKIN;
   var textCol = tc.text || '#e8ecf1';
   var textDim = tc.textDim || '#9fb3d1';
@@ -2385,6 +2589,14 @@ function draw(ctx, state, view) {
   var sq = fx.squash || 0;
   var sx = 1 + 0.35 * sq;
   var sy = 1 - 0.3 * sq;
+  // Günlük rekorun hayaleti: aynı parkurda en iyi koşunun topu, yarı saydam
+  if (typeof view.ghost === 'number' && phase === 'playing') {
+    ctx.save();
+    ctx.globalAlpha = 0.32;
+    ctx.translate(BALL_X, view.ghost);
+    drawBall(ctx, skin.shape, BALL_R, '#ffffff', { glow: 8 });
+    ctx.restore();
+  }
   if (phase !== 'ready') {
     ctx.save();
     ctx.translate(BALL_X, state.y + R0 * (1 - sy));
@@ -2422,6 +2634,37 @@ function draw(ctx, state, view) {
   ctx.restore();
   ctx.globalAlpha = 1;
 
+  // İlk oyun rehberi: topun yanında ne yapacağını söyleyen nabızlı yazı ve ok
+  if (view.guide && phase === 'playing') {
+    var gd = view.guide;
+    var gcol = gd.mode === 'hold' ? GOLD : gd.mode === 'release' ? '#7fd8ff' : gd.mode === 'wait' ? '#c9d6ea' : '#46d39a';
+    var gtxt = gd.mode === 'hold' ? L('BASILI TUT ↑') : gd.mode === 'release' ? L('BIRAK ↓') : gd.mode === 'wait' ? L('Basılı tut: yüksel · bırak: alçal') : L('İYİ ✓');
+    var gp = 0.75 + 0.25 * Math.sin(t * 8);
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = font(900, gd.mode === 'wait' ? 17 : 22);
+    ctx.globalAlpha = gd.mode === 'wait' ? 0.85 : gp;
+    ctx.fillStyle = gcol;
+    glow(ctx, gcol, 14);
+    var gy = Math.max(CEIL_Y + 24, Math.min(FLOOR_Y - 24, state.y + (gd.mode === 'release' ? 36 : -36)));
+    if (gd.mode === 'wait') { ctx.textAlign = 'center'; ctx.fillText(gtxt, CX, CEIL_Y + 70); } else ctx.fillText(gtxt, BALL_X + 26, gy);
+    if (gd.mode === 'hold') {
+      // Basılı tutma halkası: topun çevresinde büyüyüp küçülen daire
+      ctx.strokeStyle = gcol;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(BALL_X, state.y, BALL_R + 10 + 6 * Math.sin(t * 8), 0, Math.PI * 2); ctx.stroke();
+    }
+    if (typeof gd.target === 'number' && typeof gd.gateX === 'number') {
+      // Hedef: kapının ortasına doğru kesik çizgi
+      ctx.globalAlpha = 0.35;
+      ctx.setLineDash && ctx.setLineDash([6, 8]);
+      ctx.beginPath(); ctx.moveTo(BALL_X + BALL_R + 4, state.y); ctx.lineTo(gd.gateX, gd.target); ctx.stroke && ctx.stroke();
+      ctx.setLineDash && ctx.setLineDash([]);
+    }
+    ctx.restore();
+  }
+
   if (fx.callout && phase === 'playing') {
     var co = fx.callout, k = 1 - co.life / co.max;
     ctx.save();
@@ -2437,7 +2680,7 @@ function draw(ctx, state, view) {
     ctx.restore();
   }
 
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.setTransform(scale, 0, 0, scale, -VX * scale, 0);
   if (phase !== 'ready') drawHud(ctx, state, view, tc, textCol, textDim);
 
   // Bölüm geçişi yazısı (main.js süreyi tutar)
@@ -2451,12 +2694,12 @@ function draw(ctx, state, view) {
     ctx.font = font(900, 40);
     glow(ctx, tc.edge, 20);
     var I = typeof window !== 'undefined' && window.GameI18n;
-    ctx.fillText(view.banner.title.toLocaleUpperCase(I && I.getLang() === 'en' ? 'en' : 'tr'), W0 / 2, by);
+    ctx.fillText(view.banner.title.toLocaleUpperCase(I && I.getLang() === 'en' ? 'en' : 'tr'), CX, by);
     noGlow(ctx);
     if (view.banner.sub) {
       ctx.font = font(700, 17);
       ctx.fillStyle = GOLD;
-      ctx.fillText(view.banner.sub, W0 / 2, by + 38);
+      ctx.fillText(view.banner.sub, CX, by + 38);
     }
     ctx.restore();
   }
@@ -2464,7 +2707,7 @@ function draw(ctx, state, view) {
   if (view.muted) {
     ctx.fillStyle = textDim;
     ctx.font = font(600, 14);
-    ctx.fillText(L('sessiz'), 14, FLOOR_Y + 28);
+    ctx.fillText(L('sessiz'), VX + 14, FLOOR_Y + 28);
   }
 
   drawScreens(ctx, state, view, phase, theme, best, t, skin);
@@ -2478,30 +2721,30 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   var pop = fx.scorePop || 0;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = font(900, Math.round(28 + 8 * pop));
+  ctx.font = fontRaw(900, Math.round((28 + 8 * pop) * Math.min(FS, 1.1)));
   ctx.fillStyle = textCol;
   glow(ctx, tc.edge, 10 + 10 * pop);
-  ctx.fillText(String(state.score), W0 / 2, CEIL_Y / 2 + 1);
+  ctx.fillText(String(state.score), CX, CEIL_Y / 2 + 1);
   noGlow(ctx);
   // Sol: bölüm + 8 parçalı ilerleme
   ctx.textAlign = 'left';
-  ctx.font = font(800, 12);
+  ctx.font = fontRaw(800, Math.round(12 * Math.min(FS, 1.1)));
   ctx.fillStyle = textDim;
-  ctx.fillText(L('BÖLÜM {n}', { n: state.level }), 14, 10);
+  ctx.fillText(L('BÖLÜM {n}', { n: state.level }), VX + 14, 10);
   var done = state.score % per;
   for (var s = 0; s < per; s++) {
     ctx.fillStyle = s < done ? tc.edge : rgba(tc.edge, 0.2);
-    rrect(ctx, 14 + s * 11, 18, 9, 5, 2.5);
+    rrect(ctx, VX + 14 + s * 11, 18, 9, 5, 2.5);
     ctx.fill();
   }
   // Sağ: rekor
   ctx.textAlign = 'right';
-  ctx.font = font(800, 12);
+  ctx.font = fontRaw(800, Math.round(12 * Math.min(FS, 1.1)));
   ctx.fillStyle = textDim;
-  ctx.fillText(L('REKOR'), W0 - 14, 10);
-  ctx.font = font(800, 14);
+  ctx.fillText(L(view.daily ? 'GÜNLÜK REKOR' : state.easy ? 'KOLAY REKOR' : 'REKOR'), VR - 14, 10);
+  ctx.font = fontRaw(800, Math.round(14 * Math.min(FS, 1.1)));
   ctx.fillStyle = textCol;
-  ctx.fillText(String(view.best || 0), W0 - 14, 22);
+  ctx.fillText(String(view.daily ? view.daily.best : view.best || 0), VR - 14, 22);
   ctx.restore();
 
   // Kalkanlar (kapasite güçlendirmesiyle 3'e kadar): sağ altta birer yıldız
@@ -2539,39 +2782,48 @@ function drawScreens(ctx, state, view, phase, theme, best, t, skin) {
     ctx.save();
     ctx.fillStyle = rgba(tc.edge, 0.18 + 0.2 * land);
     ctx.beginPath();
-    if (ctx.ellipse) ctx.ellipse(W0 / 2, ly - 52, 20 - 8 * hop, 4, 0, 0, Math.PI * 2);
+    if (ctx.ellipse) ctx.ellipse(CX, ly - 52, 20 - 8 * hop, 4, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.translate(W0 / 2, bY);
+    ctx.translate(CX, bY);
     var sqz = land > 0.85 ? (land - 0.85) / 0.15 : 0;
     ctx.scale(1 + 0.18 * sqz, 1 - 0.15 * sqz);
     drawBall(ctx, (skin || DEFAULT_SKIN).shape, 20, (skin || DEFAULT_SKIN).color, { shine: true, glow: 26, fx: (skin || DEFAULT_SKIN).fx, t: t });
     ctx.restore();
-    drawLogo(ctx, W0 / 2, ly, theme, t);
+    drawLogo(ctx, CX, ly, theme, t);
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = font(600, 17);
     ctx.fillStyle = tc.textDim || '#9fb3d1';
-    ctx.fillText(L('Basılı tut · yüksel · kapıdan geç'), W0 / 2, ly + 52);
+    ctx.fillText(L('Basılı tut · yüksel · kapıdan geç'), CX, ly + 52);
+    if (view.daily) {
+      ctx.font = font(800, 15);
+      ctx.fillStyle = '#b39dfa';
+      ctx.fillText(L('📅 Günün parkuru · rekorun {n}', { n: view.daily.best }), CX, ly + 80);
+    } else if (view.easy) {
+      ctx.font = font(800, 15);
+      ctx.fillStyle = '#46d39a';
+      ctx.fillText(L('🐢 Kolay mod'), CX, ly + 80);
+    }
     ctx.restore();
     var by = Math.min(ly + 150, FLOOR_Y - 170);
-    pillButton(ctx, W0 / 2, by, 230, 66, L('▶  OYNA'), t);
+    pillButton(ctx, CX, by, 230, 66, L('▶  OYNA'), t);
     ctx.save();
     ctx.textAlign = 'center';
     ctx.font = font(600, 15);
     ctx.fillStyle = tc.textDim || '#9fb3d1';
-    ctx.fillText(L('{w} ve başla', { w: tapWord }), W0 / 2, by + 58);
+    ctx.fillText(L('{w} ve başla', { w: tapWord }), CX, by + 58);
     ctx.restore();
     var cy = by + 104;
-    chip(ctx, W0 / 2 - 82, cy, '🏆 ' + best, tc.edge, light);
-    if (hasCoins) chip(ctx, W0 / 2 + 82, cy, '★ ' + view.coins, GOLD, light);
+    chip(ctx, CX - 82, cy, '🏆 ' + best, tc.edge, light);
+    if (hasCoins) chip(ctx, CX + 82, cy, '★ ' + view.coins, GOLD, light);
     if (view.notice) {
       ctx.save();
       ctx.textAlign = 'center';
       ctx.font = font(800, 16);
       ctx.fillStyle = '#46d39a';
       glow(ctx, '#46d39a', 10);
-      ctx.fillText(view.notice, W0 / 2, cy + 52);
+      ctx.fillText(view.notice, CX, cy + 52);
       ctx.restore();
     }
   } else if (phase === 'paused') {
@@ -2592,6 +2844,9 @@ function drawScreens(ctx, state, view, phase, theme, best, t, skin) {
       { text: String(state.score), font: font(900, 76), color: body, glow: tc.edge, h: 84 },
       { text: L('KAPI'), font: font(800, 13), color: muted, h: 22 }
     ];
+    if (view.daily) rows.push(view.daily.newBest
+      ? { text: L('📅 GÜNÜN REKORU!'), font: font(900, 17), color: '#b39dfa', glow: '#b39dfa', h: 34 }
+      : { text: L('Günlük rekor: {n}', { n: view.daily.best }), font: font(700, 15), color: '#b39dfa', h: 28 });
     if (view.newBest) rows.push({ text: L('★ YENİ REKOR ★'), font: font(900, 18), color: GOLD, glow: GOLD, pill: GOLD, pillW: 210, h: 40 });
     else rows.push({ text: L('Rekor: {n}', { n: best }), font: font(700, 16), color: body, h: 32 });
     rows.push({ text: L('Bölüm {n}', { n: state.level }) + (ms ? '  ·  ' + L('{n} eşik', { n: ms }) : ''), font: font(600, 15), color: ms ? GOLD : muted, h: 28 });
@@ -2654,6 +2909,24 @@ function bootstrap() {
 
   // Keskin çizim: canvas'ın piksel boyutu ekran yoğunluğuna göre, görünen boyutu CSS'ten.
   var dpr = Math.min(3, Math.max(1, (window.devicePixelRatio || 1)));
+  // Hafif çizim (zayıf telefon): oyun sırasında kare süresi uzun süre yüksek kalırsa ışıma (shadowBlur),
+  // eklemeli karışım ve parçacıklar azaltılır, çizim çözünürlüğü en çok 2x olur. Karar cihazda saklanır
+  // (bopgate-hafif); adres satırında ?hafif ile zorla açılır (deneme için).
+  var lite = false;
+  try { lite = window.localStorage.getItem('bopgate-hafif') === '1' || /[?&]hafif\b/.test(String(window.location && window.location.search || '')); } catch (e) {}
+  if (lite) dpr = Math.min(dpr, 2);
+  var LITE_MS = 24, LITE_HOLD_S = 3;
+  var slowFor = 0, frameAvg = 16;
+  function watchFrame(dtSec) {
+    if (lite || dtSec <= 0 || dtSec > 0.1) return; // sekme değişimi, uyku vb. sayılmaz
+    frameAvg += (dtSec * 1000 - frameAvg) * 0.1;
+    slowFor = frameAvg > LITE_MS ? slowFor + dtSec : 0;
+    if (slowFor >= LITE_HOLD_S) {
+      lite = true;
+      dpr = Math.min(dpr, 2);
+      try { window.localStorage.setItem('bopgate-hafif', '1'); } catch (e) {}
+    }
+  }
   canvas.width = Math.round(C.CANVAS_W * dpr);
   canvas.height = Math.round(C.CANVAS_H * dpr);
 
@@ -2683,19 +2956,37 @@ function bootstrap() {
       return { t: 0, b: 0, l: 0, r: 0 };
     }
   }
-  function desiredHeight() {
+  function availArea() {
     var w = window.innerWidth, h = window.innerHeight;
-    if (!w || !h) return C.CANVAS_H;
+    if (!w || !h) return null;
     var ins = safeInsets();
-    var availW = Math.min((w - ins.l - ins.r) * 0.98, 760);
-    var availH = Math.max(200, h - ins.t - ins.b - HUD_PX);
-    return Math.round(C.CANVAS_W * availH / availW);
+    return { w: Math.min((w - ins.l - ins.r) * 0.98, 760), h: Math.max(200, h - ins.t - ins.b - HUD_PX) };
+  }
+  // Büyük görünüm (dikey telefon): topun solundaki şerit (x < VIEW_CROP) yalnız geçilmiş duvarları
+  // gösterir; kırpılınca kalan alan ekranı doldurur ve top, kapılar, yazılar ~%24 büyür. Topun
+  // önündeki görüş (x 160 → 520) aynı kalır: yaklaşan kapıyı görme süresi, yani zorluk, değişmez.
+  var VIEW_CROP = 100;
+  function desiredCrop() {
+    var a = availArea();
+    return a && a.h / a.w >= 1.35 ? VIEW_CROP : 0;
+  }
+  var viewX0 = 0;
+  function desiredHeight(crop) {
+    var a = availArea();
+    if (!a) return C.CANVAS_H;
+    if (typeof crop !== 'number') crop = viewX0;
+    return Math.round((C.CANVAS_W - crop) * a.h / a.w);
   }
   // Mantıksal yükseklik logic.js'in sınırlarına (540–1000) kırpılmış hali: ekran değişti mi diye karşılaştırmak için
   function clampH(H) { return Math.max(C.MIN_H || 540, Math.min(C.MAX_H || 1000, H)); }
   function applyCanvasHeight(H) {
+    var vw = C.CANVAS_W - viewX0;
+    canvas.width = Math.round(vw * dpr);
     canvas.height = Math.round(H * dpr);
-    if (canvas.style && canvas.style.setProperty) canvas.style.setProperty('--h', String(H));
+    if (canvas.style && canvas.style.setProperty) {
+      canvas.style.setProperty('--h', String(H));
+      canvas.style.setProperty('--w', String(vw));
+    }
   }
 
   var touch = coarse;
@@ -2764,6 +3055,27 @@ function bootstrap() {
     var saved = window.localStorage.getItem('sekmeguc-best');
     if (saved) best = parseInt(saved, 10) || 0;
   } catch (e) {}
+  // Kolay mod (⚙): ayrı rekor tutulur, liderlik tablosuna gönderilmez, koşu ödülü azalır (shop.js)
+  // İlk oyun rehberi: hiç tamamlanmadıysa ilk kapılar geniş açılır, topun yanında "BASILI TUT / BIRAK" yazar
+  function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
+  var easy = lsGet('bopgate-kolay') === '1';
+  var easyBest = parseInt(lsGet('bopgate-kolay-best') || '0', 10) || 0;
+  var tutorialDone = lsGet('bopgate-rehber') === '1' || best > 0;
+  var TUTORIAL_GATES = 3;
+  function shownBest() { return easy ? easyBest : best; }
+  // İlk alım hatırlatması: satın alma açıksa (Android), rekor 10+ ise, paket alınmadıysa ve o açılışta
+  // başka bildirim yoksa açılış ekranında bir kez; ardından bir hafta gösterilmez (bopgate-teklif)
+  function starterNotice() {
+    try {
+      if (notice || !Mon || !prov || !prov.canBuy || !profile || best < 10 || Mon.owned(profile, 'bopgate.baslangic')) return;
+      var last = parseInt(lsGet('bopgate-teklif') || '0', 10) || 0;
+      if (Date.now() - last < 7 * 86400000) return;
+      lsSet('bopgate-teklif', String(Date.now()));
+      notice = L('🎁 Başlangıç paketi mağazada: ★ 400 + 2 top');
+    } catch (e) {}
+  }
+  starterNotice();
   if (games && Cloud && profile) {
     soft(function () { return games.loadGame(); }).then(function (text) {
       var m = Cloud.merge(Shop, profile, best, typeof text === 'string' ? Cloud.unpack(Shop, text) : null);
@@ -2850,6 +3162,35 @@ function bootstrap() {
     ayarlar.hidden = !ayarlar.hidden;
     ayarBtn.setAttribute('aria-expanded', String(!ayarlar.hidden));
   });
+  // Titreşim (⚙ → 📳): sesten bağımsız kapatılabilir (bopgate-titresim)
+  var vibrateOn = lsGet('bopgate-titresim') !== '0';
+  var titresimBtn = document.getElementById('titresimBtn');
+  function applyVibrateBtn() {
+    if (!titresimBtn) return;
+    titresimBtn.className = vibrateOn ? 'ikon' : 'ikon kapali';
+    titresimBtn.setAttribute('aria-pressed', String(vibrateOn));
+    titresimBtn.title = L('Titreşim: {d}', { d: L(vibrateOn ? 'açık' : 'kapalı') });
+  }
+  if (titresimBtn) titresimBtn.addEventListener('click', function () {
+    vibrateOn = !vibrateOn;
+    lsSet('bopgate-titresim', vibrateOn ? '1' : '0');
+    applyVibrateBtn();
+    if (vibrateOn) buzz(30);
+  });
+  var kolayBtn = document.getElementById('kolayBtn');
+  function applyEasyBtn() {
+    if (!kolayBtn) return;
+    kolayBtn.className = easy ? 'acik' : '';
+    kolayBtn.setAttribute('aria-pressed', String(easy));
+    kolayBtn.title = L('Kolay mod: {d}', { d: L(easy ? 'açık' : 'kapalı') }) + ' · ' + L('yavaş, geniş kapılar; ayrı rekor, ★ %60');
+  }
+  if (kolayBtn) kolayBtn.addEventListener('click', function () {
+    easy = !easy;
+    lsSet('bopgate-kolay', easy ? '1' : '0');
+    applyEasyBtn();
+    notice = L(easy ? 'Kolay mod açık' : 'Kolay mod kapalı');
+    if (phase === 'ready') state = newGame();
+  });
   var sesBtn = document.getElementById('sesBtn');
   var muzikBtn = document.getElementById('muzikBtn');
   function updateSoundBtns() {
@@ -2871,6 +3212,9 @@ function bootstrap() {
     for (var da = 0; da < aria.length; da++) aria[da].setAttribute('aria-label', L(aria[da].getAttribute('data-i18n-aria')));
     if (dilBtn) dilBtn.textContent = I18n.getLang().toUpperCase();
     updateSoundBtns();
+    applyEasyBtn();
+    applyDailyBtn();
+    applyVibrateBtn();
   }
   if (dilBtn) dilBtn.addEventListener('click', function () {
     if (!I18n) return;
@@ -2880,7 +3224,7 @@ function bootstrap() {
   });
   applyLang();
   function buzz(ms) {
-    if (muted) return;
+    if (muted || !vibrateOn) return;
     try {
       if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms);
     } catch (e) {}
@@ -2893,12 +3237,14 @@ function bootstrap() {
   var shakeLeft = 0;
   var squashLeft = 0;
   function burst(x, y, n, color, speed) {
+    if (lite) n = Math.ceil(n / 2);
     for (var i = 0; i < n; i++) {
       var ang = Math.random() * Math.PI * 2;
       var sp = speed * (0.4 + Math.random() * 0.6);
       fx.particles.push({ x: x, y: y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 0.5, max: 0.5, color: color });
     }
-    if (fx.particles.length > 160) fx.particles.splice(0, fx.particles.length - 160);
+    var cap = lite ? 80 : 160;
+    if (fx.particles.length > cap) fx.particles.splice(0, fx.particles.length - cap);
   }
   function updateFx(dt) {
     var kept = [];
@@ -2936,9 +3282,26 @@ function bootstrap() {
   function skinColor() { return profile ? Shop.equippedBall(profile).color : '#5ac8fa'; }
   function themeEdge() { return profile ? Shop.equippedMap(profile).c.edge : '#5ac8fa'; }
 
+  // Günlük meydan okuma (📅): günün tohumuyla herkes aynı parkuru oynar; kolay mod ve rehber kapalıdır.
+  // Günün en iyi koşusu kaydedilir (quests.js) ve sonraki denemelerde yarı saydam "hayalet" top olarak akar.
+  var dailyMode = false;
+  var ach = Quests ? Quests.loadAch(window.localStorage) : null;
+  var runCombo = 0; // bu koşudaki en uzun MÜKEMMEL serisi (başarım için)
+  var challenge = { day: '', best: 0, path: [] };
+  var ghostRec = [];
+  var newDaily = false;
   function newGame() {
     var seed = Date.now() % 2147483647;
-    var st = window.GameLogic.createState(seed, { height: desiredHeight(), mods: profile ? Shop.mods(profile) : null });
+    if (dailyMode && Quests) {
+      challenge = Quests.loadChallenge(window.localStorage, todayKey());
+      seed = Quests.dailySeed(challenge.day);
+    }
+    ghostRec = [];
+    newDaily = false;
+    runCombo = 0;
+    viewX0 = desiredCrop();
+    var st = window.GameLogic.createState(seed, { height: desiredHeight(viewX0), mods: profile ? Shop.mods(profile) : null,
+      easy: easy && !dailyMode, tutorial: tutorialDone || dailyMode ? 0 : TUTORIAL_GATES });
     applyCanvasHeight(st.geo.H);
     return st;
   }
@@ -3054,6 +3417,21 @@ function bootstrap() {
   }
   // --- Mağaza arayüzü (index.html'de #magaza ve #magazaBtn varsa) ----------------
   var shopEl = document.getElementById('magaza');
+  var gunlukBtn = document.getElementById('gunlukBtn');
+  function applyDailyBtn() {
+    if (!gunlukBtn) return;
+    gunlukBtn.textContent = dailyMode ? '♾' : '📅';
+    gunlukBtn.className = dailyMode ? 'ikon acik' : 'ikon';
+    gunlukBtn.title = dailyMode ? L('Normal oyuna dön') : L('Günlük meydan okuma: herkes aynı parkur, rekorunun hayaletiyle yarış');
+    gunlukBtn.setAttribute('aria-label', gunlukBtn.title);
+  }
+  if (gunlukBtn) gunlukBtn.addEventListener('click', function () {
+    dailyMode = !dailyMode;
+    applyDailyBtn();
+    if (phase === 'ready') state = newGame();
+    else if ((phase === 'over' || phase === 'won') && canRestart()) restart();
+  });
+  applyDailyBtn();
   var shopBtn = document.getElementById('magazaBtn');
   var shopTab = 'ball';
   // Ölünce devam hakkı: yıldız yetiyorsa REVIVE_MS boyunca ❤ Devam düğmesi görünür.
@@ -3133,11 +3511,19 @@ function bootstrap() {
       questDone = Quests.applyRun(daily, state);
       for (var qi = 0; qi < questDone.length; qi++) earned += questDone[qi].reward;
       Quests.save(window.localStorage, daily);
-      if (questDone.length) sfx('quest');
     }
+    if (ach) {
+      var gotAch = Quests.applyAch(ach, state, { combo: runCombo, daily: dailyMode, day: todayKey(), balls: profile.owned.ball.length });
+      for (var ai = 0; ai < gotAch.length; ai++) {
+        earned += gotAch[ai].reward;
+        questDone.push({ text: '🏅 ' + gotAch[ai].text, reward: gotAch[ai].reward });
+      }
+      Quests.saveAch(window.localStorage, ach);
+    }
+    if (questDone.length) sfx('quest');
     profile.coins += earned;
     Shop.save(window.localStorage, profile);
-    if (games && newBest) soft(function () { return games.submitScore(best); });
+    if (games && newBest && !state.easy) soft(function () { return games.submitScore(best); });
     cloudSave();
   }
   function preview(item, kind) {
@@ -3190,6 +3576,31 @@ function bootstrap() {
     foot.className = 'not';
     foot.textContent = L('Görevler her gece yarısı yenilenir. Ödül görev bitince kendiliğinden eklenir.');
     list.appendChild(foot);
+    if (!ach) return;
+    var ah = document.createElement('p');
+    ah.className = 'seri';
+    ah.textContent = L('🏅 Başarımlar: {d}/{n}', { d: ach.done.length, n: Quests.ACHIEVEMENTS.length });
+    list.appendChild(ah);
+    Quests.ACHIEVEMENTS.forEach(function (def) {
+      var done = ach.done.indexOf(def.id) >= 0;
+      var prog = Math.min(def.target, Quests.achProgress(ach, def, { balls: profile.owned.ball.length }));
+      var row = document.createElement('div');
+      row.className = 'gorev' + (done ? ' bitti' : '');
+      var name = document.createElement('span');
+      name.className = 'ad';
+      name.textContent = (done ? '🏅 ' : '') + Quests.describeAch(def);
+      var bar = document.createElement('div');
+      bar.className = 'cubuk';
+      var fill = document.createElement('i');
+      fill.style.width = Math.round(100 * (done ? 1 : prog / def.target)) + '%';
+      bar.appendChild(fill);
+      var meta = document.createElement('span');
+      meta.className = 'odul';
+      var unit = def.kind === 'milestone' ? 10 : 1; // eşik sayısı bölüm olarak gösterilir (0/30)
+      meta.textContent = (done ? '✓' : prog * unit + '/' + def.target * unit) + ' · ★ ' + def.reward;
+      row.appendChild(name); row.appendChild(meta); row.appendChild(bar);
+      list.appendChild(row);
+    });
   }
   function renderUpgrades(list) {
     Shop.UPGRADES.forEach(function (u) {
@@ -3293,7 +3704,7 @@ function bootstrap() {
       row.className = 'urun paket' + (pr.best ? ' en-iyi' : '');
       var icon = document.createElement('span');
       icon.className = 'paket-ikon';
-      icon.textContent = pr.grants.noads ? (pr.grants.items ? '👑' : '🚫') : pr.grants.maxUpgrades ? '⚡' : '💎';
+      icon.textContent = pr.starter ? '🎁' : pr.grants.noads ? (pr.grants.items ? '👑' : '🚫') : pr.grants.maxUpgrades ? '⚡' : '💎';
       var info = document.createElement('div');
       var name = document.createElement('span');
       name.className = 'ad';
@@ -3360,6 +3771,28 @@ function bootstrap() {
     phase = 'paused';
     release();
   }
+  // Ekrandaki ⏸ düğmesi (telefonda klavye yok): oyunda duraklatır, duraklatılmışken devam ettirir
+  var duraklatBtn = document.getElementById('duraklatBtn');
+  if (duraklatBtn) duraklatBtn.addEventListener('click', function () {
+    if (phase === 'playing') pause();
+    else if (phase === 'paused') startPlaying();
+  });
+  // Büyük yazı (⚙ → Aa): oyun içi yazılar ve mağaza paneli büyür
+  var bigText = lsGet('bopgate-buyuk-yazi') === '1';
+  var yaziBtn = document.getElementById('yaziBtn');
+  function applyBigText() {
+    if (document.documentElement && document.documentElement.classList) document.documentElement.classList.toggle('buyuk-yazi', bigText);
+    if (!yaziBtn) return;
+    yaziBtn.className = bigText ? 'ikon acik' : 'ikon';
+    yaziBtn.setAttribute('aria-pressed', String(bigText));
+    yaziBtn.title = L('Büyük yazı: {d}', { d: L(bigText ? 'açık' : 'kapalı') });
+  }
+  if (yaziBtn) yaziBtn.addEventListener('click', function () {
+    bigText = !bigText;
+    lsSet('bopgate-buyuk-yazi', bigText ? '1' : '0');
+    applyBigText();
+  });
+  applyBigText();
 
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
@@ -3383,13 +3816,32 @@ function bootstrap() {
 
   // Android, çubuk paylarını sayfa açıldıktan sonra bildirir (resize olayı gelmeyebilir):
   // başlangıç ekranındayken arada bir yeniden ölç, alan değiştiyse yeni oyunu ona göre kur.
+  // İlk oyun rehberi: sıradaki kapının ortasına göre "BASILI TUT" (aşağıdasın) / "BIRAK" (yukarıdasın) / "İYİ"
+  function guideFor() {
+    if (tutorialDone || phase !== 'playing') return null;
+    var next = null;
+    for (var gi = 0; gi < state.obstacles.length; gi++) {
+      var go = state.obstacles[gi];
+      if (go.passed || go.x + C.WALL_W < C.BALL_X - C.BALL_R) continue;
+      if (!next || go.x < next.x) next = go;
+    }
+    // Kapı henüz yakın değilse yön verme ("basılı tut" demek topu tavana götürür): yalnız kuralı hatırlat
+    if (!next || next.x > C.BALL_X + 320) return { mode: 'wait', y: state.y };
+    var mid = next.gapY + next.gapH / 2, tol = next.gapH * 0.14;
+    return { mode: state.y > mid + tol ? 'hold' : state.y < mid - tol ? 'release' : 'ok', y: state.y, target: mid, gateX: next.x };
+  }
+  function ghostY() {
+    var v = Quests.ghostAt(challenge.path, state.t);
+    return v === null ? null : state.geo.ceilY + v * (state.geo.floorY - state.geo.ceilY);
+  }
   var fitCheck = 0;
   function frame(ts) {
     if (last === null) last = ts;
-    if (phase === 'ready' && ++fitCheck % 30 === 0 && Math.abs(clampH(desiredHeight()) - state.geo.H) > 2) state = newGame();
+    if (phase === 'ready' && ++fitCheck % 30 === 0 && (desiredCrop() !== viewX0 || Math.abs(clampH(desiredHeight(desiredCrop())) - state.geo.H) > 2)) state = newGame();
     var frameDt = (ts - last) / 1000;
     last = ts;
     if (frameDt > 0.25) frameDt = 0.25;
+    if (phase === 'playing' || phase === 'ready') watchFrame(frameDt);
 
     if (phase === 'playing') {
       acc += frameDt;
@@ -3398,6 +3850,9 @@ function bootstrap() {
         state = window.GameLogic.step(state, input, DT);
         acc -= DT;
         steps++;
+        if (dailyMode && Quests && ghostRec.length < Quests.GHOST_MAX && state.t >= ghostRec.length * Quests.GHOST_STEP) {
+          ghostRec.push((state.y - state.geo.ceilY) / (state.geo.floorY - state.geo.ceilY));
+        }
 
         if (state.bounces !== prevBounces) {
           sfx('bounce');
@@ -3413,6 +3868,7 @@ function bootstrap() {
           fx.rings.push({ x: C.BALL_X, y: state.y, life: RING_S, max: RING_S, color: edgeCol });
           popLeft = POP_S;
           prevScore = state.score;
+          if (!tutorialDone && state.score >= TUTORIAL_GATES) { tutorialDone = true; lsSet('bopgate-rehber', '1'); }
           // Az önce geçilen kapı: parlasın; ortasından geçildiyse "mükemmel" serisi büyür
           var gate = null;
           for (var gi = 0; gi < state.obstacles.length; gi++) {
@@ -3423,6 +3879,7 @@ function bootstrap() {
             fx.flash.push({ o: gate, life: FLASH_S, max: FLASH_S });
             if (Math.abs(state.y - (gate.gapY + gate.gapH / 2)) <= gate.gapH * PERFECT_F) {
               fx.combo++;
+              if (fx.combo > runCombo) runCombo = fx.combo;
               fx.callout = { text: fx.combo > 1 ? L('MÜKEMMEL x{n}', { n: fx.combo }) : L('MÜKEMMEL'), life: CALLOUT_S, max: CALLOUT_S, y: state.y, big: fx.combo >= 3 };
               fx.rings.push({ x: C.BALL_X, y: state.y, life: RING_S * 1.4, max: RING_S * 1.4, color: '#ffd166' });
               if (fx.combo >= 3) burst(C.BALL_X, state.y, 8 + Math.min(fx.combo, 10), '#ffd166', 260);
@@ -3478,7 +3935,15 @@ function bootstrap() {
           fx.callout = null;
           shakeLeft = SHAKE_MS;
           burst(C.BALL_X, state.y, 24, '#e05656', 320);
-          if (state.score > best) {
+          if (dailyMode && Quests && state.score > challenge.best) {
+            challenge.best = state.score;
+            challenge.path = ghostRec.slice();
+            Quests.saveChallenge(window.localStorage, challenge);
+            newDaily = true;
+          }
+          if (state.easy) {
+            if (state.score > easyBest) { easyBest = state.score; newBest = true; lsSet('bopgate-kolay-best', String(easyBest)); }
+          } else if (state.score > best) {
             best = state.score;
             newBest = true;
             try { window.localStorage.setItem('sekmeguc-best', String(best)); } catch (e) {}
@@ -3517,6 +3982,13 @@ function bootstrap() {
     }
     var showBtns = !rOpen && !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
     if (shopBtn) shopBtn.hidden = !showBtns;
+    if (gunlukBtn) gunlukBtn.hidden = !showBtns || !Quests;
+    if (duraklatBtn) {
+      duraklatBtn.hidden = !(phase === 'playing' || phase === 'paused') || shopOpen;
+      var pz = phase === 'paused';
+      if (duraklatBtn.textContent !== (pz ? '▶' : '⏸')) duraklatBtn.textContent = pz ? '▶' : '⏸';
+      duraklatBtn.setAttribute('aria-label', L(pz ? 'Devam et' : 'Duraklat'));
+    }
     if (liderBtn) liderBtn.hidden = !showBtns || !games;
     var qb = document.getElementById('gorevBtn');
     if (qb) {
@@ -3528,7 +4000,10 @@ function bootstrap() {
       }
     }
     window.GameRender.draw(ctx, state, {
-      best: best, muted: muted, phase: phase, fx: fx, touch: touch, time: ts / 1000,
+      best: shownBest(), muted: muted, phase: phase, fx: fx, touch: touch, time: ts / 1000, viewX0: viewX0,
+      easy: easy && !dailyMode, guide: guideFor(), lite: lite, bigText: bigText,
+      daily: dailyMode ? { best: challenge.best, newBest: newDaily } : null,
+      ghost: dailyMode && Quests && phase === 'playing' ? ghostY() : null,
       newBest: newBest, canRestart: (phase === 'over' || phase === 'won') && canRestart(),
       banner: banner, levelCount: C.LEVEL_COUNT, gatesPerLevel: C.GATES_PER_LEVEL,
       theme: profile ? Shop.equippedMap(profile) : null, skin: profile ? Shop.equippedBall(profile) : null,
