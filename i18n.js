@@ -20,6 +20,8 @@ var EN = {
   'Boşluk / dokun': 'Space / tap',
   'Dokun ya da R': 'Tap or R',
   'DURAKLATILDI': 'PAUSED',
+  'MÜKEMMEL': 'PERFECT',
+  'MÜKEMMEL x{n}': 'PERFECT x{n}',
   '{w} ve devam et': '{w} to resume',
   'OYUN BİTTİ': 'GAME OVER',
   'KAPI': 'GATES',
