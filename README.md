@@ -198,6 +198,18 @@ seçiliyse `EN` sözlüğünden karşılığı gelir. Dil ilk açılışta cihaz
 T39 sözlüğün ürün/görev/güçlendirme/ölüm metinlerini eksiksiz kapsadığını ve parametrelerin iki dilde
 aynı olduğunu denetler; eksik çeviri `GameI18n.missing`'de birikir (tarayıcıda İngilizce tam turda boş çıktı).
 
+## Çevrimiçi: liderlik tablosu ve bulut kayıt (4 Ekim 2026)
+**Sunucu yok.** Yalnız Android paketinde, Google'ın ücretsiz Play Games Services altyapısı kullanılır
+(köprü: `window.BopgateNative.games`, `android-paket/bridge.js`). Tarayıcı sürümünde çevrimiçi yoktur.
+- **🏆 Liderlik tablosu:** alt çubukta (yalnız uygulamada görünür); rekor kırılınca skor gönderilir.
+  Play Console'da bir liderlik tablosu açılıp kimliği `bridge.js` → `YAPILANDIRMA`'ya yazılmalı.
+- **Bulut kayıt (`cloud.js`):** açılışta Play Games kayıtlı oyunu yüklenir ve bu cihazınkiyle
+  birleştirilir: görünümler ve satın alma hakları birleşimi, güçlendirme basamakları ve rekor en büyüğü,
+  cüzdan en büyüğü (iki cihazdaki yıldız toplanmaz, çift sayım olmasın), kuşanılan görünüm bu cihazınki.
+  Koşu sonunda, satın almadan sonra ve mağaza kapanınca buluta yazılır. Bulut verisi de kayıt
+  doğrulamasından geçer; kurcalanmış bulut premium ürün ya da reklamsız veremez (T40).
+- Köprü hata verse ya da anında fırlatsa da oyun sürer (T5l). Gerçek cihazda denenmedi.
+
 ## NE ÇALIŞIYOR
 - Zıplama fiziği, basılı-tutma ile yükseklik kontrolü, kapı/duvar çarpışması ve kayıp sebebi gösterimi (kanıt: T1, T2, T3, T5c, tarayıcı)
 - Artan zorluk (hız + daralan kapı) ve kapı geçme skoru (kanıt: T1, T3, W3)

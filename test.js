@@ -548,6 +548,25 @@ var pending = [];
     'eksik=' + JSON.stringify(lacking) + ' parametre uyumsuz=' + JSON.stringify(badParams) + ' algılama=' + det + ' kayıt=' + saved + ' en=' + en + ' tr=' + tr);
 })();
 
+// --- Çevrimiçi: bulut kayıt (cloud.js) ------------------------------------------
+// T40 — iki cihazın kaydı birleşir, hiçbir kazanım kaybolmaz, yıldız çift sayılmaz; bozuk/kurcalanmış bulut zarar veremez
+(function t40() {
+  var Cl = require('./cloud.js');
+  var a = Shop.createProfile(); a.coins = 300; a.owned.ball.push('kor'); a.upg.kalkan = 1; a.equipped.ball = 'kor';
+  var b = Shop.createProfile(); b.coins = 500; b.owned.map.push('neon'); b.upg.kalkan = 0; b.upg.sure = 2;
+  Mon.grant(Shop, b, 'bopgate.top.kristal');
+  var m = Cl.merge(Shop, a, 12, Cl.unpack(Shop, Cl.pack(b, 40)));
+  var p = m.profile;
+  var ok = m.changed && p.coins === 500 && m.best === 40 && Shop.owns(p, 'ball', 'kor') && Shop.owns(p, 'map', 'neon') &&
+    Shop.owns(p, 'ball', 'kristal') && p.upg.kalkan === 1 && p.upg.sure === 2 && p.equipped.ball === 'kor';
+  var same = Cl.merge(Shop, p, 40, Cl.unpack(Shop, Cl.pack(p, 40)));
+  var junk = Cl.unpack(Shop, '{bozuk') === null && Cl.unpack(Shop, JSON.stringify({ v: 99, profile: {} })) === null && Cl.merge(Shop, a, 12, null).changed === false;
+  var hacked = Cl.unpack(Shop, JSON.stringify({ v: 1, best: 'x', profile: { coins: 1e12, owned: { ball: ['alev'] }, ent: { noads: true, products: ['zz'] } } }));
+  var safe = hacked.profile.coins === 999999 && !Shop.owns(hacked.profile, 'ball', 'alev') && !hacked.profile.ent.noads && hacked.best === 0;
+  report('T40 bulut kayıt birleştirme', ok && !same.changed && junk && safe,
+    'birleşim=' + ok + ' (★' + p.coins + ', rekor ' + m.best + ') aynı kayıt değişmez=' + !same.changed + ' bozuk=' + junk + ' kurcalanmış=' + safe);
+})();
+
 // --- Dikey ekran (uzun alan) ---------------------------------------------------
 // T16 — ölçek eşdeğerliği: uzun alanda top, kare alandakiyle normalize edildiğinde birebir aynı hareket eder
 (function t16() {
@@ -586,7 +605,7 @@ var pending = [];
     localStorage: { getItem: function (k) { return store[k] === undefined ? null : store[k]; }, setItem: function (k, v) { store[k] = String(v); } } };
   ctx.window = ctx;
   vm.createContext(ctx);
-  ['logic.js', 'shop.js', 'monetize.js', 'quests.js', 'audio.js', 'render.js'].forEach(function (f) {
+  ['i18n.js', 'logic.js', 'shop.js', 'monetize.js', 'cloud.js', 'quests.js', 'audio.js', 'render.js'].forEach(function (f) {
     var file = path.join(__dirname, f);
     if (fs.existsSync(file)) vm.runInContext(fs.readFileSync(file, 'utf8'), ctx, { filename: f });
   });
