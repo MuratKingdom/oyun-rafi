@@ -42,7 +42,10 @@ var GOLD = '#ffd166';
 var PINK = '#ff7a90';
 
 function ballR(state) { return state.smallT > 0 ? BALL_R * SMALL_F : BALL_R; }
-function font(weight, size) { return weight + ' ' + size + 'px ' + FONT; }
+// Büyük yazı ayarı (view.bigText): oyun içi bütün yazılar FS kat büyür (logo hariç)
+var FS = 1;
+function font(weight, size) { return weight + ' ' + Math.round(size * FS) + 'px ' + FONT; }
+function fontRaw(weight, size) { return weight + ' ' + size + 'px ' + FONT; }
 
 // --- Renk ve çizim yardımcıları ----------------------------------------------
 function hexRgb(h) {
@@ -593,7 +596,7 @@ function questLines(view) {
 // Ortalanmış yarı saydam kart; satırlar { text, font, color, h, glow, pill }
 function card(ctx, rows, accent, light, w) {
   var pad = 26, total = 0, i;
-  for (i = 0; i < rows.length; i++) total += rows[i].h || 30;
+  for (i = 0; i < rows.length; i++) total += (rows[i].h || 30) * FS;
   w = Math.min(w || 420, VW - 16);
   var h = total + pad * 2;
   var x = CX - w / 2, y = Math.max(CEIL_Y + 10, (H0 - h) / 2);
@@ -611,7 +614,7 @@ function card(ctx, rows, accent, light, w) {
   ctx.textBaseline = 'middle';
   var cy = y + pad;
   for (i = 0; i < rows.length; i++) {
-    var r = rows[i], rh = r.h || 30;
+    var r = rows[i], rh = (r.h || 30) * FS;
     if (r.text) {
       if (r.pill) {
         ctx.fillStyle = rgba(r.pill, 0.18);
@@ -636,7 +639,7 @@ function drawLogo(ctx, cx, cy, theme, t) {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = font(900, 66);
+  ctx.font = fontRaw(900, 66);
   var a = tc.edge, b = tc.edgeMove;
   // Arkadaki geniş ışık + önde gradyan dolgu
   glow(ctx, a, 28 + 6 * Math.sin(t * 2));
@@ -697,6 +700,7 @@ function draw(ctx, state, view) {
   var t = view.time || state.t || 0;
   setGeo(state.geo);
   // Canvas piksel boyutu main.js'de DPR'ye göre ayarlanır; burada mantıksal 520 x H ile çizilir.
+  FS = view.bigText ? 1.2 : 1;
   VX = Math.max(0, Math.min(200, view.viewX0 || 0)); VW = W0 - VX; CX = VX + VW / 2; VR = W0;
   var scale = ctx.canvas.width / VW;
   ctx.setTransform(scale, 0, 0, scale, -VX * scale, 0);
@@ -918,14 +922,14 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   var pop = fx.scorePop || 0;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = font(900, Math.round(28 + 8 * pop));
+  ctx.font = fontRaw(900, Math.round((28 + 8 * pop) * Math.min(FS, 1.1)));
   ctx.fillStyle = textCol;
   glow(ctx, tc.edge, 10 + 10 * pop);
   ctx.fillText(String(state.score), CX, CEIL_Y / 2 + 1);
   noGlow(ctx);
   // Sol: bölüm + 8 parçalı ilerleme
   ctx.textAlign = 'left';
-  ctx.font = font(800, 12);
+  ctx.font = fontRaw(800, Math.round(12 * Math.min(FS, 1.1)));
   ctx.fillStyle = textDim;
   ctx.fillText(L('BÖLÜM {n}', { n: state.level }), VX + 14, 10);
   var done = state.score % per;
@@ -936,10 +940,10 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   }
   // Sağ: rekor
   ctx.textAlign = 'right';
-  ctx.font = font(800, 12);
+  ctx.font = fontRaw(800, Math.round(12 * Math.min(FS, 1.1)));
   ctx.fillStyle = textDim;
   ctx.fillText(L(view.daily ? 'GÜNLÜK REKOR' : state.easy ? 'KOLAY REKOR' : 'REKOR'), VR - 14, 10);
-  ctx.font = font(800, 14);
+  ctx.font = fontRaw(800, Math.round(14 * Math.min(FS, 1.1)));
   ctx.fillStyle = textCol;
   ctx.fillText(String(view.daily ? view.daily.best : view.best || 0), VR - 14, 22);
   ctx.restore();
