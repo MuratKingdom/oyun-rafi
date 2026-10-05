@@ -311,6 +311,7 @@ function bootstrap() {
     if (dilBtn) dilBtn.textContent = I18n.getLang().toUpperCase();
     updateSoundBtns();
     applyEasyBtn();
+    applyDailyBtn();
   }
   if (dilBtn) dilBtn.addEventListener('click', function () {
     if (!I18n) return;
@@ -378,11 +379,23 @@ function bootstrap() {
   function skinColor() { return profile ? Shop.equippedBall(profile).color : '#5ac8fa'; }
   function themeEdge() { return profile ? Shop.equippedMap(profile).c.edge : '#5ac8fa'; }
 
+  // Günlük meydan okuma (📅): günün tohumuyla herkes aynı parkuru oynar; kolay mod ve rehber kapalıdır.
+  // Günün en iyi koşusu kaydedilir (quests.js) ve sonraki denemelerde yarı saydam "hayalet" top olarak akar.
+  var dailyMode = false;
+  var challenge = { day: '', best: 0, path: [] };
+  var ghostRec = [];
+  var newDaily = false;
   function newGame() {
     var seed = Date.now() % 2147483647;
+    if (dailyMode && Quests) {
+      challenge = Quests.loadChallenge(window.localStorage, todayKey());
+      seed = Quests.dailySeed(challenge.day);
+    }
+    ghostRec = [];
+    newDaily = false;
     viewX0 = desiredCrop();
     var st = window.GameLogic.createState(seed, { height: desiredHeight(viewX0), mods: profile ? Shop.mods(profile) : null,
-      easy: easy, tutorial: tutorialDone ? 0 : TUTORIAL_GATES });
+      easy: easy && !dailyMode, tutorial: tutorialDone || dailyMode ? 0 : TUTORIAL_GATES });
     applyCanvasHeight(st.geo.H);
     return st;
   }
@@ -498,6 +511,21 @@ function bootstrap() {
   }
   // --- Mağaza arayüzü (index.html'de #magaza ve #magazaBtn varsa) ----------------
   var shopEl = document.getElementById('magaza');
+  var gunlukBtn = document.getElementById('gunlukBtn');
+  function applyDailyBtn() {
+    if (!gunlukBtn) return;
+    gunlukBtn.textContent = dailyMode ? '♾' : '📅';
+    gunlukBtn.className = dailyMode ? 'ikon acik' : 'ikon';
+    gunlukBtn.title = dailyMode ? L('Normal oyuna dön') : L('Günlük meydan okuma: herkes aynı parkur, rekorunun hayaletiyle yarış');
+    gunlukBtn.setAttribute('aria-label', gunlukBtn.title);
+  }
+  if (gunlukBtn) gunlukBtn.addEventListener('click', function () {
+    dailyMode = !dailyMode;
+    applyDailyBtn();
+    if (phase === 'ready') state = newGame();
+    else if ((phase === 'over' || phase === 'won') && canRestart()) restart();
+  });
+  applyDailyBtn();
   var shopBtn = document.getElementById('magazaBtn');
   var shopTab = 'ball';
   // Ölünce devam hakkı: yıldız yetiyorsa REVIVE_MS boyunca ❤ Devam düğmesi görünür.
@@ -841,6 +869,10 @@ function bootstrap() {
     var mid = next.gapY + next.gapH / 2, tol = next.gapH * 0.14;
     return { mode: state.y > mid + tol ? 'hold' : state.y < mid - tol ? 'release' : 'ok', y: state.y, target: mid, gateX: next.x };
   }
+  function ghostY() {
+    var v = Quests.ghostAt(challenge.path, state.t);
+    return v === null ? null : state.geo.ceilY + v * (state.geo.floorY - state.geo.ceilY);
+  }
   var fitCheck = 0;
   function frame(ts) {
     if (last === null) last = ts;
@@ -857,6 +889,9 @@ function bootstrap() {
         state = window.GameLogic.step(state, input, DT);
         acc -= DT;
         steps++;
+        if (dailyMode && Quests && ghostRec.length < Quests.GHOST_MAX && state.t >= ghostRec.length * Quests.GHOST_STEP) {
+          ghostRec.push((state.y - state.geo.ceilY) / (state.geo.floorY - state.geo.ceilY));
+        }
 
         if (state.bounces !== prevBounces) {
           sfx('bounce');
@@ -938,6 +973,12 @@ function bootstrap() {
           fx.callout = null;
           shakeLeft = SHAKE_MS;
           burst(C.BALL_X, state.y, 24, '#e05656', 320);
+          if (dailyMode && Quests && state.score > challenge.best) {
+            challenge.best = state.score;
+            challenge.path = ghostRec.slice();
+            Quests.saveChallenge(window.localStorage, challenge);
+            newDaily = true;
+          }
           if (state.easy) {
             if (state.score > easyBest) { easyBest = state.score; newBest = true; lsSet('bopgate-kolay-best', String(easyBest)); }
           } else if (state.score > best) {
@@ -979,6 +1020,7 @@ function bootstrap() {
     }
     var showBtns = !rOpen && !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
     if (shopBtn) shopBtn.hidden = !showBtns;
+    if (gunlukBtn) gunlukBtn.hidden = !showBtns || !Quests;
     if (liderBtn) liderBtn.hidden = !showBtns || !games;
     var qb = document.getElementById('gorevBtn');
     if (qb) {
@@ -991,7 +1033,9 @@ function bootstrap() {
     }
     window.GameRender.draw(ctx, state, {
       best: shownBest(), muted: muted, phase: phase, fx: fx, touch: touch, time: ts / 1000, viewX0: viewX0,
-      easy: easy, guide: guideFor(), lite: lite,
+      easy: easy && !dailyMode, guide: guideFor(), lite: lite,
+      daily: dailyMode ? { best: challenge.best, newBest: newDaily } : null,
+      ghost: dailyMode && Quests && phase === 'playing' ? ghostY() : null,
       newBest: newBest, canRestart: (phase === 'over' || phase === 'won') && canRestart(),
       banner: banner, levelCount: C.LEVEL_COUNT, gatesPerLevel: C.GATES_PER_LEVEL,
       theme: profile ? Shop.equippedMap(profile) : null, skin: profile ? Shop.equippedBall(profile) : null,

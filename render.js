@@ -786,6 +786,14 @@ function draw(ctx, state, view) {
   var sq = fx.squash || 0;
   var sx = 1 + 0.35 * sq;
   var sy = 1 - 0.3 * sq;
+  // Günlük rekorun hayaleti: aynı parkurda en iyi koşunun topu, yarı saydam
+  if (typeof view.ghost === 'number' && phase === 'playing') {
+    ctx.save();
+    ctx.globalAlpha = 0.32;
+    ctx.translate(BALL_X, view.ghost);
+    drawBall(ctx, skin.shape, BALL_R, '#ffffff', { glow: 8 });
+    ctx.restore();
+  }
   if (phase !== 'ready') {
     ctx.save();
     ctx.translate(BALL_X, state.y + R0 * (1 - sy));
@@ -930,10 +938,10 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   ctx.textAlign = 'right';
   ctx.font = font(800, 12);
   ctx.fillStyle = textDim;
-  ctx.fillText(L(state.easy ? 'KOLAY REKOR' : 'REKOR'), VR - 14, 10);
+  ctx.fillText(L(view.daily ? 'GÜNLÜK REKOR' : state.easy ? 'KOLAY REKOR' : 'REKOR'), VR - 14, 10);
   ctx.font = font(800, 14);
   ctx.fillStyle = textCol;
-  ctx.fillText(String(view.best || 0), VR - 14, 22);
+  ctx.fillText(String(view.daily ? view.daily.best : view.best || 0), VR - 14, 22);
   ctx.restore();
 
   // Kalkanlar (kapasite güçlendirmesiyle 3'e kadar): sağ altta birer yıldız
@@ -985,7 +993,11 @@ function drawScreens(ctx, state, view, phase, theme, best, t, skin) {
     ctx.font = font(600, 17);
     ctx.fillStyle = tc.textDim || '#9fb3d1';
     ctx.fillText(L('Basılı tut · yüksel · kapıdan geç'), CX, ly + 52);
-    if (view.easy) {
+    if (view.daily) {
+      ctx.font = font(800, 15);
+      ctx.fillStyle = '#b39dfa';
+      ctx.fillText(L('📅 Günün parkuru · rekorun {n}', { n: view.daily.best }), CX, ly + 80);
+    } else if (view.easy) {
       ctx.font = font(800, 15);
       ctx.fillStyle = '#46d39a';
       ctx.fillText(L('🐢 Kolay mod'), CX, ly + 80);
@@ -1029,6 +1041,9 @@ function drawScreens(ctx, state, view, phase, theme, best, t, skin) {
       { text: String(state.score), font: font(900, 76), color: body, glow: tc.edge, h: 84 },
       { text: L('KAPI'), font: font(800, 13), color: muted, h: 22 }
     ];
+    if (view.daily) rows.push(view.daily.newBest
+      ? { text: L('📅 GÜNÜN REKORU!'), font: font(900, 17), color: '#b39dfa', glow: '#b39dfa', h: 34 }
+      : { text: L('Günlük rekor: {n}', { n: view.daily.best }), font: font(700, 15), color: '#b39dfa', h: 28 });
     if (view.newBest) rows.push({ text: L('★ YENİ REKOR ★'), font: font(900, 18), color: GOLD, glow: GOLD, pill: GOLD, pillW: 210, h: 40 });
     else rows.push({ text: L('Rekor: {n}', { n: best }), font: font(700, 16), color: body, h: 32 });
     rows.push({ text: L('Bölüm {n}', { n: state.level }) + (ms ? '  ·  ' + L('{n} eşik', { n: ms }) : ''), font: font(600, 15), color: ms ? GOLD : muted, h: 28 });

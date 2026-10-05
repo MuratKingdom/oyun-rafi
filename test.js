@@ -594,6 +594,44 @@ var pending = [];
     'kolay=' + easyOk + ' (hız ' + Math.round(e.speed) + '/' + Math.round(n.speed) + ') rehber=' + tutOk + ' [' + widths.map(function (w) { return w.toFixed(2); }).join(' ') + '] ödül=' + rew + ' varsayılan=' + def);
 })();
 
+// T42 — günlük meydan okuma: tohum güne bağlı ve kararlı; parkur oyuncunun girdisinden bağımsız (hayalet bu yüzden
+// geçerli); kayıt bozuk/kurcalanmış veride güvenli; hayalet zamanla ara değerlenir
+(function t42() {
+  var Q = require('./quests.js');
+  var seedOk = Q.dailySeed('2026-10-05') === Q.dailySeed('2026-10-05') && Q.dailySeed('2026-10-05') !== Q.dailySeed('2026-10-06');
+  var s = Q.dailySeed('2026-10-05');
+  // İki farklı top: her karede biri kapının üst, öbürü alt bölgesine konur ve farklı girdi verilir
+  function place(st, frac) {
+    var nx = null;
+    for (var k = 0; k < st.obstacles.length; k++) { var o = st.obstacles[k]; if (!o.passed && (!nx || o.x < nx.x)) nx = o; }
+    st.y = nx ? nx.gapY + nx.gapH * frac : st.geo.ceilY + (st.geo.floorY - st.geo.ceilY) * frac;
+    st.vy = 0;
+  }
+  var a = createState(s, { height: 800 }), b = createState(s, { height: 800 });
+  for (var i = 0; i < 60 * 9; i++) {
+    place(a, 0.4); place(b, 0.6);
+    step(a, { action: (i % 20) < 9 }, 1 / 60); step(b, { action: (i % 45) < 25 }, 1 / 60);
+  }
+  var alive = a.status === 'playing' && b.status === 'playing' && a.score === b.score && a.score > 2;
+  var sameCourse = alive && a.obstacles.length > 0 && a.obstacles.length === b.obstacles.length && a.obstacles.every(function (o, k) {
+    var p = b.obstacles[k]; return Math.abs(o.x - p.x) < 1e-6 && Math.abs(o.baseY - p.baseY) < 1e-6 && Math.abs(o.gapH - p.gapH) < 1e-6;
+  });
+  var store = {}, st = { getItem: function (k) { return k in store ? store[k] : null; }, setItem: function (k, v) { store[k] = String(v); } };
+  Q.saveChallenge(st, { day: '2026-10-05', best: 12, path: [0.2, 0.4, 0.6] });
+  var back = Q.loadChallenge(st, '2026-10-05');
+  var other = Q.loadChallenge(st, '2026-10-06');
+  store[Q.CHALLENGE_KEY] = JSON.stringify({ day: '2026-10-05', best: 'x', path: [5, -3, 'a'] });
+  var hacked = Q.loadChallenge(st, '2026-10-05');
+  store[Q.CHALLENGE_KEY] = '{bozuk';
+  var broken = Q.loadChallenge(st, '2026-10-05');
+  var storeOk = back.best === 12 && back.path.length === 3 && other.best === 0 && other.path.length === 0 &&
+    hacked.best === 0 && hacked.path.join() === '1,0,0.5' && broken.best === 0;
+  var g = Q.ghostAt([0, 1, 0.5], 0.05), end = Q.ghostAt([0, 1], 0.2);
+  var ghostOk = Math.abs(g - 0.5) < 1e-9 && end === null && Q.ghostAt([], 1) === null;
+  report('T42 günlük meydan okuma ve hayalet', seedOk && sameCourse && storeOk && ghostOk,
+    'tohum=' + seedOk + ' parkur girdiden bağımsız=' + sameCourse + ' (' + a.obstacles.length + ' duvar, kapı ' + a.score + '/' + b.score + ', ' + a.status + '/' + b.status + ') kayıt=' + storeOk + ' hayalet=' + ghostOk);
+})();
+
 // --- Dikey ekran (uzun alan) ---------------------------------------------------
 // T16 — ölçek eşdeğerliği: uzun alanda top, kare alandakiyle normalize edildiğinde birebir aynı hareket eder
 (function t16() {
