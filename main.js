@@ -36,7 +36,9 @@ function bootstrap() {
 
   // Dikey ekran: görünür alanın oranına göre mantıksal yükseklik (540–1000). Yalnız yeni
   // oyunda değişir; oyun sürerken ekran dönerse alan sabit kalır, CSS yalnız ölçekler.
-  var HUD_PX = 76; // alttaki ipucu + mağaza düğmesi için ayrılan yer
+  // Dokunmatik cihaz: ilk dokunuştan önce de "Dokun" yazsın, klavye ipucu gizlensin (index.html ile aynı ölçüt)
+  var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  var HUD_PX = coarse ? 60 : 76; // alttaki ipucu + düğmeler için ayrılan yer (index.html --hud ile aynı)
   // Telefonun durum çubuğu / gezinme çubuğu / kamera çentiği payı (CSS env(safe-area-inset-*)).
   // Android uygulamasında (edge-to-edge) sayfa bu çubukların altına kadar uzanır; pay düşülmezse
   // oyun alanı çubukların altına taşar. Tarayıcıda genelde 0'dır.
@@ -73,7 +75,7 @@ function bootstrap() {
     if (canvas.style && canvas.style.setProperty) canvas.style.setProperty('--h', String(H));
   }
 
-  var touch = false;
+  var touch = coarse;
   var input = { action: false };
   // Ses ayarları (müzik / efekt ayrı; M ikisini birden açar-kapatır)
   var Snd = window.GameAudio || null;
@@ -218,6 +220,13 @@ function bootstrap() {
     if (!sound.music) seq = null;
     updateSoundBtns();
   }
+  // Ayarlar (müzik, efekt, dil) tek ⚙ düğmesinin açtığı küçük bir kutuda: alt çubuk sıkışmasın
+  var ayarBtn = document.getElementById('ayarBtn');
+  var ayarlar = document.getElementById('ayarlar');
+  if (ayarBtn && ayarlar) ayarBtn.addEventListener('click', function () {
+    ayarlar.hidden = !ayarlar.hidden;
+    ayarBtn.setAttribute('aria-expanded', String(!ayarlar.hidden));
+  });
   var sesBtn = document.getElementById('sesBtn');
   var muzikBtn = document.getElementById('muzikBtn');
   function updateSoundBtns() {
@@ -400,6 +409,7 @@ function bootstrap() {
   function onPointerDown(e) {
     // Mağaza düğmesi ve paneli oyun girdisi değildir
     if (e.target && e.target.closest && e.target.closest('[data-ui]')) return;
+    if (ayarlar && !ayarlar.hidden) { ayarlar.hidden = true; if (ayarBtn) ayarBtn.setAttribute('aria-expanded', 'false'); }
     if (e.pointerType === 'touch' || e.pointerType === 'pen') touch = true;
     if (e.cancelable) e.preventDefault();
     press();
@@ -568,7 +578,7 @@ function bootstrap() {
       info.appendChild(name); info.appendChild(now);
       var b = document.createElement('button');
       if (lv >= max) { b.textContent = L('Tam'); b.disabled = true; b.className = 'kusanildi'; }
-      else { b.textContent = '★ ' + u.prices[lv]; b.disabled = profile.coins < u.prices[lv]; b.className = 'al'; }
+      else { b.textContent = '★ ' + u.prices[lv]; b.disabled = profile.coins < u.prices[lv]; b.className = b.disabled ? 'al yetmez' : 'al'; }
       b.addEventListener('click', function () {
         if (!Shop.buyUpgrade(profile, u.id).ok) return;
         Shop.save(window.localStorage, profile);
@@ -610,7 +620,7 @@ function bootstrap() {
       if (on) { b.textContent = L('Kuşanıldı'); b.disabled = true; b.className = 'kusanildi'; }
       else if (owned) { b.textContent = L('Kuşan'); }
       else if (prem) { b.textContent = '💎 ' + priceText(item.premiumBy[0]); b.disabled = !prov || !prov.canBuy; b.className = 'para'; }
-      else { b.textContent = '★ ' + item.price; b.disabled = profile.coins < item.price; b.className = 'al'; }
+      else { b.textContent = '★ ' + item.price; b.disabled = profile.coins < item.price; b.className = b.disabled ? 'al yetmez' : 'al'; }
       b.addEventListener('click', function () {
         if (prem && !Shop.owns(profile, shopTab, item.id)) { buyProduct(item.premiumBy[0], [shopTab, item.id]); return; }
         if (Shop.owns(profile, shopTab, item.id)) Shop.equip(profile, shopTab, item.id);

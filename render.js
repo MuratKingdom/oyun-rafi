@@ -576,11 +576,13 @@ function draw(ctx, state, view) {
   var sq = fx.squash || 0;
   var sx = 1 + 0.35 * sq;
   var sy = 1 - 0.3 * sq;
-  ctx.save();
-  ctx.translate(BALL_X, state.y + R0 * (1 - sy));
-  ctx.scale(sx, sy);
-  drawBall(ctx, skin.shape, R0, ballCol, { shine: true, glow: 18 });
-  ctx.restore();
+  if (phase !== 'ready') {
+    ctx.save();
+    ctx.translate(BALL_X, state.y + R0 * (1 - sy));
+    ctx.scale(sx, sy);
+    drawBall(ctx, skin.shape, R0, ballCol, { shine: true, glow: 18 });
+    ctx.restore();
+  }
 
   // Kalkan: dönen çift halka
   if (state.shield > 0 && state.status === 'playing') {
@@ -612,7 +614,7 @@ function draw(ctx, state, view) {
   ctx.globalAlpha = 1;
 
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
-  drawHud(ctx, state, view, tc, textCol, textDim);
+  if (phase !== 'ready') drawHud(ctx, state, view, tc, textCol, textDim);
 
   // Bölüm geçişi yazısı (main.js süreyi tutar)
   if (view.banner && view.banner.a > 0) {
@@ -641,7 +643,7 @@ function draw(ctx, state, view) {
     ctx.fillText(L('sessiz'), 14, FLOOR_Y + 28);
   }
 
-  drawScreens(ctx, state, view, phase, theme, best, t);
+  drawScreens(ctx, state, view, phase, theme, best, t, skin);
 }
 
 function drawHud(ctx, state, view, tc, textCol, textDim) {
@@ -697,13 +699,29 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   });
 }
 
-function drawScreens(ctx, state, view, phase, theme, best, t) {
+function drawScreens(ctx, state, view, phase, theme, best, t, skin) {
   var tc = theme.c, light = isLight(theme);
   var tapWord = L(view.touch ? 'Dokun' : 'Boşluk / dokun');
   var hasCoins = typeof view.coins === 'number';
   if (phase === 'ready') {
     dim(ctx, light);
-    var ly = Math.max(CEIL_Y + 90, H0 * 0.3);
+    // İçerik bloğu (zıplayan top → logo → düğme → rozetler) oyun alanının ortasına oturur
+    var mid = (CEIL_Y + FLOOR_Y) / 2;
+    var ly = Math.max(CEIL_Y + 150, mid - 120);
+    // Kuşanılmış top logonun üstünde zıplar: oyuncu neyi oynayacağını hemen görür
+    var hop = Math.abs(Math.sin(t * 2.6));
+    var bY = ly - 74 - 46 * hop;
+    var land = 1 - hop;
+    ctx.save();
+    ctx.fillStyle = rgba(tc.edge, 0.18 + 0.2 * land);
+    ctx.beginPath();
+    if (ctx.ellipse) ctx.ellipse(W0 / 2, ly - 52, 20 - 8 * hop, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.translate(W0 / 2, bY);
+    var sqz = land > 0.85 ? (land - 0.85) / 0.15 : 0;
+    ctx.scale(1 + 0.18 * sqz, 1 - 0.15 * sqz);
+    drawBall(ctx, (skin || DEFAULT_SKIN).shape, 20, (skin || DEFAULT_SKIN).color, { shine: true, glow: 26 });
+    ctx.restore();
     drawLogo(ctx, W0 / 2, ly, theme, t);
     ctx.save();
     ctx.textAlign = 'center';
@@ -712,7 +730,7 @@ function drawScreens(ctx, state, view, phase, theme, best, t) {
     ctx.fillStyle = tc.textDim || '#9fb3d1';
     ctx.fillText(L('Basılı tut · yüksel · kapıdan geç'), W0 / 2, ly + 52);
     ctx.restore();
-    var by = Math.min(ly + 170, H0 - 230);
+    var by = Math.min(ly + 150, FLOOR_Y - 170);
     pillButton(ctx, W0 / 2, by, 230, 66, L('▶  OYNA'), t);
     ctx.save();
     ctx.textAlign = 'center';
