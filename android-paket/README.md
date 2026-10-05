@@ -214,3 +214,24 @@ Davranış ayrıntıları:
   olayıyla yakalanır; CdvPurchase'ta kullanıcı iptali `order()` sonucunda `PAYMENT_CANCELLED` döner).
 - Android 12+ sistem açılış ekranı ve uyarlanabilir simgenin maske içindeki görünümü cihazda
   görülmedi (PNG'ler üretildi ve göz ile kontrol edildi).
+
+## GitHub Actions ile derleme (bilgisayarda Android Studio gerekmez)
+
+`.github/workflows/bopgate-android.yml` her `oyun/sekmeguc` push'unda ve bu dala açılan her PR'da çalışır;
+Actions sekmesinden elle de başlatılabilir ("Run workflow").
+
+1. **Debug APK (telefonda deneme):** iş bitince çalışmanın sayfasında *Artifacts → bopgate-debug-apk*
+   indirilir, zip açılır, `app-debug.apk` telefona aktarılıp kurulur (ilk seferde "bilinmeyen
+   kaynaklardan yüklemeye izin ver" istenir). Reklamlar Google'ın test reklamlarıdır; satın alma
+   debug sürümünde Play'den gelmez (Play Billing yalnız Play'den kurulan sürümde çalışır).
+2. **İmzalı AAB (Play Console):** bir kez *upload key* oluşturulur ve GitHub'a sır olarak eklenir:
+   ```
+   keytool -genkeypair -v -keystore bopgate-upload.jks -alias bopgate -keyalg RSA -keysize 2048 -validity 10000
+   base64 -w0 bopgate-upload.jks > ks.txt        # macOS: base64 -i bopgate-upload.jks -o ks.txt
+   ```
+   GitHub → depo → Settings → Secrets and variables → Actions → *New repository secret*:
+   `BOPGATE_KEYSTORE_BASE64` (ks.txt içeriği), `BOPGATE_KEYSTORE_PASSWORD`, `BOPGATE_KEY_ALIAS` (`bopgate`),
+   `BOPGATE_KEY_PASSWORD`. Sonraki çalışmada *bopgate-release-aab* eseri çıkar; Play Console → Test → Dahili test
+   → Yeni sürüm → AAB yükle. **`.jks` dosyasını ve şifreleri yedekle; kimseye verme, depoya ve sohbete yazma.**
+   Play App Signing açık olduğunda bu yalnız *yükleme* anahtarıdır; kaybolursa Play Console'dan sıfırlanabilir.
+3. `versionCode` her çalışmada artar (`github.run_number`), `versionName` = `1.0.<numara>`.
