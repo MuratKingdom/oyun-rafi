@@ -287,6 +287,21 @@ function bootstrap() {
     ayarlar.hidden = !ayarlar.hidden;
     ayarBtn.setAttribute('aria-expanded', String(!ayarlar.hidden));
   });
+  // Titreşim (⚙ → 📳): sesten bağımsız kapatılabilir (bopgate-titresim)
+  var vibrateOn = lsGet('bopgate-titresim') !== '0';
+  var titresimBtn = document.getElementById('titresimBtn');
+  function applyVibrateBtn() {
+    if (!titresimBtn) return;
+    titresimBtn.className = vibrateOn ? 'ikon' : 'ikon kapali';
+    titresimBtn.setAttribute('aria-pressed', String(vibrateOn));
+    titresimBtn.title = L('Titreşim: {d}', { d: L(vibrateOn ? 'açık' : 'kapalı') });
+  }
+  if (titresimBtn) titresimBtn.addEventListener('click', function () {
+    vibrateOn = !vibrateOn;
+    lsSet('bopgate-titresim', vibrateOn ? '1' : '0');
+    applyVibrateBtn();
+    if (vibrateOn) buzz(30);
+  });
   var kolayBtn = document.getElementById('kolayBtn');
   function applyEasyBtn() {
     if (!kolayBtn) return;
@@ -324,6 +339,7 @@ function bootstrap() {
     updateSoundBtns();
     applyEasyBtn();
     applyDailyBtn();
+    applyVibrateBtn();
   }
   if (dilBtn) dilBtn.addEventListener('click', function () {
     if (!I18n) return;
@@ -333,7 +349,7 @@ function bootstrap() {
   });
   applyLang();
   function buzz(ms) {
-    if (muted) return;
+    if (muted || !vibrateOn) return;
     try {
       if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms);
     } catch (e) {}
