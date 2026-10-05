@@ -37,13 +37,37 @@ function bootstrap() {
   // Dikey ekran: görünür alanın oranına göre mantıksal yükseklik (540–1000). Yalnız yeni
   // oyunda değişir; oyun sürerken ekran dönerse alan sabit kalır, CSS yalnız ölçekler.
   var HUD_PX = 76; // alttaki ipucu + mağaza düğmesi için ayrılan yer
+  // Telefonun durum çubuğu / gezinme çubuğu / kamera çentiği payı (CSS env(safe-area-inset-*)).
+  // Android uygulamasında (edge-to-edge) sayfa bu çubukların altına kadar uzanır; pay düşülmezse
+  // oyun alanı çubukların altına taşar. Tarayıcıda genelde 0'dır.
+  var insetProbe = null;
+  function safeInsets() {
+    try {
+      if (!insetProbe && document.createElement && document.body) {
+        insetProbe = document.createElement('div');
+        insetProbe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;' +
+          'padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);' +
+          'padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)';
+        document.body.appendChild(insetProbe);
+      }
+      if (!insetProbe || !window.getComputedStyle) return { t: 0, b: 0, l: 0, r: 0 };
+      var cs = window.getComputedStyle(insetProbe);
+      return { t: parseFloat(cs.paddingTop) || 0, b: parseFloat(cs.paddingBottom) || 0,
+        l: parseFloat(cs.paddingLeft) || 0, r: parseFloat(cs.paddingRight) || 0 };
+    } catch (e) {
+      return { t: 0, b: 0, l: 0, r: 0 };
+    }
+  }
   function desiredHeight() {
     var w = window.innerWidth, h = window.innerHeight;
     if (!w || !h) return C.CANVAS_H;
-    var availW = Math.min(w * 0.98, 760);
-    var availH = Math.max(200, h - HUD_PX);
+    var ins = safeInsets();
+    var availW = Math.min((w - ins.l - ins.r) * 0.98, 760);
+    var availH = Math.max(200, h - ins.t - ins.b - HUD_PX);
     return Math.round(C.CANVAS_W * availH / availW);
   }
+  // Mantıksal yükseklik logic.js'in sınırlarına (540–1000) kırpılmış hali: ekran değişti mi diye karşılaştırmak için
+  function clampH(H) { return Math.max(C.MIN_H || 540, Math.min(C.MAX_H || 1000, H)); }
   function applyCanvasHeight(H) {
     canvas.height = Math.round(H * dpr);
     if (canvas.style && canvas.style.setProperty) canvas.style.setProperty('--h', String(H));
@@ -713,8 +737,12 @@ function bootstrap() {
   var acc = 0;
   var last = null;
 
+  // Android, çubuk paylarını sayfa açıldıktan sonra bildirir (resize olayı gelmeyebilir):
+  // başlangıç ekranındayken arada bir yeniden ölç, alan değiştiyse yeni oyunu ona göre kur.
+  var fitCheck = 0;
   function frame(ts) {
     if (last === null) last = ts;
+    if (phase === 'ready' && ++fitCheck % 30 === 0 && Math.abs(clampH(desiredHeight()) - state.geo.H) > 2) state = newGame();
     var frameDt = (ts - last) / 1000;
     last = ts;
     if (frameDt > 0.25) frameDt = 0.25;
