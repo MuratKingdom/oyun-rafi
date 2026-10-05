@@ -157,7 +157,50 @@ function applyRun(d, run) {
   return done;
 }
 
+// --- Günlük meydan okuma ve rekor hayaleti -------------------------------------
+// Günün parkuru herkes için aynı: tohum gün anahtarından türetilir. Parkur (duvarlar, kapılar, öğeler)
+// yalnız tohuma ve geçen zamana bağlıdır, oyuncunun girdisine değil; bu yüzden en iyi koşunun top
+// yüksekliği zamanla kaydedilip sonraki denemelerde "hayalet" olarak aynı yerlerde gösterilebilir.
+// Yükseklik 0..1 arasına normalize saklanır (tavan 0, zemin 1): ekran yüksekliği değişse de geçerli.
+var CHALLENGE_KEY = 'bopgate-gunluk-meydan';
+var GHOST_STEP = 0.1;       // kayıt aralığı (sn)
+var GHOST_MAX = 3600;       // en çok 6 dakika
+function dailySeed(day) {
+  var h = 2166136261;
+  var s = 'bopgate:' + day;
+  for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0) || 1;
+}
+function loadChallenge(storage, day) {
+  try {
+    var d = JSON.parse(storage.getItem(CHALLENGE_KEY));
+    if (!d || d.day !== day || !validKey(d.day)) return { day: day, best: 0, path: [] };
+    var best = Math.max(0, Math.min(1e6, Math.floor(Number(d.best)) || 0));
+    var path = Array.isArray(d.path) ? d.path.slice(0, GHOST_MAX).map(function (v) {
+      var n = Number(v); return isFinite(n) ? Math.max(0, Math.min(1, n)) : 0.5;
+    }) : [];
+    return { day: day, best: best, path: path };
+  } catch (e) {
+    return { day: day, best: 0, path: [] };
+  }
+}
+function saveChallenge(storage, rec) {
+  try {
+    storage.setItem(CHALLENGE_KEY, JSON.stringify({ day: rec.day, best: rec.best,
+      path: rec.path.slice(0, GHOST_MAX).map(function (v) { return Math.round(v * 1000) / 1000; }) }));
+  } catch (e) {}
+}
+// t saniyedeki hayalet yüksekliği (0..1) ya da kayıt bittiyse null
+function ghostAt(path, t) {
+  if (!path || !path.length || !(t >= 0)) return null;
+  var f = t / GHOST_STEP, i = Math.floor(f);
+  if (i >= path.length - 1) return null;
+  return path[i] + (path[i + 1] - path[i]) * (f - i);
+}
+
 var Quests = {
+  CHALLENGE_KEY: CHALLENGE_KEY, GHOST_STEP: GHOST_STEP, GHOST_MAX: GHOST_MAX,
+  dailySeed: dailySeed, loadChallenge: loadChallenge, saveChallenge: saveChallenge, ghostAt: ghostAt,
   DAILY_KEY: DAILY_KEY, TEMPLATES: TEMPLATES, dayKey: dayKey, dayDiff: dayDiff,
   generate: generate, describe: describe, fresh: fresh, sanitize: sanitize,
   load: load, save: save, ensureDay: ensureDay, applyRun: applyRun, loginRewardFor: loginRewardFor

@@ -83,8 +83,10 @@
     color: var(--metin); background: var(--cam); border: 1px solid var(--cizgi); border-radius: 999px;
     padding: 10px 18px; cursor: pointer; box-shadow: 0 0 14px rgba(90,200,250,0.18);
   }
-  #gorevBtn[hidden], #liderBtn[hidden] { display: none; }
-  #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn {
+  #gorevBtn[hidden], #liderBtn[hidden], #gunlukBtn[hidden] { display: none; }
+  #gunlukBtn { border-color: rgba(179,157,250,0.6) !important; box-shadow: 0 0 12px rgba(179,157,250,0.3); }
+  #gunlukBtn.acik { background: rgba(179,157,250,0.25); }
+  #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn {
     font: inherit; font-size: 18px; width: 44px; height: 44px; padding: 0; border-radius: 50%;
     border: 1px solid rgba(143,163,196,0.35); background: var(--cam); color: var(--metin); cursor: pointer;
   }
@@ -230,17 +232,17 @@
   @media (max-width: 440px) {
     .dugmeler { gap: 5px; padding: 0 6px; }
     #magazaBtn, #gorevBtn { padding: 8px 10px; font-size: 12.5px; }
-    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn { width: 34px; height: 34px; font-size: 15px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn { width: 34px; height: 34px; font-size: 15px; }
     #dilBtn { font-size: 11px; }
   }
   @media (max-width: 380px) {
     #magazaBtn, #gorevBtn { padding: 7px 8px; font-size: 12px; }
-    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn { width: 31px; height: 31px; font-size: 14px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn { width: 31px; height: 31px; font-size: 14px; }
   }
   @media (max-width: 340px) {
     .dugmeler { gap: 3px; padding: 0 3px; }
     #magazaBtn, #gorevBtn { padding: 6px 7px; font-size: 11px; letter-spacing: 0; }
-    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn { width: 27px; height: 27px; font-size: 12px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn, #kolayBtn, #gunlukBtn { width: 27px; height: 27px; font-size: 12px; }
     #dilBtn { font-size: 10px; }
   }
 </style>
@@ -249,7 +251,7 @@
 <div id="wrap">
   <canvas id="game" width="520" height="540"></canvas>
   <div id="hint"><span data-i18n="Ekranın herhangi bir yerine basılı tut: yükseklik kazan">Ekranın herhangi bir yerine basılı tut: yükseklik kazan</span><span class="kb" data-i18n=" · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
-  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="reklamDevamBtn" type="button" data-ui hidden>📺 Reklamla devam</button><button id="ikiKatBtn" type="button" data-ui hidden>📺 ★ x2</button><button id="magazaBtn" type="button" data-ui hidden data-i18n="🛒 Mağaza">🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="liderBtn" class="ikon" type="button" data-ui hidden aria-label="Liderlik tablosu" data-i18n-aria="Liderlik tablosu">🏆</button><span class="ayar-kutu" data-ui><button id="ayarBtn" class="ikon" type="button" data-ui aria-label="Ayarlar" data-i18n-aria="Ayarlar" aria-expanded="false" aria-controls="ayarlar">⚙</button><span id="ayarlar" data-ui hidden><button id="kolayBtn" class="ikon" type="button" data-ui aria-label="Kolay mod" data-i18n-aria="Kolay mod">🐢</button><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik" data-i18n-aria="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri" data-i18n-aria="Efekt sesleri">🔊</button><button id="dilBtn" class="ikon" type="button" data-ui aria-label="Dil" data-i18n-aria="Dil">TR</button></span></span></div>
+  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="reklamDevamBtn" type="button" data-ui hidden>📺 Reklamla devam</button><button id="ikiKatBtn" type="button" data-ui hidden>📺 ★ x2</button><button id="magazaBtn" type="button" data-ui hidden data-i18n="🛒 Mağaza">🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="gunlukBtn" class="ikon" type="button" data-ui hidden aria-label="Günlük meydan okuma">📅</button><button id="liderBtn" class="ikon" type="button" data-ui hidden aria-label="Liderlik tablosu" data-i18n-aria="Liderlik tablosu">🏆</button><span class="ayar-kutu" data-ui><button id="ayarBtn" class="ikon" type="button" data-ui aria-label="Ayarlar" data-i18n-aria="Ayarlar" aria-expanded="false" aria-controls="ayarlar">⚙</button><span id="ayarlar" data-ui hidden><button id="kolayBtn" class="ikon" type="button" data-ui aria-label="Kolay mod" data-i18n-aria="Kolay mod">🐢</button><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik" data-i18n-aria="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri" data-i18n-aria="Efekt sesleri">🔊</button><button id="dilBtn" class="ikon" type="button" data-ui aria-label="Dil" data-i18n-aria="Dil">TR</button></span></span></div>
 </div>
 <div id="magaza" data-ui hidden role="dialog" aria-label="Mağaza">
   <div class="panel">
@@ -342,6 +344,12 @@ var EN = {
   'Dil': 'Language',
   'Ayarlar': 'Settings',
   'Kolay mod': 'Easy mode',
+  'Normal oyuna dön': 'Back to normal play',
+  'Günlük meydan okuma: herkes aynı parkur, rekorunun hayaletiyle yarış': 'Daily challenge: same course for everyone, race your best run\'s ghost',
+  'GÜNLÜK REKOR': 'DAILY BEST',
+  '📅 Günün parkuru · rekorun {n}': '📅 Today\'s course · your best {n}',
+  '📅 GÜNÜN REKORU!': '📅 NEW DAILY BEST!',
+  'Günlük rekor: {n}': 'Daily best: {n}',
   'Kolay mod: {d}': 'Easy mode: {d}',
   'yavaş, geniş kapılar; ayrı rekor, ★ %60': 'slower, wider gates; separate best, ★ 60%',
   'Kolay mod açık': 'Easy mode on',
@@ -1476,7 +1484,50 @@ function applyRun(d, run) {
   return done;
 }
 
+// --- Günlük meydan okuma ve rekor hayaleti -------------------------------------
+// Günün parkuru herkes için aynı: tohum gün anahtarından türetilir. Parkur (duvarlar, kapılar, öğeler)
+// yalnız tohuma ve geçen zamana bağlıdır, oyuncunun girdisine değil; bu yüzden en iyi koşunun top
+// yüksekliği zamanla kaydedilip sonraki denemelerde "hayalet" olarak aynı yerlerde gösterilebilir.
+// Yükseklik 0..1 arasına normalize saklanır (tavan 0, zemin 1): ekran yüksekliği değişse de geçerli.
+var CHALLENGE_KEY = 'bopgate-gunluk-meydan';
+var GHOST_STEP = 0.1;       // kayıt aralığı (sn)
+var GHOST_MAX = 3600;       // en çok 6 dakika
+function dailySeed(day) {
+  var h = 2166136261;
+  var s = 'bopgate:' + day;
+  for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0) || 1;
+}
+function loadChallenge(storage, day) {
+  try {
+    var d = JSON.parse(storage.getItem(CHALLENGE_KEY));
+    if (!d || d.day !== day || !validKey(d.day)) return { day: day, best: 0, path: [] };
+    var best = Math.max(0, Math.min(1e6, Math.floor(Number(d.best)) || 0));
+    var path = Array.isArray(d.path) ? d.path.slice(0, GHOST_MAX).map(function (v) {
+      var n = Number(v); return isFinite(n) ? Math.max(0, Math.min(1, n)) : 0.5;
+    }) : [];
+    return { day: day, best: best, path: path };
+  } catch (e) {
+    return { day: day, best: 0, path: [] };
+  }
+}
+function saveChallenge(storage, rec) {
+  try {
+    storage.setItem(CHALLENGE_KEY, JSON.stringify({ day: rec.day, best: rec.best,
+      path: rec.path.slice(0, GHOST_MAX).map(function (v) { return Math.round(v * 1000) / 1000; }) }));
+  } catch (e) {}
+}
+// t saniyedeki hayalet yüksekliği (0..1) ya da kayıt bittiyse null
+function ghostAt(path, t) {
+  if (!path || !path.length || !(t >= 0)) return null;
+  var f = t / GHOST_STEP, i = Math.floor(f);
+  if (i >= path.length - 1) return null;
+  return path[i] + (path[i + 1] - path[i]) * (f - i);
+}
+
 var Quests = {
+  CHALLENGE_KEY: CHALLENGE_KEY, GHOST_STEP: GHOST_STEP, GHOST_MAX: GHOST_MAX,
+  dailySeed: dailySeed, loadChallenge: loadChallenge, saveChallenge: saveChallenge, ghostAt: ghostAt,
   DAILY_KEY: DAILY_KEY, TEMPLATES: TEMPLATES, dayKey: dayKey, dayDiff: dayDiff,
   generate: generate, describe: describe, fresh: fresh, sanitize: sanitize,
   load: load, save: save, ensureDay: ensureDay, applyRun: applyRun, loginRewardFor: loginRewardFor
@@ -2433,6 +2484,14 @@ function draw(ctx, state, view) {
   var sq = fx.squash || 0;
   var sx = 1 + 0.35 * sq;
   var sy = 1 - 0.3 * sq;
+  // Günlük rekorun hayaleti: aynı parkurda en iyi koşunun topu, yarı saydam
+  if (typeof view.ghost === 'number' && phase === 'playing') {
+    ctx.save();
+    ctx.globalAlpha = 0.32;
+    ctx.translate(BALL_X, view.ghost);
+    drawBall(ctx, skin.shape, BALL_R, '#ffffff', { glow: 8 });
+    ctx.restore();
+  }
   if (phase !== 'ready') {
     ctx.save();
     ctx.translate(BALL_X, state.y + R0 * (1 - sy));
@@ -2577,10 +2636,10 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   ctx.textAlign = 'right';
   ctx.font = font(800, 12);
   ctx.fillStyle = textDim;
-  ctx.fillText(L(state.easy ? 'KOLAY REKOR' : 'REKOR'), VR - 14, 10);
+  ctx.fillText(L(view.daily ? 'GÜNLÜK REKOR' : state.easy ? 'KOLAY REKOR' : 'REKOR'), VR - 14, 10);
   ctx.font = font(800, 14);
   ctx.fillStyle = textCol;
-  ctx.fillText(String(view.best || 0), VR - 14, 22);
+  ctx.fillText(String(view.daily ? view.daily.best : view.best || 0), VR - 14, 22);
   ctx.restore();
 
   // Kalkanlar (kapasite güçlendirmesiyle 3'e kadar): sağ altta birer yıldız
@@ -2632,7 +2691,11 @@ function drawScreens(ctx, state, view, phase, theme, best, t, skin) {
     ctx.font = font(600, 17);
     ctx.fillStyle = tc.textDim || '#9fb3d1';
     ctx.fillText(L('Basılı tut · yüksel · kapıdan geç'), CX, ly + 52);
-    if (view.easy) {
+    if (view.daily) {
+      ctx.font = font(800, 15);
+      ctx.fillStyle = '#b39dfa';
+      ctx.fillText(L('📅 Günün parkuru · rekorun {n}', { n: view.daily.best }), CX, ly + 80);
+    } else if (view.easy) {
       ctx.font = font(800, 15);
       ctx.fillStyle = '#46d39a';
       ctx.fillText(L('🐢 Kolay mod'), CX, ly + 80);
@@ -2676,6 +2739,9 @@ function drawScreens(ctx, state, view, phase, theme, best, t, skin) {
       { text: String(state.score), font: font(900, 76), color: body, glow: tc.edge, h: 84 },
       { text: L('KAPI'), font: font(800, 13), color: muted, h: 22 }
     ];
+    if (view.daily) rows.push(view.daily.newBest
+      ? { text: L('📅 GÜNÜN REKORU!'), font: font(900, 17), color: '#b39dfa', glow: '#b39dfa', h: 34 }
+      : { text: L('Günlük rekor: {n}', { n: view.daily.best }), font: font(700, 15), color: '#b39dfa', h: 28 });
     if (view.newBest) rows.push({ text: L('★ YENİ REKOR ★'), font: font(900, 18), color: GOLD, glow: GOLD, pill: GOLD, pillW: 210, h: 40 });
     else rows.push({ text: L('Rekor: {n}', { n: best }), font: font(700, 16), color: body, h: 32 });
     rows.push({ text: L('Bölüm {n}', { n: state.level }) + (ms ? '  ·  ' + L('{n} eşik', { n: ms }) : ''), font: font(600, 15), color: ms ? GOLD : muted, h: 28 });
@@ -3015,6 +3081,7 @@ function bootstrap() {
     if (dilBtn) dilBtn.textContent = I18n.getLang().toUpperCase();
     updateSoundBtns();
     applyEasyBtn();
+    applyDailyBtn();
   }
   if (dilBtn) dilBtn.addEventListener('click', function () {
     if (!I18n) return;
@@ -3082,11 +3149,23 @@ function bootstrap() {
   function skinColor() { return profile ? Shop.equippedBall(profile).color : '#5ac8fa'; }
   function themeEdge() { return profile ? Shop.equippedMap(profile).c.edge : '#5ac8fa'; }
 
+  // Günlük meydan okuma (📅): günün tohumuyla herkes aynı parkuru oynar; kolay mod ve rehber kapalıdır.
+  // Günün en iyi koşusu kaydedilir (quests.js) ve sonraki denemelerde yarı saydam "hayalet" top olarak akar.
+  var dailyMode = false;
+  var challenge = { day: '', best: 0, path: [] };
+  var ghostRec = [];
+  var newDaily = false;
   function newGame() {
     var seed = Date.now() % 2147483647;
+    if (dailyMode && Quests) {
+      challenge = Quests.loadChallenge(window.localStorage, todayKey());
+      seed = Quests.dailySeed(challenge.day);
+    }
+    ghostRec = [];
+    newDaily = false;
     viewX0 = desiredCrop();
     var st = window.GameLogic.createState(seed, { height: desiredHeight(viewX0), mods: profile ? Shop.mods(profile) : null,
-      easy: easy, tutorial: tutorialDone ? 0 : TUTORIAL_GATES });
+      easy: easy && !dailyMode, tutorial: tutorialDone || dailyMode ? 0 : TUTORIAL_GATES });
     applyCanvasHeight(st.geo.H);
     return st;
   }
@@ -3202,6 +3281,21 @@ function bootstrap() {
   }
   // --- Mağaza arayüzü (index.html'de #magaza ve #magazaBtn varsa) ----------------
   var shopEl = document.getElementById('magaza');
+  var gunlukBtn = document.getElementById('gunlukBtn');
+  function applyDailyBtn() {
+    if (!gunlukBtn) return;
+    gunlukBtn.textContent = dailyMode ? '♾' : '📅';
+    gunlukBtn.className = dailyMode ? 'ikon acik' : 'ikon';
+    gunlukBtn.title = dailyMode ? L('Normal oyuna dön') : L('Günlük meydan okuma: herkes aynı parkur, rekorunun hayaletiyle yarış');
+    gunlukBtn.setAttribute('aria-label', gunlukBtn.title);
+  }
+  if (gunlukBtn) gunlukBtn.addEventListener('click', function () {
+    dailyMode = !dailyMode;
+    applyDailyBtn();
+    if (phase === 'ready') state = newGame();
+    else if ((phase === 'over' || phase === 'won') && canRestart()) restart();
+  });
+  applyDailyBtn();
   var shopBtn = document.getElementById('magazaBtn');
   var shopTab = 'ball';
   // Ölünce devam hakkı: yıldız yetiyorsa REVIVE_MS boyunca ❤ Devam düğmesi görünür.
@@ -3545,6 +3639,10 @@ function bootstrap() {
     var mid = next.gapY + next.gapH / 2, tol = next.gapH * 0.14;
     return { mode: state.y > mid + tol ? 'hold' : state.y < mid - tol ? 'release' : 'ok', y: state.y, target: mid, gateX: next.x };
   }
+  function ghostY() {
+    var v = Quests.ghostAt(challenge.path, state.t);
+    return v === null ? null : state.geo.ceilY + v * (state.geo.floorY - state.geo.ceilY);
+  }
   var fitCheck = 0;
   function frame(ts) {
     if (last === null) last = ts;
@@ -3561,6 +3659,9 @@ function bootstrap() {
         state = window.GameLogic.step(state, input, DT);
         acc -= DT;
         steps++;
+        if (dailyMode && Quests && ghostRec.length < Quests.GHOST_MAX && state.t >= ghostRec.length * Quests.GHOST_STEP) {
+          ghostRec.push((state.y - state.geo.ceilY) / (state.geo.floorY - state.geo.ceilY));
+        }
 
         if (state.bounces !== prevBounces) {
           sfx('bounce');
@@ -3642,6 +3743,12 @@ function bootstrap() {
           fx.callout = null;
           shakeLeft = SHAKE_MS;
           burst(C.BALL_X, state.y, 24, '#e05656', 320);
+          if (dailyMode && Quests && state.score > challenge.best) {
+            challenge.best = state.score;
+            challenge.path = ghostRec.slice();
+            Quests.saveChallenge(window.localStorage, challenge);
+            newDaily = true;
+          }
           if (state.easy) {
             if (state.score > easyBest) { easyBest = state.score; newBest = true; lsSet('bopgate-kolay-best', String(easyBest)); }
           } else if (state.score > best) {
@@ -3683,6 +3790,7 @@ function bootstrap() {
     }
     var showBtns = !rOpen && !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
     if (shopBtn) shopBtn.hidden = !showBtns;
+    if (gunlukBtn) gunlukBtn.hidden = !showBtns || !Quests;
     if (liderBtn) liderBtn.hidden = !showBtns || !games;
     var qb = document.getElementById('gorevBtn');
     if (qb) {
@@ -3695,7 +3803,9 @@ function bootstrap() {
     }
     window.GameRender.draw(ctx, state, {
       best: shownBest(), muted: muted, phase: phase, fx: fx, touch: touch, time: ts / 1000, viewX0: viewX0,
-      easy: easy, guide: guideFor(), lite: lite,
+      easy: easy && !dailyMode, guide: guideFor(), lite: lite,
+      daily: dailyMode ? { best: challenge.best, newBest: newDaily } : null,
+      ghost: dailyMode && Quests && phase === 'playing' ? ghostY() : null,
       newBest: newBest, canRestart: (phase === 'over' || phase === 'won') && canRestart(),
       banner: banner, levelCount: C.LEVEL_COUNT, gatesPerLevel: C.GATES_PER_LEVEL,
       theme: profile ? Shop.equippedMap(profile) : null, skin: profile ? Shop.equippedBall(profile) : null,
