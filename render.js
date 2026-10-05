@@ -344,7 +344,7 @@ function drawStage(ctx, theme, dist) {
   ctx.restore();
 }
 
-function drawWall(ctx, o, tc, light) {
+function drawWall(ctx, o, tc, light, flash) {
   var neon = o.passed ? tc.line : (o.move ? tc.edgeMove : (o.pulse ? PULSE_EDGE : tc.edge));
   var base = o.passed || o.hit ? tc.wallPassed : (o.move ? tc.wallMove : tc.wall);
   ctx.save();
@@ -371,6 +371,19 @@ function drawWall(ctx, o, tc, light) {
   ctx.fillStyle = neon;
   rrect(ctx, o.x - 4, o.gapY - 7, WALL_W + 8, 7, 3.5); ctx.fill();
   rrect(ctx, o.x - 4, botY, WALL_W + 8, 7, 3.5); ctx.fill();
+  // Az önce geçildi: ağız kapakları ve perde kısa bir an beyaz parlar
+  if (flash > 0) {
+    var hot = o.move ? tc.edgeMove : (o.pulse ? PULSE_EDGE : tc.edge);
+    ctx.globalAlpha = flash;
+    glow(ctx, hot, 26);
+    ctx.fillStyle = mix(hot, '#ffffff', 0.6);
+    rrect(ctx, o.x - 7, o.gapY - 9, WALL_W + 14, 9, 4.5); ctx.fill();
+    rrect(ctx, o.x - 7, botY, WALL_W + 14, 9, 4.5); ctx.fill();
+    noGlow(ctx);
+    ctx.globalAlpha = flash * 0.35;
+    ctx.fillStyle = hot;
+    ctx.fillRect(o.x, o.gapY, WALL_W, o.gapH);
+  }
   ctx.restore();
 }
 
@@ -512,7 +525,9 @@ function draw(ctx, state, view) {
   var i;
   for (i = 0; i < state.obstacles.length; i++) {
     var o = state.obstacles[i];
-    drawWall(ctx, o, tc, light);
+    var fl = 0;
+    for (var f = 0; f < (fx.flash || []).length; f++) if (fx.flash[f].o === o) fl = Math.max(fl, fx.flash[f].life / fx.flash[f].max);
+    drawWall(ctx, o, tc, light, fl);
     if (o.spike) {
       ctx.globalAlpha = o.spike.hit ? 0.3 : 1;
       spikes(ctx, o.x + WALL_W + o.spike.dx, o.spike.w, FLOOR_Y);
@@ -613,6 +628,21 @@ function draw(ctx, state, view) {
   ctx.restore();
   ctx.globalAlpha = 1;
 
+  if (fx.callout && phase === 'playing') {
+    var co = fx.callout, k = 1 - co.life / co.max;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, co.life / co.max * 2.5);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    var cs = (co.big ? 24 : 19) * (k < 0.15 ? 0.7 + 2 * k : 1);
+    ctx.font = font(900, Math.round(cs));
+    ctx.fillStyle = GOLD;
+    glow(ctx, GOLD, co.big ? 18 : 10);
+    var cyy = Math.max(CEIL_Y + 22, Math.min(FLOOR_Y - 22, co.y - 34 - 30 * k));
+    ctx.fillText(co.text, BALL_X + 22, cyy);
+    ctx.restore();
+  }
+
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   if (phase !== 'ready') drawHud(ctx, state, view, tc, textCol, textDim);
 
@@ -654,7 +684,7 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   var pop = fx.scorePop || 0;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = font(900, Math.round(26 + 8 * pop));
+  ctx.font = font(900, Math.round(28 + 8 * pop));
   ctx.fillStyle = textCol;
   glow(ctx, tc.edge, 10 + 10 * pop);
   ctx.fillText(String(state.score), W0 / 2, CEIL_Y / 2 + 1);

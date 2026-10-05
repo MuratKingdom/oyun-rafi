@@ -286,6 +286,8 @@ var EN = {
   'Boşluk / dokun': 'Space / tap',
   'Dokun ya da R': 'Tap or R',
   'DURAKLATILDI': 'PAUSED',
+  'MÜKEMMEL': 'PERFECT',
+  'MÜKEMMEL x{n}': 'PERFECT x{n}',
   '{w} ve devam et': '{w} to resume',
   'OYUN BİTTİ': 'GAME OVER',
   'KAPI': 'GATES',
@@ -1952,7 +1954,7 @@ function drawStage(ctx, theme, dist) {
   ctx.restore();
 }
 
-function drawWall(ctx, o, tc, light) {
+function drawWall(ctx, o, tc, light, flash) {
   var neon = o.passed ? tc.line : (o.move ? tc.edgeMove : (o.pulse ? PULSE_EDGE : tc.edge));
   var base = o.passed || o.hit ? tc.wallPassed : (o.move ? tc.wallMove : tc.wall);
   ctx.save();
@@ -1979,6 +1981,19 @@ function drawWall(ctx, o, tc, light) {
   ctx.fillStyle = neon;
   rrect(ctx, o.x - 4, o.gapY - 7, WALL_W + 8, 7, 3.5); ctx.fill();
   rrect(ctx, o.x - 4, botY, WALL_W + 8, 7, 3.5); ctx.fill();
+  // Az önce geçildi: ağız kapakları ve perde kısa bir an beyaz parlar
+  if (flash > 0) {
+    var hot = o.move ? tc.edgeMove : (o.pulse ? PULSE_EDGE : tc.edge);
+    ctx.globalAlpha = flash;
+    glow(ctx, hot, 26);
+    ctx.fillStyle = mix(hot, '#ffffff', 0.6);
+    rrect(ctx, o.x - 7, o.gapY - 9, WALL_W + 14, 9, 4.5); ctx.fill();
+    rrect(ctx, o.x - 7, botY, WALL_W + 14, 9, 4.5); ctx.fill();
+    noGlow(ctx);
+    ctx.globalAlpha = flash * 0.35;
+    ctx.fillStyle = hot;
+    ctx.fillRect(o.x, o.gapY, WALL_W, o.gapH);
+  }
   ctx.restore();
 }
 
@@ -2120,7 +2135,9 @@ function draw(ctx, state, view) {
   var i;
   for (i = 0; i < state.obstacles.length; i++) {
     var o = state.obstacles[i];
-    drawWall(ctx, o, tc, light);
+    var fl = 0;
+    for (var f = 0; f < (fx.flash || []).length; f++) if (fx.flash[f].o === o) fl = Math.max(fl, fx.flash[f].life / fx.flash[f].max);
+    drawWall(ctx, o, tc, light, fl);
     if (o.spike) {
       ctx.globalAlpha = o.spike.hit ? 0.3 : 1;
       spikes(ctx, o.x + WALL_W + o.spike.dx, o.spike.w, FLOOR_Y);
@@ -2221,6 +2238,21 @@ function draw(ctx, state, view) {
   ctx.restore();
   ctx.globalAlpha = 1;
 
+  if (fx.callout && phase === 'playing') {
+    var co = fx.callout, k = 1 - co.life / co.max;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, co.life / co.max * 2.5);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    var cs = (co.big ? 24 : 19) * (k < 0.15 ? 0.7 + 2 * k : 1);
+    ctx.font = font(900, Math.round(cs));
+    ctx.fillStyle = GOLD;
+    glow(ctx, GOLD, co.big ? 18 : 10);
+    var cyy = Math.max(CEIL_Y + 22, Math.min(FLOOR_Y - 22, co.y - 34 - 30 * k));
+    ctx.fillText(co.text, BALL_X + 22, cyy);
+    ctx.restore();
+  }
+
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   if (phase !== 'ready') drawHud(ctx, state, view, tc, textCol, textDim);
 
@@ -2262,7 +2294,7 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   var pop = fx.scorePop || 0;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = font(900, Math.round(26 + 8 * pop));
+  ctx.font = font(900, Math.round(28 + 8 * pop));
   ctx.fillStyle = textCol;
   glow(ctx, tc.edge, 10 + 10 * pop);
   ctx.fillText(String(state.score), W0 / 2, CEIL_Y / 2 + 1);
@@ -2418,6 +2450,9 @@ var SQUASH_MS = 120;
 var TRAIL_LEN = 10;
 var RING_S = 0.35; // kapı geçiş halkasının ömrü (sn)
 var POP_S = 0.25;  // skor sıçramasının süresi (sn)
+var FLASH_S = 0.3; // geçilen kapının parlama süresi (sn)
+var CALLOUT_S = 0.9; // "MÜKEMMEL" yazısının ömrü (sn)
+var PERFECT_F = 0.2; // kapı ortasına bu oran (ağız yüksekliğinin) kadar yakın geçiş "mükemmel" sayılır
 var REVIVE_MS = 5000; // ölünce "★ ile devam" teklifinin süresi
 
 // Dil: i18n.js yüklüyse çevirir, değilse Türkçe metni parametreleriyle doldurur
@@ -2668,7 +2703,8 @@ function bootstrap() {
   }
 
   // Efekt durumu — oyun mantığından ayrı; testler mantığı bundan bağımsız doğrular.
-  var fx = { particles: [], shake: 0, squash: 0, trail: [], rings: [], scorePop: 0 };
+  // combo: art arda "mükemmel" (kapının tam ortasından) geçiş sayısı — yalnız görsel, ödülü etkilemez
+  var fx = { particles: [], shake: 0, squash: 0, trail: [], rings: [], scorePop: 0, flash: [], callout: null, combo: 0 };
   var popLeft = 0;
   var shakeLeft = 0;
   var squashLeft = 0;
@@ -2698,6 +2734,13 @@ function bootstrap() {
       if (fx.rings[r].life > 0) ringsKept.push(fx.rings[r]);
     }
     fx.rings = ringsKept;
+    var flashKept = [];
+    for (var fl = 0; fl < fx.flash.length; fl++) {
+      fx.flash[fl].life -= dt;
+      if (fx.flash[fl].life > 0) flashKept.push(fx.flash[fl]);
+    }
+    fx.flash = flashKept;
+    if (fx.callout) { fx.callout.life -= dt; if (fx.callout.life <= 0) fx.callout = null; }
     popLeft = Math.max(0, popLeft - dt);
     fx.scorePop = popLeft / POP_S;
     shakeLeft = Math.max(0, shakeLeft - dt * 1000);
@@ -2760,6 +2803,9 @@ function bootstrap() {
     fx.particles = [];
     fx.trail = [];
     fx.rings = [];
+    fx.flash = [];
+    fx.callout = null;
+    fx.combo = 0;
     popLeft = 0;
     shakeLeft = 0;
     squashLeft = 0;
@@ -3183,6 +3229,23 @@ function bootstrap() {
           fx.rings.push({ x: C.BALL_X, y: state.y, life: RING_S, max: RING_S, color: edgeCol });
           popLeft = POP_S;
           prevScore = state.score;
+          // Az önce geçilen kapı: parlasın; ortasından geçildiyse "mükemmel" serisi büyür
+          var gate = null;
+          for (var gi = 0; gi < state.obstacles.length; gi++) {
+            var go = state.obstacles[gi];
+            if (go.passed && (!gate || go.x > gate.x)) gate = go;
+          }
+          if (gate) {
+            fx.flash.push({ o: gate, life: FLASH_S, max: FLASH_S });
+            if (Math.abs(state.y - (gate.gapY + gate.gapH / 2)) <= gate.gapH * PERFECT_F) {
+              fx.combo++;
+              fx.callout = { text: fx.combo > 1 ? L('MÜKEMMEL x{n}', { n: fx.combo }) : L('MÜKEMMEL'), life: CALLOUT_S, max: CALLOUT_S, y: state.y, big: fx.combo >= 3 };
+              fx.rings.push({ x: C.BALL_X, y: state.y, life: RING_S * 1.4, max: RING_S * 1.4, color: '#ffd166' });
+              if (fx.combo >= 3) burst(C.BALL_X, state.y, 8 + Math.min(fx.combo, 10), '#ffd166', 260);
+            } else {
+              fx.combo = 0;
+            }
+          }
         }
         if (state.stars !== prevStars) {
           sfx('star');
@@ -3227,6 +3290,8 @@ function bootstrap() {
         if (state.status === 'over') {
           sfx('over');
           buzz(60);
+          fx.combo = 0;
+          fx.callout = null;
           shakeLeft = SHAKE_MS;
           burst(C.BALL_X, state.y, 24, '#e05656', 320);
           if (state.score > best) {
