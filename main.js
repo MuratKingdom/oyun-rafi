@@ -63,19 +63,37 @@ function bootstrap() {
       return { t: 0, b: 0, l: 0, r: 0 };
     }
   }
-  function desiredHeight() {
+  function availArea() {
     var w = window.innerWidth, h = window.innerHeight;
-    if (!w || !h) return C.CANVAS_H;
+    if (!w || !h) return null;
     var ins = safeInsets();
-    var availW = Math.min((w - ins.l - ins.r) * 0.98, 760);
-    var availH = Math.max(200, h - ins.t - ins.b - HUD_PX);
-    return Math.round(C.CANVAS_W * availH / availW);
+    return { w: Math.min((w - ins.l - ins.r) * 0.98, 760), h: Math.max(200, h - ins.t - ins.b - HUD_PX) };
+  }
+  // Büyük görünüm (dikey telefon): topun solundaki şerit (x < VIEW_CROP) yalnız geçilmiş duvarları
+  // gösterir; kırpılınca kalan alan ekranı doldurur ve top, kapılar, yazılar ~%24 büyür. Topun
+  // önündeki görüş (x 160 → 520) aynı kalır: yaklaşan kapıyı görme süresi, yani zorluk, değişmez.
+  var VIEW_CROP = 100;
+  function desiredCrop() {
+    var a = availArea();
+    return a && a.h / a.w >= 1.35 ? VIEW_CROP : 0;
+  }
+  var viewX0 = 0;
+  function desiredHeight(crop) {
+    var a = availArea();
+    if (!a) return C.CANVAS_H;
+    if (typeof crop !== 'number') crop = viewX0;
+    return Math.round((C.CANVAS_W - crop) * a.h / a.w);
   }
   // Mantıksal yükseklik logic.js'in sınırlarına (540–1000) kırpılmış hali: ekran değişti mi diye karşılaştırmak için
   function clampH(H) { return Math.max(C.MIN_H || 540, Math.min(C.MAX_H || 1000, H)); }
   function applyCanvasHeight(H) {
+    var vw = C.CANVAS_W - viewX0;
+    canvas.width = Math.round(vw * dpr);
     canvas.height = Math.round(H * dpr);
-    if (canvas.style && canvas.style.setProperty) canvas.style.setProperty('--h', String(H));
+    if (canvas.style && canvas.style.setProperty) {
+      canvas.style.setProperty('--h', String(H));
+      canvas.style.setProperty('--w', String(vw));
+    }
   }
 
   var touch = coarse;
@@ -318,7 +336,8 @@ function bootstrap() {
 
   function newGame() {
     var seed = Date.now() % 2147483647;
-    var st = window.GameLogic.createState(seed, { height: desiredHeight(), mods: profile ? Shop.mods(profile) : null });
+    viewX0 = desiredCrop();
+    var st = window.GameLogic.createState(seed, { height: desiredHeight(viewX0), mods: profile ? Shop.mods(profile) : null });
     applyCanvasHeight(st.geo.H);
     return st;
   }
@@ -766,7 +785,7 @@ function bootstrap() {
   var fitCheck = 0;
   function frame(ts) {
     if (last === null) last = ts;
-    if (phase === 'ready' && ++fitCheck % 30 === 0 && Math.abs(clampH(desiredHeight()) - state.geo.H) > 2) state = newGame();
+    if (phase === 'ready' && ++fitCheck % 30 === 0 && (desiredCrop() !== viewX0 || Math.abs(clampH(desiredHeight(desiredCrop())) - state.geo.H) > 2)) state = newGame();
     var frameDt = (ts - last) / 1000;
     last = ts;
     if (frameDt > 0.25) frameDt = 0.25;
@@ -908,7 +927,7 @@ function bootstrap() {
       }
     }
     window.GameRender.draw(ctx, state, {
-      best: best, muted: muted, phase: phase, fx: fx, touch: touch, time: ts / 1000,
+      best: best, muted: muted, phase: phase, fx: fx, touch: touch, time: ts / 1000, viewX0: viewX0,
       newBest: newBest, canRestart: (phase === 'over' || phase === 'won') && canRestart(),
       banner: banner, levelCount: C.LEVEL_COUNT, gatesPerLevel: C.GATES_PER_LEVEL,
       theme: profile ? Shop.equippedMap(profile) : null, skin: profile ? Shop.equippedBall(profile) : null,

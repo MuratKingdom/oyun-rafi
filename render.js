@@ -20,6 +20,9 @@ function L(s, p) {
 var TITLE = 'BOPGATE';
 var FONT = "ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif";
 var W0 = 520;
+// Görünen pencere: [VX, VX + VW]. Büyük görünümde (view.viewX0) topun arkasındaki şerit kırpılır;
+// dünya hâlâ 0..W0 koordinatlarında çizilir, ekrana ait yazılar (skor, kartlar) pencereye ortalanır.
+var VX = 0, VW = W0, CX = W0 / 2, VR = W0;
 // Dikey ölçüler oyun durumunun geometrisinden gelir (uzun telefonda alan uzar); setGeo ayarlar.
 var DEFAULT_GEO = { H: 540, ceilY: 30, floorY: 480 };
 var H0 = 540;
@@ -447,12 +450,20 @@ function drawDeco(ctx, theme, dist, geo, t) {
   } else {
     // Gece: hilal ay, iki kat yıldız (uzak küçük, yakın büyük) ve pırıltı
     var mx = wrapX(420, 0.02, d, W0 + 120) - 60, my = CEIL_Y + Math.min(90, span * 0.16);
+    // Gerçek hilal: iç daire kırpılarak oyulur (gökyüzü gradyanı görünür kalır)
     glow(ctx, '#cfe3ff', 16);
     ctx.fillStyle = 'rgba(225,236,255,0.85)';
+    ctx.save();
+    if (ctx.clip) {
+      // Kırpma: iç dairenin dışı (evenodd) → dış daire boyanınca hilal kalır
+      ctx.beginPath();
+      ctx.rect(mx - 60, my - 60, 120, 120);
+      ctx.arc(mx + 9, my - 6, 18, 0, Math.PI * 2);
+      ctx.clip('evenodd');
+    }
     ctx.beginPath(); ctx.arc(mx, my, 20, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
     noGlow(ctx);
-    ctx.fillStyle = theme.c.bg;
-    ctx.beginPath(); ctx.arc(mx + 9, my - 6, 18, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = col;
     for (i = 0; i < 30; i++) {
       x = wrapX(i * 53, 0.1, d, W0);
@@ -500,10 +511,10 @@ function drawStage(ctx, theme, dist, t) {
   ctx.lineWidth = 1;
   var off = ((dist || 0) * 0.6) % 48;
   for (var i = -12; i <= 12; i++) {
-    var xt = W0 / 2 + i * 48 - off;
+    var xt = CX + i * 48 - off;
     ctx.beginPath();
     ctx.moveTo(xt, FLOOR_Y);
-    ctx.lineTo(W0 / 2 + (xt - W0 / 2) * 3.2, H0);
+    ctx.lineTo(CX + (xt - CX) * 3.2, H0);
     ctx.stroke();
   }
   for (var k = 1; k <= 4; k++) {
@@ -583,9 +594,9 @@ function questLines(view) {
 function card(ctx, rows, accent, light, w) {
   var pad = 26, total = 0, i;
   for (i = 0; i < rows.length; i++) total += rows[i].h || 30;
-  w = w || 420;
+  w = Math.min(w || 420, VW - 16);
   var h = total + pad * 2;
-  var x = (W0 - w) / 2, y = Math.max(CEIL_Y + 10, (H0 - h) / 2);
+  var x = CX - w / 2, y = Math.max(CEIL_Y + 10, (H0 - h) / 2);
   ctx.save();
   glow(ctx, accent, 24);
   ctx.fillStyle = light ? 'rgba(255,255,255,0.92)' : lin(ctx, 0, y, 0, y + h, [[0, 'rgba(22,30,52,0.94)'], [1, 'rgba(10,14,26,0.94)']], 'rgba(14,20,36,0.94)');
@@ -604,13 +615,13 @@ function card(ctx, rows, accent, light, w) {
     if (r.text) {
       if (r.pill) {
         ctx.fillStyle = rgba(r.pill, 0.18);
-        rrect(ctx, W0 / 2 - r.pillW / 2, cy + 3, r.pillW, rh - 6, (rh - 6) / 2);
+        rrect(ctx, CX - r.pillW / 2, cy + 3, r.pillW, rh - 6, (rh - 6) / 2);
         ctx.fill();
       }
       ctx.font = r.font || font(500, 17);
       ctx.fillStyle = r.color || (light ? '#12324a' : '#e8ecf1');
       if (r.glow) glow(ctx, r.glow, 16);
-      ctx.fillText(r.text, W0 / 2, cy + rh / 2);
+      ctx.fillText(r.text, CX, cy + rh / 2);
       noGlow(ctx);
     }
     cy += rh;
@@ -686,8 +697,9 @@ function draw(ctx, state, view) {
   var t = view.time || state.t || 0;
   setGeo(state.geo);
   // Canvas piksel boyutu main.js'de DPR'ye göre ayarlanır; burada mantıksal 520 x H ile çizilir.
-  var scale = ctx.canvas.width / W0;
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  VX = Math.max(0, Math.min(200, view.viewX0 || 0)); VW = W0 - VX; CX = VX + VW / 2; VR = W0;
+  var scale = ctx.canvas.width / VW;
+  ctx.setTransform(scale, 0, 0, scale, -VX * scale, 0);
 
   var theme = view.theme || DEFAULT_THEME;
   var tc = theme.c;
@@ -826,7 +838,7 @@ function draw(ctx, state, view) {
     ctx.restore();
   }
 
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.setTransform(scale, 0, 0, scale, -VX * scale, 0);
   if (phase !== 'ready') drawHud(ctx, state, view, tc, textCol, textDim);
 
   // Bölüm geçişi yazısı (main.js süreyi tutar)
@@ -840,12 +852,12 @@ function draw(ctx, state, view) {
     ctx.font = font(900, 40);
     glow(ctx, tc.edge, 20);
     var I = typeof window !== 'undefined' && window.GameI18n;
-    ctx.fillText(view.banner.title.toLocaleUpperCase(I && I.getLang() === 'en' ? 'en' : 'tr'), W0 / 2, by);
+    ctx.fillText(view.banner.title.toLocaleUpperCase(I && I.getLang() === 'en' ? 'en' : 'tr'), CX, by);
     noGlow(ctx);
     if (view.banner.sub) {
       ctx.font = font(700, 17);
       ctx.fillStyle = GOLD;
-      ctx.fillText(view.banner.sub, W0 / 2, by + 38);
+      ctx.fillText(view.banner.sub, CX, by + 38);
     }
     ctx.restore();
   }
@@ -853,7 +865,7 @@ function draw(ctx, state, view) {
   if (view.muted) {
     ctx.fillStyle = textDim;
     ctx.font = font(600, 14);
-    ctx.fillText(L('sessiz'), 14, FLOOR_Y + 28);
+    ctx.fillText(L('sessiz'), VX + 14, FLOOR_Y + 28);
   }
 
   drawScreens(ctx, state, view, phase, theme, best, t, skin);
@@ -870,27 +882,27 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   ctx.font = font(900, Math.round(28 + 8 * pop));
   ctx.fillStyle = textCol;
   glow(ctx, tc.edge, 10 + 10 * pop);
-  ctx.fillText(String(state.score), W0 / 2, CEIL_Y / 2 + 1);
+  ctx.fillText(String(state.score), CX, CEIL_Y / 2 + 1);
   noGlow(ctx);
   // Sol: bölüm + 8 parçalı ilerleme
   ctx.textAlign = 'left';
   ctx.font = font(800, 12);
   ctx.fillStyle = textDim;
-  ctx.fillText(L('BÖLÜM {n}', { n: state.level }), 14, 10);
+  ctx.fillText(L('BÖLÜM {n}', { n: state.level }), VX + 14, 10);
   var done = state.score % per;
   for (var s = 0; s < per; s++) {
     ctx.fillStyle = s < done ? tc.edge : rgba(tc.edge, 0.2);
-    rrect(ctx, 14 + s * 11, 18, 9, 5, 2.5);
+    rrect(ctx, VX + 14 + s * 11, 18, 9, 5, 2.5);
     ctx.fill();
   }
   // Sağ: rekor
   ctx.textAlign = 'right';
   ctx.font = font(800, 12);
   ctx.fillStyle = textDim;
-  ctx.fillText(L('REKOR'), W0 - 14, 10);
+  ctx.fillText(L('REKOR'), VR - 14, 10);
   ctx.font = font(800, 14);
   ctx.fillStyle = textCol;
-  ctx.fillText(String(view.best || 0), W0 - 14, 22);
+  ctx.fillText(String(view.best || 0), VR - 14, 22);
   ctx.restore();
 
   // Kalkanlar (kapasite güçlendirmesiyle 3'e kadar): sağ altta birer yıldız
@@ -928,39 +940,39 @@ function drawScreens(ctx, state, view, phase, theme, best, t, skin) {
     ctx.save();
     ctx.fillStyle = rgba(tc.edge, 0.18 + 0.2 * land);
     ctx.beginPath();
-    if (ctx.ellipse) ctx.ellipse(W0 / 2, ly - 52, 20 - 8 * hop, 4, 0, 0, Math.PI * 2);
+    if (ctx.ellipse) ctx.ellipse(CX, ly - 52, 20 - 8 * hop, 4, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.translate(W0 / 2, bY);
+    ctx.translate(CX, bY);
     var sqz = land > 0.85 ? (land - 0.85) / 0.15 : 0;
     ctx.scale(1 + 0.18 * sqz, 1 - 0.15 * sqz);
     drawBall(ctx, (skin || DEFAULT_SKIN).shape, 20, (skin || DEFAULT_SKIN).color, { shine: true, glow: 26, fx: (skin || DEFAULT_SKIN).fx, t: t });
     ctx.restore();
-    drawLogo(ctx, W0 / 2, ly, theme, t);
+    drawLogo(ctx, CX, ly, theme, t);
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = font(600, 17);
     ctx.fillStyle = tc.textDim || '#9fb3d1';
-    ctx.fillText(L('Basılı tut · yüksel · kapıdan geç'), W0 / 2, ly + 52);
+    ctx.fillText(L('Basılı tut · yüksel · kapıdan geç'), CX, ly + 52);
     ctx.restore();
     var by = Math.min(ly + 150, FLOOR_Y - 170);
-    pillButton(ctx, W0 / 2, by, 230, 66, L('▶  OYNA'), t);
+    pillButton(ctx, CX, by, 230, 66, L('▶  OYNA'), t);
     ctx.save();
     ctx.textAlign = 'center';
     ctx.font = font(600, 15);
     ctx.fillStyle = tc.textDim || '#9fb3d1';
-    ctx.fillText(L('{w} ve başla', { w: tapWord }), W0 / 2, by + 58);
+    ctx.fillText(L('{w} ve başla', { w: tapWord }), CX, by + 58);
     ctx.restore();
     var cy = by + 104;
-    chip(ctx, W0 / 2 - 82, cy, '🏆 ' + best, tc.edge, light);
-    if (hasCoins) chip(ctx, W0 / 2 + 82, cy, '★ ' + view.coins, GOLD, light);
+    chip(ctx, CX - 82, cy, '🏆 ' + best, tc.edge, light);
+    if (hasCoins) chip(ctx, CX + 82, cy, '★ ' + view.coins, GOLD, light);
     if (view.notice) {
       ctx.save();
       ctx.textAlign = 'center';
       ctx.font = font(800, 16);
       ctx.fillStyle = '#46d39a';
       glow(ctx, '#46d39a', 10);
-      ctx.fillText(view.notice, W0 / 2, cy + 52);
+      ctx.fillText(view.notice, CX, cy + 52);
       ctx.restore();
     }
   } else if (phase === 'paused') {
