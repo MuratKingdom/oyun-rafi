@@ -26,18 +26,19 @@ var STORAGE_KEY = 'sekmeguc-profil';
 
 // Top görünümleri. shape: circle | square | diamond | star | ring
 var BALLS = [
-  { id: 'klasik', name: 'Klasik', price: 0, shape: 'circle', color: '#5ac8fa' },
-  { id: 'kor', name: 'Kor', price: 25, shape: 'circle', color: '#ff8a3d' },
-  { id: 'nane', name: 'Nane', price: 60, shape: 'circle', color: '#46d39a' },
-  { id: 'kup', name: 'Küp', price: 150, shape: 'square', color: '#f2f2f2' },
-  { id: 'elmas', name: 'Elmas', price: 250, shape: 'diamond', color: '#7fe3ff' },
-  { id: 'yildiz', name: 'Yıldız', price: 400, shape: 'star', color: '#ff8ee8' },
-  { id: 'gezegen', name: 'Gezegen', price: 600, shape: 'ring', color: '#c49bff' },
+  { id: 'klasik', name: 'Klasik', price: 0, shape: 'circle', color: '#5ac8fa', fx: 'pulse' },
+  { id: 'kor', name: 'Kor', price: 25, shape: 'circle', color: '#ff8a3d', fx: 'ember' },
+  { id: 'nane', name: 'Nane', price: 60, shape: 'circle', color: '#46d39a', fx: 'swirl' },
+  { id: 'kup', name: 'Küp', price: 150, shape: 'square', color: '#f2f2f2', fx: 'spin' },
+  { id: 'elmas', name: 'Elmas', price: 250, shape: 'diamond', color: '#7fe3ff', fx: 'sparkle' },
+  { id: 'yildiz', name: 'Yıldız', price: 400, shape: 'star', color: '#ff8ee8', fx: 'spin' },
+  { id: 'gezegen', name: 'Gezegen', price: 600, shape: 'ring', color: '#c49bff', fx: 'moon' },
   // Yalnız gerçek parayla (monetize.js): yıldızla alınamaz; premiumBy = bu hakkı veren ürünler
-  { id: 'alev', name: 'Alev', price: null, shape: 'flame', color: '#ff6b2c', premiumBy: ['bopgate.top.alev', 'bopgate.destekci'] },
-  { id: 'kristal', name: 'Kristal', price: null, shape: 'hex', color: '#9ef0ff', premiumBy: ['bopgate.top.kristal'] }
+  { id: 'alev', name: 'Alev', price: null, shape: 'flame', color: '#ff6b2c', premiumBy: ['bopgate.top.alev', 'bopgate.destekci'], fx: 'flicker' },
+  { id: 'kristal', name: 'Kristal', price: null, shape: 'hex', color: '#9ef0ff', premiumBy: ['bopgate.top.kristal'], fx: 'spin' }
 ];
 
+// Top görünümleri: shape gövde biçimi, fx canlı efekt (render.js drawBall: pulse | ember | swirl | spin | sparkle | moon | flicker)
 // Harita temaları. deco: arka plan süsü (dots | sun | trees | grid | flakes)
 var MAPS = [
   { id: 'gece', name: 'Gece', price: 0, deco: 'dots',

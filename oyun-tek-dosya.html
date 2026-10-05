@@ -872,18 +872,19 @@ var STORAGE_KEY = 'sekmeguc-profil';
 
 // Top görünümleri. shape: circle | square | diamond | star | ring
 var BALLS = [
-  { id: 'klasik', name: 'Klasik', price: 0, shape: 'circle', color: '#5ac8fa' },
-  { id: 'kor', name: 'Kor', price: 25, shape: 'circle', color: '#ff8a3d' },
-  { id: 'nane', name: 'Nane', price: 60, shape: 'circle', color: '#46d39a' },
-  { id: 'kup', name: 'Küp', price: 150, shape: 'square', color: '#f2f2f2' },
-  { id: 'elmas', name: 'Elmas', price: 250, shape: 'diamond', color: '#7fe3ff' },
-  { id: 'yildiz', name: 'Yıldız', price: 400, shape: 'star', color: '#ff8ee8' },
-  { id: 'gezegen', name: 'Gezegen', price: 600, shape: 'ring', color: '#c49bff' },
+  { id: 'klasik', name: 'Klasik', price: 0, shape: 'circle', color: '#5ac8fa', fx: 'pulse' },
+  { id: 'kor', name: 'Kor', price: 25, shape: 'circle', color: '#ff8a3d', fx: 'ember' },
+  { id: 'nane', name: 'Nane', price: 60, shape: 'circle', color: '#46d39a', fx: 'swirl' },
+  { id: 'kup', name: 'Küp', price: 150, shape: 'square', color: '#f2f2f2', fx: 'spin' },
+  { id: 'elmas', name: 'Elmas', price: 250, shape: 'diamond', color: '#7fe3ff', fx: 'sparkle' },
+  { id: 'yildiz', name: 'Yıldız', price: 400, shape: 'star', color: '#ff8ee8', fx: 'spin' },
+  { id: 'gezegen', name: 'Gezegen', price: 600, shape: 'ring', color: '#c49bff', fx: 'moon' },
   // Yalnız gerçek parayla (monetize.js): yıldızla alınamaz; premiumBy = bu hakkı veren ürünler
-  { id: 'alev', name: 'Alev', price: null, shape: 'flame', color: '#ff6b2c', premiumBy: ['bopgate.top.alev', 'bopgate.destekci'] },
-  { id: 'kristal', name: 'Kristal', price: null, shape: 'hex', color: '#9ef0ff', premiumBy: ['bopgate.top.kristal'] }
+  { id: 'alev', name: 'Alev', price: null, shape: 'flame', color: '#ff6b2c', premiumBy: ['bopgate.top.alev', 'bopgate.destekci'], fx: 'flicker' },
+  { id: 'kristal', name: 'Kristal', price: null, shape: 'hex', color: '#9ef0ff', premiumBy: ['bopgate.top.kristal'], fx: 'spin' }
 ];
 
+// Top görünümleri: shape gövde biçimi, fx canlı efekt (render.js drawBall: pulse | ember | swirl | spin | sparkle | moon | flicker)
 // Harita temaları. deco: arka plan süsü (dots | sun | trees | grid | flakes)
 var MAPS = [
   { id: 'gece', name: 'Gece', price: 0, deco: 'dots',
@@ -1760,13 +1761,44 @@ function starShape(ctx, cx, cy, r, color) {
 }
 
 var DEFAULT_THEME = { deco: 'dots', c: { bg: '#0b1220', line: '#223352', wall: '#1f3150', wallPassed: '#16233b', wallMove: '#2b2650', edge: '#5ac8fa', edgeMove: '#b39dfa', deco: 'rgba(200,220,255,0.35)' } };
-var DEFAULT_SKIN = { shape: 'circle', color: '#5ac8fa' };
+var DEFAULT_SKIN = { shape: 'circle', color: '#5ac8fa', fx: 'pulse' };
 
 // Top şekli (0,0 merkezli). Mağaza önizlemesi de bunu kullanır.
 // opts.shine: üstte parlama + hacim gradyanı; opts.glow: çevresine ışıma (bulanıklık px)
+function rot(ctx, a) { if (ctx.rotate) ctx.rotate(a); }
+
+// opts: { shine, glow, fx, t } — fx topun canlı efekti (shop.js), t saniye (yoksa durağan: mağaza önizlemesi)
 function drawBall(ctx, shape, r, color, opts) {
   opts = opts || {};
+  var t = opts.t || 0, fx = opts.fx || '';
   ctx.save();
+  // Arka efektler (gövdenin arkasında)
+  if (fx === 'ember' || fx === 'flicker') {
+    var fl = 0.75 + 0.25 * Math.sin(t * 17) * Math.sin(t * 7.3);
+    ctx.save();
+    ctx.globalAlpha = 0.35 * fl;
+    ctx.fillStyle = rad(ctx, 0, 0, r * 0.5, r * 2.1, [[0, rgba(mix(color, '#ffd166', 0.4), 0.9)], [1, rgba(color, 0)]], rgba(color, 0.3));
+    ctx.beginPath(); ctx.arc(0, 0, r * 2.1, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  if (fx === 'pulse' && t) {
+    var pk = (t * 0.8) % 1;
+    ctx.save();
+    ctx.globalAlpha = 0.5 * (1 - pk);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(0, 0, r * (1.15 + 0.7 * pk), 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+  if (fx === 'moon') {
+    // Uydu halkanın arkasından geçerken gövdenin arkasında çizilir
+    var ma = t * 1.8;
+    if (Math.sin(ma) < 0) moonDot(ctx, r, ma, color);
+  }
+  // Dönen biçimler kendi ekseninde döner (top yuvarlak olmadığında hareket hissi)
+  if (fx === 'spin' && t) rot(ctx, t * (shape === 'square' ? 2.2 : shape === 'hex' ? 1.3 : 1.7));
+  if (fx === 'sparkle' && t) rot(ctx, Math.sin(t * 2.4) * 0.22);
+  if (fx === 'flicker' && t) { var sy = 1 + 0.07 * Math.sin(t * 19); ctx.scale(1 / sy, sy); }
   if (opts.glow) glow(ctx, color, opts.glow);
   ctx.fillStyle = opts.shine
     ? rad(ctx, -r * 0.35, -r * 0.4, r * 0.1, r * 1.4, [[0, mix(color, '#ffffff', 0.55)], [0.55, color], [1, mix(color, '#000000', 0.35)]], color)
@@ -1829,81 +1861,233 @@ function drawBall(ctx, shape, r, color, opts) {
     ctx.fill();
     ctx.globalAlpha = 1;
   }
-  ctx.restore();
-}
-
-// Arka plan süsü: kaymalı (paralaks) ama deterministik; dist = katedilen yol.
-function drawDeco(ctx, theme, dist, geo) {
-  if (geo) setGeo(geo);
-  var col = theme.c.deco;
-  var d = dist || 0;
-  ctx.fillStyle = col;
-  ctx.strokeStyle = col;
-  var i, x;
-  if (theme.deco === 'sun') {
-    // Ufukta çizgili neon güneş; oyun alanında engel gibi görünmesin diye soluk
-    var sr = 70;
+  // Ön efektler (gövdenin üstünde)
+  if (fx === 'swirl') {
+    // Nane: içinde dönen ferah bir kıvrım
     ctx.save();
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = lin(ctx, 0, FLOOR_Y - sr, 0, FLOOR_Y, [[0, 'rgba(255,200,110,0.30)'], [1, 'rgba(255,90,150,0.16)']], col);
-    ctx.beginPath();
-    ctx.arc(390, FLOOR_Y, sr, Math.PI, Math.PI * 2);
-    ctx.fill();
+    rot(ctx, t * 3);
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = Math.max(1, r * 0.16);
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 0.9); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.55, Math.PI, Math.PI * 1.9); ctx.stroke();
     ctx.restore();
-    for (i = 0; i < 3; i++) ctx.fillRect(0, FLOOR_Y - 14 - i * 16, W0, 1);
-  } else if (theme.deco === 'trees') {
-    for (i = 0; i < 9; i++) {
-      x = ((i * 83 - d * 0.25) % (W0 + 80) + W0 + 80) % (W0 + 80) - 40;
-      var h = 60 + (i * 37) % 70;
-      ctx.beginPath();
-      ctx.moveTo(x, FLOOR_Y); ctx.lineTo(x + 26, FLOOR_Y - h); ctx.lineTo(x + 52, FLOOR_Y);
-      ctx.closePath();
-      ctx.fill();
+  }
+  if (fx === 'sparkle' || (fx === 'spin' && shape === 'star')) {
+    // Elmas / yıldız: köşede yanıp sönen dört kollu pırıltı
+    var sp = Math.max(0, Math.sin(t * 3.1));
+    if (!t) sp = 0.8;
+    ctx.save();
+    ctx.globalAlpha = sp;
+    ctx.fillStyle = '#ffffff';
+    sparkle(ctx, r * 0.55, -r * 0.6, r * 0.5 * (0.6 + 0.4 * sp));
+    ctx.restore();
+  }
+  if (fx === 'ember') {
+    // Kor: çevresinde süzülen kıvılcımlar
+    ctx.save();
+    ctx.fillStyle = mix(color, '#ffe08a', 0.6);
+    for (var e = 0; e < 3; e++) {
+      var ea = t * (1.6 + e * 0.5) + e * 2.1;
+      var er = r * (1.45 + 0.2 * Math.sin(t * 3 + e));
+      ctx.globalAlpha = 0.55 + 0.45 * Math.sin(t * 6 + e * 2);
+      ctx.beginPath(); ctx.arc(Math.cos(ea) * er, Math.sin(ea) * er, Math.max(1, r * 0.13), 0, Math.PI * 2); ctx.fill();
     }
-  } else if (theme.deco === 'grid') {
-    ctx.lineWidth = 1;
-    var off = (d * 0.5) % 40;
-    for (x = -off; x < W0; x += 40) { ctx.beginPath(); ctx.moveTo(x, CEIL_Y); ctx.lineTo(x, FLOOR_Y); ctx.stroke(); }
-    for (var y = CEIL_Y; y < FLOOR_Y; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W0, y); ctx.stroke(); }
-  } else if (theme.deco === 'nebula') {
-    // Yavaş kayan renkli bulutsular + yıldız tozu
-    var blobs = [['rgba(255,90,210,0.16)', 0, 0.3, 150], ['rgba(90,220,255,0.13)', 260, 0.55, 180], ['rgba(170,110,255,0.15)', 470, 0.2, 130]];
-    for (i = 0; i < blobs.length; i++) {
-      var bx = ((blobs[i][1] - d * 0.05) % (W0 + 300) + W0 + 300) % (W0 + 300) - 150;
-      var byy = CEIL_Y + (FLOOR_Y - CEIL_Y) * blobs[i][2];
-      ctx.fillStyle = rad(ctx, bx, byy, 0, blobs[i][3], [[0, blobs[i][0]], [1, 'rgba(0,0,0,0)']], blobs[i][0]);
-      ctx.beginPath(); ctx.arc(bx, byy, blobs[i][3], 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.fillStyle = col;
-    for (i = 0; i < 40; i++) {
-      x = ((i * 47 - d * 0.12) % W0 + W0) % W0;
-      ctx.fillRect(x, CEIL_Y + 6 + ((i * 89) % (FLOOR_Y - CEIL_Y - 12)), i % 5 === 0 ? 2.5 : 1.5, i % 5 === 0 ? 2.5 : 1.5);
-    }
-  } else if (theme.deco === 'flakes') {
-    for (i = 0; i < 26; i++) {
-      x = ((i * 61 - d * 0.15) % W0 + W0) % W0;
-      var fy = CEIL_Y + 10 + ((i * 97) % (FLOOR_Y - CEIL_Y - 20));
-      ctx.fillRect(x - 1.5, fy - 1.5, 3, 3);
-    }
-  } else {
-    // İki katman yıldız: uzak (küçük, yavaş) ve yakın (büyük, hızlı) — derinlik hissi
-    for (i = 0; i < 30; i++) {
-      x = ((i * 53 - d * 0.1) % W0 + W0) % W0;
-      ctx.fillRect(x, CEIL_Y + 8 + ((i * 71) % (FLOOR_Y - CEIL_Y - 16)), 2, 2);
-    }
-    ctx.globalAlpha = 0.6;
-    for (i = 0; i < 12; i++) {
-      x = ((i * 97 - d * 0.3) % W0 + W0) % W0;
-      ctx.beginPath();
-      ctx.arc(x, CEIL_Y + 20 + ((i * 131) % (FLOOR_Y - CEIL_Y - 40)), 1.6, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+  if (fx === 'flicker') {
+    // Alev: içte titreyen sıcak çekirdek
+    ctx.save();
+    ctx.globalAlpha = 0.6 + 0.4 * Math.sin(t * 23);
+    ctx.fillStyle = '#fff3c4';
+    ctx.beginPath(); ctx.arc(0, r * 0.4, r * 0.22, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+  if (fx === 'moon') {
+    var mb = t * 1.8;
+    if (Math.sin(mb) >= 0) { ctx.save(); moonDot(ctx, r, mb, color); ctx.restore(); }
   }
 }
 
+// Gezegenin uydusu: yatık yörüngede döner (yörünge halkayla aynı basıklıkta)
+function moonDot(ctx, r, a, color) {
+  ctx.fillStyle = mix(color, '#ffffff', 0.6);
+  ctx.beginPath();
+  ctx.arc(Math.cos(a) * r * 1.9, Math.sin(a) * r * 0.62, Math.max(1.2, r * 0.22), 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Dört kollu pırıltı (✦)
+function sparkle(ctx, x, y, s) {
+  ctx.beginPath();
+  ctx.moveTo(x, y - s); ctx.lineTo(x + s * 0.25, y - s * 0.25); ctx.lineTo(x + s, y);
+  ctx.lineTo(x + s * 0.25, y + s * 0.25); ctx.lineTo(x, y + s); ctx.lineTo(x - s * 0.25, y + s * 0.25);
+  ctx.lineTo(x - s, y); ctx.lineTo(x - s * 0.25, y - s * 0.25);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// Arka plan süsü: kaymalı (paralaks) ama deterministik; dist = katedilen yol, t = saniye (pırıltı,
+// kar, ateş böceği gibi yerinde canlanan ayrıntılar; mağaza önizlemesinde verilmez → durağan).
+// Uzak katman yavaş, yakın katman hızlı kayar: derinlik hissi. Süsler soluk tutulur ki kapılarla karışmasın.
+function wrapX(base, speed, d, span) { return ((base - d * speed) % span + span) % span; }
+function ridge(ctx, d, speed, baseY, amp, step, seed) {
+  // Kayan dağ/tepe silueti: sabit tohumlu yükseklikler, dünya ile birlikte akar
+  var off = (d * speed) % step;
+  var first = Math.floor(d * speed / step);
+  ctx.beginPath();
+  ctx.moveTo(0, FLOOR_Y);
+  for (var k = 0; k <= Math.ceil(W0 / step) + 1; k++) {
+    var n = first + k;
+    var hv = Math.sin(n * 12.9898 + seed * 78.233) * 43758.5453;
+    var hgt = amp * (0.35 + 0.65 * (hv - Math.floor(hv)));
+    ctx.lineTo(k * step - off, baseY - hgt);
+  }
+  ctx.lineTo(W0, FLOOR_Y);
+  ctx.closePath();
+  ctx.fill();
+}
+function drawDeco(ctx, theme, dist, geo, t) {
+  if (geo) setGeo(geo);
+  var col = theme.c.deco;
+  var d = dist || 0;
+  t = t || 0;
+  var span = FLOOR_Y - CEIL_Y;
+  ctx.fillStyle = col;
+  ctx.strokeStyle = col;
+  var i, x, y;
+  ctx.save();
+  if (theme.deco === 'sun') {
+    // Ufukta çizgili neon güneş + iki kat kayan dağ silueti
+    var sr = 78;
+    ctx.fillStyle = lin(ctx, 0, FLOOR_Y - sr, 0, FLOOR_Y, [[0, 'rgba(255,214,120,0.42)'], [1, 'rgba(255,90,150,0.22)']], col);
+    ctx.beginPath();
+    ctx.arc(390, FLOOR_Y - 26, sr, Math.PI, Math.PI * 2);
+    ctx.fill();
+    // Güneşin üstünden geçen boşluk çizgileri (synthwave)
+    ctx.fillStyle = theme.c.bg;
+    for (i = 0; i < 4; i++) ctx.fillRect(390 - sr, FLOOR_Y - 34 - i * 14, sr * 2, 2 + i * 0.6);
+    ctx.fillStyle = 'rgba(120,40,90,0.45)';
+    ridge(ctx, d, 0.08, FLOOR_Y, 70, 64, 1);
+    ctx.fillStyle = 'rgba(60,18,48,0.75)';
+    ridge(ctx, d, 0.2, FLOOR_Y, 38, 46, 2);
+  } else if (theme.deco === 'trees') {
+    // Uzak (soluk, yavaş) ve yakın (koyu, hızlı) çam sırası + yanıp sönen ateş böcekleri
+    var layers = [[0.12, 0.35, 0.6, 61, 11], [0.3, 0.75, 1, 83, 9]];
+    for (var L2 = 0; L2 < layers.length; L2++) {
+      var ly = layers[L2];
+      ctx.globalAlpha = ly[1];
+      for (i = 0; i < ly[4]; i++) {
+        x = wrapX(i * ly[3], ly[0], d, W0 + 80) - 40;
+        var h = (60 + (i * 37) % 70) * ly[2];
+        var w = 26 * ly[2];
+        ctx.beginPath();
+        ctx.moveTo(x - w, FLOOR_Y); ctx.lineTo(x, FLOOR_Y - h); ctx.lineTo(x + w, FLOOR_Y);
+        ctx.moveTo(x - w * 0.8, FLOOR_Y - h * 0.35); ctx.lineTo(x, FLOOR_Y - h * 1.12); ctx.lineTo(x + w * 0.8, FLOOR_Y - h * 0.35);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+    for (i = 0; i < 14; i++) {
+      var blink = Math.sin(t * (1.3 + (i % 4) * 0.4) + i * 1.7);
+      if (blink <= 0.2) continue;
+      x = wrapX(i * 71 + 30 * Math.sin(t * 0.5 + i), 0.18, d, W0);
+      y = FLOOR_Y - 30 - ((i * 53) % Math.max(60, span * 0.55)) + 8 * Math.sin(t * 0.9 + i);
+      ctx.globalAlpha = blink;
+      ctx.fillStyle = '#e8ff8a';
+      glow(ctx, '#d8ff6a', 8);
+      ctx.beginPath(); ctx.arc(x, y, 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+    noGlow(ctx);
+  } else if (theme.deco === 'grid') {
+    // Uzakta ışıklı pencereli şehir silueti, önde akan neon ızgara
+    var bw = 34, bspan = W0 + bw * 2;
+    for (i = 0; i < 18; i++) {
+      x = wrapX(i * 37, 0.07, d, bspan) - bw;
+      var bh = 50 + ((i * 67) % 120);
+      ctx.fillStyle = 'rgba(20,10,45,0.9)';
+      ctx.fillRect(x, FLOOR_Y - bh, bw - 4, bh);
+      for (var wy = FLOOR_Y - bh + 8; wy < FLOOR_Y - 6; wy += 11) {
+        for (var wx = 0; wx < 3; wx++) {
+          var on = ((i * 7 + wx * 3 + Math.floor(wy)) % 5) === 0;
+          if (!on) continue;
+          ctx.fillStyle = (i + wx) % 3 ? 'rgba(43,240,255,0.45)' : 'rgba(255,43,214,0.45)';
+          ctx.fillRect(x + 4 + wx * 9, wy, 4, 4);
+        }
+      }
+    }
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1;
+    var off = (d * 0.5) % 40;
+    for (x = -off; x < W0; x += 40) { ctx.beginPath(); ctx.moveTo(x, CEIL_Y); ctx.lineTo(x, FLOOR_Y); ctx.stroke(); }
+    for (y = CEIL_Y; y < FLOOR_Y; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W0, y); ctx.stroke(); }
+  } else if (theme.deco === 'nebula') {
+    // Yavaş kayan, hafifçe nefes alan bulutsular + pırıldayan yıldız tozu
+    var blobs = [['rgba(255,90,210,0.16)', 0, 0.3, 150], ['rgba(90,220,255,0.13)', 260, 0.55, 180], ['rgba(170,110,255,0.15)', 470, 0.2, 130]];
+    for (i = 0; i < blobs.length; i++) {
+      var bx = wrapX(blobs[i][1], 0.05, d, W0 + 300) - 150;
+      var byy = CEIL_Y + span * blobs[i][2];
+      var br = blobs[i][3] * (1 + 0.06 * Math.sin(t * 0.7 + i * 2));
+      ctx.fillStyle = rad(ctx, bx, byy, 0, br, [[0, blobs[i][0]], [1, 'rgba(0,0,0,0)']], blobs[i][0]);
+      ctx.beginPath(); ctx.arc(bx, byy, br, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = col;
+    for (i = 0; i < 40; i++) {
+      x = wrapX(i * 47, 0.12, d, W0);
+      ctx.globalAlpha = 0.5 + 0.5 * Math.abs(Math.sin(t * 1.5 + i * 0.9));
+      var ss = i % 5 === 0 ? 2.5 : 1.5;
+      ctx.fillRect(x, CEIL_Y + 6 + ((i * 89) % (span - 12)), ss, ss);
+    }
+  } else if (theme.deco === 'flakes') {
+    // Uzakta buzul tepeleri; önde yavaşça yağan, salınan kar
+    ctx.fillStyle = 'rgba(160,200,230,0.35)';
+    ridge(ctx, d, 0.08, FLOOR_Y, 90, 70, 3);
+    ctx.fillStyle = 'rgba(200,225,245,0.55)';
+    ridge(ctx, d, 0.18, FLOOR_Y, 45, 52, 4);
+    ctx.fillStyle = col;
+    for (i = 0; i < 34; i++) {
+      var fall = (t * (14 + (i % 5) * 5) + (i * 97)) % span;
+      x = wrapX(i * 61 + 10 * Math.sin(t * 1.1 + i), 0.15, d, W0);
+      y = CEIL_Y + fall;
+      var fs = i % 3 === 0 ? 4 : 2.6;
+      ctx.beginPath(); ctx.arc(x, y, fs / 2, 0, Math.PI * 2); ctx.fill();
+    }
+  } else {
+    // Gece: hilal ay, iki kat yıldız (uzak küçük, yakın büyük) ve pırıltı
+    var mx = wrapX(420, 0.02, d, W0 + 120) - 60, my = CEIL_Y + Math.min(90, span * 0.16);
+    glow(ctx, '#cfe3ff', 16);
+    ctx.fillStyle = 'rgba(225,236,255,0.85)';
+    ctx.beginPath(); ctx.arc(mx, my, 20, 0, Math.PI * 2); ctx.fill();
+    noGlow(ctx);
+    ctx.fillStyle = theme.c.bg;
+    ctx.beginPath(); ctx.arc(mx + 9, my - 6, 18, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = col;
+    for (i = 0; i < 30; i++) {
+      x = wrapX(i * 53, 0.1, d, W0);
+      ctx.globalAlpha = 0.55 + 0.45 * Math.sin(t * (1 + (i % 3) * 0.6) + i);
+      ctx.fillRect(x, CEIL_Y + 8 + ((i * 71) % (span - 16)), 2, 2);
+    }
+    ctx.globalAlpha = 0.6;
+    for (i = 0; i < 12; i++) {
+      x = wrapX(i * 97, 0.3, d, W0);
+      ctx.beginPath();
+      ctx.arc(x, CEIL_Y + 20 + ((i * 131) % (span - 40)), 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Ara sıra parlayan bir yıldız
+    var tw = Math.max(0, Math.sin(t * 1.3));
+    if (tw > 0.05) {
+      ctx.globalAlpha = tw;
+      ctx.fillStyle = '#ffffff';
+      sparkle(ctx, wrapX(140, 0.1, d, W0), CEIL_Y + span * 0.22, 5 * tw);
+    }
+  }
+  ctx.restore();
+}
+
 // Gök, zemin ızgarası, neon tavan/zemin çizgisi
-function drawStage(ctx, theme, dist) {
+function drawStage(ctx, theme, dist, t) {
   var tc = theme.c, light = isLight(theme);
   ctx.fillStyle = lin(ctx, 0, 0, 0, H0, light
     ? [[0, mix(tc.bg, '#ffffff', 0.5)], [1, tc.bg]]
@@ -1914,7 +2098,7 @@ function drawStage(ctx, theme, dist) {
     ctx.fillStyle = lin(ctx, 0, FLOOR_Y - 140, 0, FLOOR_Y, [[0, rgba(tc.edge, 0)], [1, rgba(tc.edge, 0.10)]], 'rgba(0,0,0,0)');
     ctx.fillRect(0, FLOOR_Y - 140, W0, 140);
   }
-  drawDeco(ctx, theme, dist);
+  drawDeco(ctx, theme, dist, null, t);
 
   // Zemin: perspektif ızgara (ufuk = zemin çizgisi), yolla birlikte akar
   var floorH = H0 - FLOOR_Y;
@@ -2108,7 +2292,7 @@ function draw(ctx, state, view) {
   var skin = view.skin || DEFAULT_SKIN;
   var textCol = tc.text || '#e8ecf1';
   var textDim = tc.textDim || '#9fb3d1';
-  drawStage(ctx, theme, state.distance);
+  drawStage(ctx, theme, state.distance, t);
 
   // Ekran sarsıntısı (≤ 200 ms, zamanlamayı main.js yapar)
   var shake = fx.shake || 0;
@@ -2188,7 +2372,7 @@ function draw(ctx, state, view) {
     ctx.save();
     ctx.translate(BALL_X, state.y + R0 * (1 - sy));
     ctx.scale(sx, sy);
-    drawBall(ctx, skin.shape, R0, ballCol, { shine: true, glow: 18 });
+    drawBall(ctx, skin.shape, R0, ballCol, { shine: true, glow: 18, fx: state.status === 'over' ? '' : skin.fx, t: t });
     ctx.restore();
   }
 
@@ -2328,7 +2512,7 @@ function drawScreens(ctx, state, view, phase, theme, best, t, skin) {
     ctx.translate(W0 / 2, bY);
     var sqz = land > 0.85 ? (land - 0.85) / 0.15 : 0;
     ctx.scale(1 + 0.18 * sqz, 1 - 0.15 * sqz);
-    drawBall(ctx, (skin || DEFAULT_SKIN).shape, 20, (skin || DEFAULT_SKIN).color, { shine: true, glow: 26 });
+    drawBall(ctx, (skin || DEFAULT_SKIN).shape, 20, (skin || DEFAULT_SKIN).color, { shine: true, glow: 26, fx: (skin || DEFAULT_SKIN).fx, t: t });
     ctx.restore();
     drawLogo(ctx, W0 / 2, ly, theme, t);
     ctx.save();
