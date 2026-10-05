@@ -198,7 +198,80 @@ function ghostAt(path, t) {
   return path[i] + (path[i + 1] - path[i]) * (f - i);
 }
 
+// --- Başarımlar ------------------------------------------------------------------
+// Kalıcı, bir kez kazanılan hedefler; küçük yıldız ödülü (toplam ★143, ekonomiyi hızlandırmayacak kadar).
+// kind: run_* tek koşuda, total_* birikimli sayaç, milestone eşik, combo en uzun MÜKEMMEL serisi,
+// daily_days günlük meydan okumanın oynandığı farklı gün sayısı, balls sahip olunan top sayısı.
+var ACH_KEY = 'bopgate-basarim';
+var ACHIEVEMENTS = [
+  { id: 'ilk_kapi', kind: 'run_gates', target: 1, reward: 2, text: 'İlk kapını geç' },
+  { id: 'kapi_25', kind: 'run_gates', target: 25, reward: 5, text: 'Bir koşuda {n} kapı geç' },
+  { id: 'kapi_50', kind: 'run_gates', target: 50, reward: 10, text: 'Bir koşuda {n} kapı geç' },
+  { id: 'kapi_100', kind: 'run_gates', target: 100, reward: 20, text: 'Bir koşuda {n} kapı geç' },
+  { id: 'esik_1', kind: 'milestone', target: 1, reward: 10, text: '10. bölümü geç (ilk eşik)' },
+  { id: 'esik_3', kind: 'milestone', target: 3, reward: 25, text: '30. bölümü geç' },
+  { id: 'seri_5', kind: 'combo', target: 5, reward: 8, text: '{n} kez üst üste MÜKEMMEL geç' },
+  { id: 'toplam_500', kind: 'total_gates', target: 500, reward: 10, text: 'Toplam {n} kapı geç' },
+  { id: 'toplam_2000', kind: 'total_gates', target: 2000, reward: 25, text: 'Toplam {n} kapı geç' },
+  { id: 'kalkan_10', kind: 'total_shield', target: 10, reward: 8, text: 'Kalkanla {n} çarpmadan kurtul' },
+  { id: 'gunluk_7', kind: 'daily_days', target: 7, reward: 10, text: '{n} farklı gün günlük meydan okuma oyna' },
+  { id: 'koleksiyon_5', kind: 'balls', target: 5, reward: 10, text: '{n} topa sahip ol' }
+];
+function achFresh() { return { done: [], gates: 0, shields: 0, dailyDays: 0, lastDaily: '', bestCombo: 0, bestGates: 0, bestMs: 0 }; }
+function achNum(v, max) { var n = Math.floor(Number(v)); return isFinite(n) && n > 0 ? Math.min(n, max) : 0; }
+function loadAch(storage) {
+  try {
+    var d = JSON.parse(storage.getItem(ACH_KEY));
+    if (!d || typeof d !== 'object') return achFresh();
+    var ids = ACHIEVEMENTS.map(function (a) { return a.id; });
+    return {
+      done: Array.isArray(d.done) ? d.done.filter(function (x, i, arr) { return ids.indexOf(x) >= 0 && arr.indexOf(x) === i; }) : [],
+      gates: achNum(d.gates, 1e9), shields: achNum(d.shields, 1e6), dailyDays: achNum(d.dailyDays, 1e5),
+      lastDaily: validKey(d.lastDaily) ? d.lastDaily : '', bestCombo: achNum(d.bestCombo, 1e5),
+      bestGates: achNum(d.bestGates, 1e6), bestMs: achNum(d.bestMs, 1e5)
+    };
+  } catch (e) {
+    return achFresh();
+  }
+}
+function saveAch(storage, a) { try { storage.setItem(ACH_KEY, JSON.stringify(a)); } catch (e) {} }
+function achProgress(a, def, extra) {
+  switch (def.kind) {
+    case 'run_gates': return a.bestGates;
+    case 'milestone': return a.bestMs;
+    case 'combo': return a.bestCombo;
+    case 'total_gates': return a.gates;
+    case 'total_shield': return a.shields;
+    case 'daily_days': return a.dailyDays;
+    case 'balls': return (extra && extra.balls) || 0;
+    default: return 0;
+  }
+}
+function describeAch(def) { return tx(def.text, { n: def.target }); }
+// run: bitmiş koşunun durumu; extra: { combo (koşudaki en uzun seri), daily (günlük mod mu), day, balls }
+// Döner: bu koşuda yeni kazanılanlar [{ id, text, reward }]
+function applyAch(a, run, extra) {
+  extra = extra || {};
+  a.gates += run.score || 0;
+  a.shields += run.shieldUsed || 0;
+  a.bestGates = Math.max(a.bestGates, run.score || 0);
+  a.bestMs = Math.max(a.bestMs, run.milestones || 0);
+  a.bestCombo = Math.max(a.bestCombo, extra.combo || 0);
+  if (extra.daily && validKey(extra.day) && extra.day !== a.lastDaily) { a.dailyDays++; a.lastDaily = extra.day; }
+  var got = [];
+  ACHIEVEMENTS.forEach(function (def) {
+    if (a.done.indexOf(def.id) >= 0) return;
+    if (achProgress(a, def, extra) >= def.target) {
+      a.done.push(def.id);
+      got.push({ id: def.id, text: describeAch(def), reward: def.reward });
+    }
+  });
+  return got;
+}
+
 var Quests = {
+  ACH_KEY: ACH_KEY, ACHIEVEMENTS: ACHIEVEMENTS, loadAch: loadAch, saveAch: saveAch, applyAch: applyAch,
+  achProgress: achProgress, describeAch: describeAch,
   CHALLENGE_KEY: CHALLENGE_KEY, GHOST_STEP: GHOST_STEP, GHOST_MAX: GHOST_MAX,
   dailySeed: dailySeed, loadChallenge: loadChallenge, saveChallenge: saveChallenge, ghostAt: ghostAt,
   DAILY_KEY: DAILY_KEY, TEMPLATES: TEMPLATES, dayKey: dayKey, dayDiff: dayDiff,
