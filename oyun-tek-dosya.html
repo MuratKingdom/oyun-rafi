@@ -13,7 +13,9 @@
     --cyan: #5ac8fa; --mor: #b39dfa; --altin: #ffd166; --turuncu: #ff9f43; --pembe: #ff5d7a; --yesil: #46d39a;
     --metin: #e8ecf1; --soluk: #8fa3c4;
     --cam: rgba(16,24,44,0.86); --cizgi: rgba(90,200,250,0.35);
+    --hud: 76px; /* alttaki ipucu + düğmeler; main.js HUD_PX ile aynı */
   }
+  @media (pointer: coarse) { :root { --hud: 60px; } }
   html, body {
     margin: 0;
     padding: 0;
@@ -52,12 +54,12 @@
     --h: 540;
     /* Durum/gezinme çubuğu payı (Android edge-to-edge) düşülür; tarayıcıda env() 0'dır */
     width: min(calc((100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) * 0.98), 760px,
-      calc((100dvh - 76px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 520 / var(--h)));
+      calc((100dvh - var(--hud) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 520 / var(--h)));
     aspect-ratio: 520 / var(--h);
     height: auto;
   }
   @supports not (height: 100dvh) {
-    canvas { width: min(98vw, 760px, calc((100vh - 76px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 520 / var(--h))); }
+    canvas { width: min(98vw, 760px, calc((100vh - var(--hud) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 520 / var(--h))); }
   }
   #hint {
     font-size: 11.5px;
@@ -82,12 +84,20 @@
     padding: 10px 18px; cursor: pointer; box-shadow: 0 0 14px rgba(90,200,250,0.18);
   }
   #gorevBtn[hidden], #liderBtn[hidden] { display: none; }
-  #muzikBtn, #sesBtn, #dilBtn, #liderBtn {
+  #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn {
     font: inherit; font-size: 18px; width: 44px; height: 44px; padding: 0; border-radius: 50%;
     border: 1px solid rgba(143,163,196,0.35); background: var(--cam); color: var(--metin); cursor: pointer;
   }
   #dilBtn { font: 900 13px var(--font); letter-spacing: 0.04em; }
   #muzikBtn.kapali { opacity: 0.45; text-decoration: line-through; }
+  .ayar-kutu { position: relative; display: flex; }
+  #ayarBtn[aria-expanded="true"] { border-color: var(--cyan); box-shadow: 0 0 12px rgba(90,200,250,0.45); }
+  #ayarlar {
+    position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 5;
+    display: flex; gap: 6px; padding: 6px; border-radius: 999px;
+    background: var(--cam); border: 1px solid var(--cizgi); box-shadow: 0 0 18px rgba(90,200,250,0.22);
+  }
+  #ayarlar[hidden] { display: none; }
   #devamBtn {
     font: 900 15px var(--font); color: #fff; border: 0; border-radius: 999px;
     background: linear-gradient(180deg, #ff8aa0, #e0405e);
@@ -173,6 +183,11 @@
     background: transparent; color: var(--cyan); border: 1px solid rgba(90,200,250,0.5); cursor: default; box-shadow: none;
   }
   #magaza .urun button:disabled.al { opacity: 0.4; box-shadow: none; cursor: not-allowed; }
+  /* Yıldızı yetmeyen ürün: soluk turuncu yerine altın çerçeveli, okunur fiyat */
+  #magaza .urun button.al.yetmez:disabled {
+    opacity: 1; color: rgba(255,209,102,0.8); background: rgba(255,209,102,0.06);
+    border: 1px solid rgba(255,209,102,0.35);
+  }
   #magaza .not { font-size: 12px; color: var(--soluk); margin: 0; line-height: 1.4; }
   #magaza .urun button.para {
     color: #fff; background: linear-gradient(180deg, #c58bff, #7a4dff); box-shadow: 0 0 14px rgba(150,100,255,0.45);
@@ -205,24 +220,25 @@
   #magaza .gorev.bitti .cubuk i { background: var(--yesil); box-shadow: 0 0 8px rgba(70,211,154,0.6); }
   #magaza .gorev.bitti .ad { color: var(--yesil); }
   @media (prefers-reduced-motion: reduce) { #devamBtn { animation: none; } .dugmeler button { transition: none; } }
+  /* Dokunmatikte ipucu tekrarı gereksiz: açılış ekranı zaten "Basılı tut · yüksel · kapıdan geç" diyor */
   @media (pointer: coarse) {
-    #hint .kb { display: none; }
+    #hint { display: none; }
   }
   /* Dar telefon: dört düğme tek satıra sığsın (ayrıntılı kurallardan sonra gelmeli) */
   @media (max-width: 440px) {
     .dugmeler { gap: 5px; padding: 0 6px; }
     #magazaBtn, #gorevBtn { padding: 8px 10px; font-size: 12.5px; }
-    #muzikBtn, #sesBtn, #dilBtn, #liderBtn { width: 34px; height: 34px; font-size: 15px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn { width: 34px; height: 34px; font-size: 15px; }
     #dilBtn { font-size: 11px; }
   }
   @media (max-width: 380px) {
     #magazaBtn, #gorevBtn { padding: 7px 8px; font-size: 12px; }
-    #muzikBtn, #sesBtn, #dilBtn, #liderBtn { width: 31px; height: 31px; font-size: 14px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn { width: 31px; height: 31px; font-size: 14px; }
   }
   @media (max-width: 340px) {
     .dugmeler { gap: 3px; padding: 0 3px; }
     #magazaBtn, #gorevBtn { padding: 6px 7px; font-size: 11px; letter-spacing: 0; }
-    #muzikBtn, #sesBtn, #dilBtn, #liderBtn { width: 27px; height: 27px; font-size: 12px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn { width: 27px; height: 27px; font-size: 12px; }
     #dilBtn { font-size: 10px; }
   }
 </style>
@@ -231,7 +247,7 @@
 <div id="wrap">
   <canvas id="game" width="520" height="540"></canvas>
   <div id="hint"><span data-i18n="Ekranın herhangi bir yerine basılı tut: yükseklik kazan">Ekranın herhangi bir yerine basılı tut: yükseklik kazan</span><span class="kb" data-i18n=" · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
-  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="reklamDevamBtn" type="button" data-ui hidden>📺 Reklamla devam</button><button id="ikiKatBtn" type="button" data-ui hidden>📺 ★ x2</button><button id="magazaBtn" type="button" data-ui hidden data-i18n="🛒 Mağaza">🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="liderBtn" class="ikon" type="button" data-ui hidden aria-label="Liderlik tablosu" data-i18n-aria="Liderlik tablosu">🏆</button><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik" data-i18n-aria="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri" data-i18n-aria="Efekt sesleri">🔊</button><button id="dilBtn" class="ikon" type="button" data-ui aria-label="Dil" data-i18n-aria="Dil">TR</button></div>
+  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="reklamDevamBtn" type="button" data-ui hidden>📺 Reklamla devam</button><button id="ikiKatBtn" type="button" data-ui hidden>📺 ★ x2</button><button id="magazaBtn" type="button" data-ui hidden data-i18n="🛒 Mağaza">🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="liderBtn" class="ikon" type="button" data-ui hidden aria-label="Liderlik tablosu" data-i18n-aria="Liderlik tablosu">🏆</button><span class="ayar-kutu" data-ui><button id="ayarBtn" class="ikon" type="button" data-ui aria-label="Ayarlar" data-i18n-aria="Ayarlar" aria-expanded="false" aria-controls="ayarlar">⚙</button><span id="ayarlar" data-ui hidden><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik" data-i18n-aria="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri" data-i18n-aria="Efekt sesleri">🔊</button><button id="dilBtn" class="ikon" type="button" data-ui aria-label="Dil" data-i18n-aria="Dil">TR</button></span></span></div>
 </div>
 <div id="magaza" data-ui hidden role="dialog" aria-label="Mağaza">
   <div class="panel">
@@ -320,6 +336,7 @@ var EN = {
   'Müzik': 'Music',
   'Efekt sesleri': 'Sound effects',
   'Dil': 'Language',
+  'Ayarlar': 'Settings',
   'Liderlik tablosu': 'Leaderboard',
   // index.html
   'Ekranın herhangi bir yerine basılı tut: yükseklik kazan': 'Hold anywhere on the screen to gain height',
@@ -2167,11 +2184,13 @@ function draw(ctx, state, view) {
   var sq = fx.squash || 0;
   var sx = 1 + 0.35 * sq;
   var sy = 1 - 0.3 * sq;
-  ctx.save();
-  ctx.translate(BALL_X, state.y + R0 * (1 - sy));
-  ctx.scale(sx, sy);
-  drawBall(ctx, skin.shape, R0, ballCol, { shine: true, glow: 18 });
-  ctx.restore();
+  if (phase !== 'ready') {
+    ctx.save();
+    ctx.translate(BALL_X, state.y + R0 * (1 - sy));
+    ctx.scale(sx, sy);
+    drawBall(ctx, skin.shape, R0, ballCol, { shine: true, glow: 18 });
+    ctx.restore();
+  }
 
   // Kalkan: dönen çift halka
   if (state.shield > 0 && state.status === 'playing') {
@@ -2203,7 +2222,7 @@ function draw(ctx, state, view) {
   ctx.globalAlpha = 1;
 
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
-  drawHud(ctx, state, view, tc, textCol, textDim);
+  if (phase !== 'ready') drawHud(ctx, state, view, tc, textCol, textDim);
 
   // Bölüm geçişi yazısı (main.js süreyi tutar)
   if (view.banner && view.banner.a > 0) {
@@ -2232,7 +2251,7 @@ function draw(ctx, state, view) {
     ctx.fillText(L('sessiz'), 14, FLOOR_Y + 28);
   }
 
-  drawScreens(ctx, state, view, phase, theme, best, t);
+  drawScreens(ctx, state, view, phase, theme, best, t, skin);
 }
 
 function drawHud(ctx, state, view, tc, textCol, textDim) {
@@ -2288,13 +2307,29 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   });
 }
 
-function drawScreens(ctx, state, view, phase, theme, best, t) {
+function drawScreens(ctx, state, view, phase, theme, best, t, skin) {
   var tc = theme.c, light = isLight(theme);
   var tapWord = L(view.touch ? 'Dokun' : 'Boşluk / dokun');
   var hasCoins = typeof view.coins === 'number';
   if (phase === 'ready') {
     dim(ctx, light);
-    var ly = Math.max(CEIL_Y + 90, H0 * 0.3);
+    // İçerik bloğu (zıplayan top → logo → düğme → rozetler) oyun alanının ortasına oturur
+    var mid = (CEIL_Y + FLOOR_Y) / 2;
+    var ly = Math.max(CEIL_Y + 150, mid - 120);
+    // Kuşanılmış top logonun üstünde zıplar: oyuncu neyi oynayacağını hemen görür
+    var hop = Math.abs(Math.sin(t * 2.6));
+    var bY = ly - 74 - 46 * hop;
+    var land = 1 - hop;
+    ctx.save();
+    ctx.fillStyle = rgba(tc.edge, 0.18 + 0.2 * land);
+    ctx.beginPath();
+    if (ctx.ellipse) ctx.ellipse(W0 / 2, ly - 52, 20 - 8 * hop, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.translate(W0 / 2, bY);
+    var sqz = land > 0.85 ? (land - 0.85) / 0.15 : 0;
+    ctx.scale(1 + 0.18 * sqz, 1 - 0.15 * sqz);
+    drawBall(ctx, (skin || DEFAULT_SKIN).shape, 20, (skin || DEFAULT_SKIN).color, { shine: true, glow: 26 });
+    ctx.restore();
     drawLogo(ctx, W0 / 2, ly, theme, t);
     ctx.save();
     ctx.textAlign = 'center';
@@ -2303,7 +2338,7 @@ function drawScreens(ctx, state, view, phase, theme, best, t) {
     ctx.fillStyle = tc.textDim || '#9fb3d1';
     ctx.fillText(L('Basılı tut · yüksel · kapıdan geç'), W0 / 2, ly + 52);
     ctx.restore();
-    var by = Math.min(ly + 170, H0 - 230);
+    var by = Math.min(ly + 150, FLOOR_Y - 170);
     pillButton(ctx, W0 / 2, by, 230, 66, L('▶  OYNA'), t);
     ctx.save();
     ctx.textAlign = 'center';
@@ -2405,7 +2440,9 @@ function bootstrap() {
 
   // Dikey ekran: görünür alanın oranına göre mantıksal yükseklik (540–1000). Yalnız yeni
   // oyunda değişir; oyun sürerken ekran dönerse alan sabit kalır, CSS yalnız ölçekler.
-  var HUD_PX = 76; // alttaki ipucu + mağaza düğmesi için ayrılan yer
+  // Dokunmatik cihaz: ilk dokunuştan önce de "Dokun" yazsın, klavye ipucu gizlensin (index.html ile aynı ölçüt)
+  var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  var HUD_PX = coarse ? 60 : 76; // alttaki ipucu + düğmeler için ayrılan yer (index.html --hud ile aynı)
   // Telefonun durum çubuğu / gezinme çubuğu / kamera çentiği payı (CSS env(safe-area-inset-*)).
   // Android uygulamasında (edge-to-edge) sayfa bu çubukların altına kadar uzanır; pay düşülmezse
   // oyun alanı çubukların altına taşar. Tarayıcıda genelde 0'dır.
@@ -2442,7 +2479,7 @@ function bootstrap() {
     if (canvas.style && canvas.style.setProperty) canvas.style.setProperty('--h', String(H));
   }
 
-  var touch = false;
+  var touch = coarse;
   var input = { action: false };
   // Ses ayarları (müzik / efekt ayrı; M ikisini birden açar-kapatır)
   var Snd = window.GameAudio || null;
@@ -2587,6 +2624,13 @@ function bootstrap() {
     if (!sound.music) seq = null;
     updateSoundBtns();
   }
+  // Ayarlar (müzik, efekt, dil) tek ⚙ düğmesinin açtığı küçük bir kutuda: alt çubuk sıkışmasın
+  var ayarBtn = document.getElementById('ayarBtn');
+  var ayarlar = document.getElementById('ayarlar');
+  if (ayarBtn && ayarlar) ayarBtn.addEventListener('click', function () {
+    ayarlar.hidden = !ayarlar.hidden;
+    ayarBtn.setAttribute('aria-expanded', String(!ayarlar.hidden));
+  });
   var sesBtn = document.getElementById('sesBtn');
   var muzikBtn = document.getElementById('muzikBtn');
   function updateSoundBtns() {
@@ -2769,6 +2813,7 @@ function bootstrap() {
   function onPointerDown(e) {
     // Mağaza düğmesi ve paneli oyun girdisi değildir
     if (e.target && e.target.closest && e.target.closest('[data-ui]')) return;
+    if (ayarlar && !ayarlar.hidden) { ayarlar.hidden = true; if (ayarBtn) ayarBtn.setAttribute('aria-expanded', 'false'); }
     if (e.pointerType === 'touch' || e.pointerType === 'pen') touch = true;
     if (e.cancelable) e.preventDefault();
     press();
@@ -2937,7 +2982,7 @@ function bootstrap() {
       info.appendChild(name); info.appendChild(now);
       var b = document.createElement('button');
       if (lv >= max) { b.textContent = L('Tam'); b.disabled = true; b.className = 'kusanildi'; }
-      else { b.textContent = '★ ' + u.prices[lv]; b.disabled = profile.coins < u.prices[lv]; b.className = 'al'; }
+      else { b.textContent = '★ ' + u.prices[lv]; b.disabled = profile.coins < u.prices[lv]; b.className = b.disabled ? 'al yetmez' : 'al'; }
       b.addEventListener('click', function () {
         if (!Shop.buyUpgrade(profile, u.id).ok) return;
         Shop.save(window.localStorage, profile);
@@ -2979,7 +3024,7 @@ function bootstrap() {
       if (on) { b.textContent = L('Kuşanıldı'); b.disabled = true; b.className = 'kusanildi'; }
       else if (owned) { b.textContent = L('Kuşan'); }
       else if (prem) { b.textContent = '💎 ' + priceText(item.premiumBy[0]); b.disabled = !prov || !prov.canBuy; b.className = 'para'; }
-      else { b.textContent = '★ ' + item.price; b.disabled = profile.coins < item.price; b.className = 'al'; }
+      else { b.textContent = '★ ' + item.price; b.disabled = profile.coins < item.price; b.className = b.disabled ? 'al yetmez' : 'al'; }
       b.addEventListener('click', function () {
         if (prem && !Shop.owns(profile, shopTab, item.id)) { buyProduct(item.premiumBy[0], [shopTab, item.id]); return; }
         if (Shop.owns(profile, shopTab, item.id)) Shop.equip(profile, shopTab, item.id);
