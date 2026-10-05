@@ -93,6 +93,22 @@ Oyun özeti (2 Ekim itibarıyla, oyun-rafi #5–#19):
     (ay, dağlar, çam sırası + ateş böcekleri, şehir silueti, kar, bulutsu).
   - #32 debug APK her derlemede aynı anahtarla imzalanıyor → telefona `adb install -r` ile
     üstüne kurulur, ilerleme silinmez.
+- **5 Ekim öğleden sonra — panel değerlendirmesi ve iyileştirme (#36–#45):** 8 rol (tasarımcı, gamer, CFO,
+  CTO, CEO, çocuk, orta yaş, yaşlı) 10 üzerinden puanladı (ortalama 5,4); açıklar kapatıldı:
+  - #36 dikey telefonda büyük görünüm (topun arkasındaki şerit kırpılır, her şey ~%24 büyük; topun önündeki
+    görüş aynı). Bot: kalkanlı 8/8 her yükseklikte; kalkansız 800'de 5/8 (540 ve 1000'de 6/8).
+  - #37 ilk oyun rehberi (ilk 3 kapı geniş, "BASILI TUT ↑ / BIRAK ↓") ve kolay mod (⚙ → 🐢: %18 yavaş,
+    %25 geniş kapı, ayrı rekor, liderliğe gitmez, ödül %60). T41.
+  - #38 zayıf telefonda otomatik hafif çizim (kare 3 sn > 24 ms → ışıma/parçacık azalır, dpr ≤ 2). T5m.
+  - #39 günlük meydan okuma (📅, günün tohumu herkes için aynı) ve en iyi koşunun hayaleti. T42.
+  - #40 CI eylemleri (checkout/setup-node/setup-java) v5.
+  - #41 mağaza metinleri ve 6'şar ekran görüntüsü yenilendi (günlük meydan okuma görüntüsü eklendi).
+  - #42 ekranda ⏸ duraklat ve büyük yazı (⚙ → Aa). #45 titreşim ayrı kapatılır (⚙ → 📳).
+  - #43 12 başarım (toplam ★143), Görevler sekmesinde. T43.
+  - #44 Başlangıç paketi `bopgate.baslangic` (önerilen ₺19,99: ★400 + Kor + Nane); köprü listesine
+    eklendi, T44 köprü/oyun ürün listesi eşitliğini korur. **Play Console'da artık 7 ürün.**
+  - `localStorage` yeni anahtarlar: `bopgate-kolay`, `bopgate-kolay-best`, `bopgate-rehber`, `bopgate-hafif`,
+    `bopgate-gunluk-meydan`, `bopgate-basarim`, `bopgate-buyuk-yazi`, `bopgate-titresim`, `bopgate-teklif`.
 
 Doğrulama sınırı: debug APK telefonda açıldı, ekrana sığdığı görüldü; uzun süreli elle oynanış ve
 denge insanla ayarlanmadı. Reklam/satın alma yalnız test kimlikleriyle, gerçek cihazda denenmedi.
@@ -114,7 +130,7 @@ Telefona kurma (Windows, PowerShell; `gh` ve `platform-tools` kurulu):
   - GitHub Secrets'a 4 imza sırrı (`BOPGATE_KEYSTORE_BASE64`, `_KEYSTORE_PASSWORD`, `_KEY_ALIAS`,
     `_KEY_PASSWORD`) → CI imzalı AAB üretir.
   - AdMob uygulama + ödüllü reklam birimi kimlikleri; Play Games proje ve liderlik kimlikleri;
-    Play Console'da 6 ürünün girilmesi (`magaza/play-formlari.md` §7). Kimlikler `android-paket/bridge.js`
+    Play Console'da 7 ürünün girilmesi (`magaza/play-formlari.md` §7). Kimlikler `android-paket/bridge.js`
     YAPILANDIRMA bölümüne girilir (kimlik sır değildir, ama şifre/anahtar asla).
 
 ## Gamer rutini
@@ -128,6 +144,10 @@ Telefona kurma (Windows, PowerShell; `gh` ve `platform-tools` kurulu):
 ## Olası sonraki işler
 
 - Bopgate: kimlikler gelince dahili test kanalı (AAB) → satın alma/reklam/liderlik telefonda denemesi.
+- Bopgate: ölçüm kararı (Murat): Play Console'un kendi raporları (kurulum, tutma, gelir; SDK gerekmez)
+  yeterli mi, yoksa Firebase Analytics mi? İkincisi veri güvenliği formunu ve gizlilik metnini değiştirir.
+- Bopgate: günlük meydan okuma için Play Games'te ayrı (günlük sıfırlanan) liderlik tablosu — kimliği gelince
+  `bridge.js`'e eklenir.
 - Bopgate: İngilizce öne çıkan görsel; AdMob maksimum reklam içerik derecesi G (`bridge.js`, tek satır);
   CI eylemlerinin Node 24 sürümlerine yükseltilmesi (uyarı veriyor, derlemeyi bozmuyor).
 - Kayar Taş: dokunmatik düzen ve can sayacı (README'deki ilk adım).
