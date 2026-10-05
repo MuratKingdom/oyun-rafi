@@ -823,6 +823,37 @@ function draw(ctx, state, view) {
   ctx.restore();
   ctx.globalAlpha = 1;
 
+  // İlk oyun rehberi: topun yanında ne yapacağını söyleyen nabızlı yazı ve ok
+  if (view.guide && phase === 'playing') {
+    var gd = view.guide;
+    var gcol = gd.mode === 'hold' ? GOLD : gd.mode === 'release' ? '#7fd8ff' : gd.mode === 'wait' ? '#c9d6ea' : '#46d39a';
+    var gtxt = gd.mode === 'hold' ? L('BASILI TUT ↑') : gd.mode === 'release' ? L('BIRAK ↓') : gd.mode === 'wait' ? L('Basılı tut: yüksel · bırak: alçal') : L('İYİ ✓');
+    var gp = 0.75 + 0.25 * Math.sin(t * 8);
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = font(900, gd.mode === 'wait' ? 17 : 22);
+    ctx.globalAlpha = gd.mode === 'wait' ? 0.85 : gp;
+    ctx.fillStyle = gcol;
+    glow(ctx, gcol, 14);
+    var gy = Math.max(CEIL_Y + 24, Math.min(FLOOR_Y - 24, state.y + (gd.mode === 'release' ? 36 : -36)));
+    if (gd.mode === 'wait') { ctx.textAlign = 'center'; ctx.fillText(gtxt, CX, CEIL_Y + 70); } else ctx.fillText(gtxt, BALL_X + 26, gy);
+    if (gd.mode === 'hold') {
+      // Basılı tutma halkası: topun çevresinde büyüyüp küçülen daire
+      ctx.strokeStyle = gcol;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(BALL_X, state.y, BALL_R + 10 + 6 * Math.sin(t * 8), 0, Math.PI * 2); ctx.stroke();
+    }
+    if (typeof gd.target === 'number' && typeof gd.gateX === 'number') {
+      // Hedef: kapının ortasına doğru kesik çizgi
+      ctx.globalAlpha = 0.35;
+      ctx.setLineDash && ctx.setLineDash([6, 8]);
+      ctx.beginPath(); ctx.moveTo(BALL_X + BALL_R + 4, state.y); ctx.lineTo(gd.gateX, gd.target); ctx.stroke && ctx.stroke();
+      ctx.setLineDash && ctx.setLineDash([]);
+    }
+    ctx.restore();
+  }
+
   if (fx.callout && phase === 'playing') {
     var co = fx.callout, k = 1 - co.life / co.max;
     ctx.save();
@@ -899,7 +930,7 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   ctx.textAlign = 'right';
   ctx.font = font(800, 12);
   ctx.fillStyle = textDim;
-  ctx.fillText(L('REKOR'), VR - 14, 10);
+  ctx.fillText(L(state.easy ? 'KOLAY REKOR' : 'REKOR'), VR - 14, 10);
   ctx.font = font(800, 14);
   ctx.fillStyle = textCol;
   ctx.fillText(String(view.best || 0), VR - 14, 22);
@@ -954,6 +985,11 @@ function drawScreens(ctx, state, view, phase, theme, best, t, skin) {
     ctx.font = font(600, 17);
     ctx.fillStyle = tc.textDim || '#9fb3d1';
     ctx.fillText(L('Basılı tut · yüksel · kapıdan geç'), CX, ly + 52);
+    if (view.easy) {
+      ctx.font = font(800, 15);
+      ctx.fillStyle = '#46d39a';
+      ctx.fillText(L('🐢 Kolay mod'), CX, ly + 80);
+    }
     ctx.restore();
     var by = Math.min(ly + 150, FLOOR_Y - 170);
     pillButton(ctx, CX, by, 230, 66, L('▶  OYNA'), t);

@@ -162,6 +162,15 @@ function bootstrap() {
     var saved = window.localStorage.getItem('sekmeguc-best');
     if (saved) best = parseInt(saved, 10) || 0;
   } catch (e) {}
+  // Kolay mod (⚙): ayrı rekor tutulur, liderlik tablosuna gönderilmez, koşu ödülü azalır (shop.js)
+  // İlk oyun rehberi: hiç tamamlanmadıysa ilk kapılar geniş açılır, topun yanında "BASILI TUT / BIRAK" yazar
+  function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
+  var easy = lsGet('bopgate-kolay') === '1';
+  var easyBest = parseInt(lsGet('bopgate-kolay-best') || '0', 10) || 0;
+  var tutorialDone = lsGet('bopgate-rehber') === '1' || best > 0;
+  var TUTORIAL_GATES = 3;
+  function shownBest() { return easy ? easyBest : best; }
   if (games && Cloud && profile) {
     soft(function () { return games.loadGame(); }).then(function (text) {
       var m = Cloud.merge(Shop, profile, best, typeof text === 'string' ? Cloud.unpack(Shop, text) : null);
@@ -248,6 +257,20 @@ function bootstrap() {
     ayarlar.hidden = !ayarlar.hidden;
     ayarBtn.setAttribute('aria-expanded', String(!ayarlar.hidden));
   });
+  var kolayBtn = document.getElementById('kolayBtn');
+  function applyEasyBtn() {
+    if (!kolayBtn) return;
+    kolayBtn.className = easy ? 'acik' : '';
+    kolayBtn.setAttribute('aria-pressed', String(easy));
+    kolayBtn.title = L('Kolay mod: {d}', { d: L(easy ? 'açık' : 'kapalı') }) + ' · ' + L('yavaş, geniş kapılar; ayrı rekor, ★ %60');
+  }
+  if (kolayBtn) kolayBtn.addEventListener('click', function () {
+    easy = !easy;
+    lsSet('bopgate-kolay', easy ? '1' : '0');
+    applyEasyBtn();
+    notice = L(easy ? 'Kolay mod açık' : 'Kolay mod kapalı');
+    if (phase === 'ready') state = newGame();
+  });
   var sesBtn = document.getElementById('sesBtn');
   var muzikBtn = document.getElementById('muzikBtn');
   function updateSoundBtns() {
@@ -269,6 +292,7 @@ function bootstrap() {
     for (var da = 0; da < aria.length; da++) aria[da].setAttribute('aria-label', L(aria[da].getAttribute('data-i18n-aria')));
     if (dilBtn) dilBtn.textContent = I18n.getLang().toUpperCase();
     updateSoundBtns();
+    applyEasyBtn();
   }
   if (dilBtn) dilBtn.addEventListener('click', function () {
     if (!I18n) return;
@@ -337,7 +361,8 @@ function bootstrap() {
   function newGame() {
     var seed = Date.now() % 2147483647;
     viewX0 = desiredCrop();
-    var st = window.GameLogic.createState(seed, { height: desiredHeight(viewX0), mods: profile ? Shop.mods(profile) : null });
+    var st = window.GameLogic.createState(seed, { height: desiredHeight(viewX0), mods: profile ? Shop.mods(profile) : null,
+      easy: easy, tutorial: tutorialDone ? 0 : TUTORIAL_GATES });
     applyCanvasHeight(st.geo.H);
     return st;
   }
@@ -536,7 +561,7 @@ function bootstrap() {
     }
     profile.coins += earned;
     Shop.save(window.localStorage, profile);
-    if (games && newBest) soft(function () { return games.submitScore(best); });
+    if (games && newBest && !state.easy) soft(function () { return games.submitScore(best); });
     cloudSave();
   }
   function preview(item, kind) {
@@ -782,6 +807,20 @@ function bootstrap() {
 
   // Android, çubuk paylarını sayfa açıldıktan sonra bildirir (resize olayı gelmeyebilir):
   // başlangıç ekranındayken arada bir yeniden ölç, alan değiştiyse yeni oyunu ona göre kur.
+  // İlk oyun rehberi: sıradaki kapının ortasına göre "BASILI TUT" (aşağıdasın) / "BIRAK" (yukarıdasın) / "İYİ"
+  function guideFor() {
+    if (tutorialDone || phase !== 'playing') return null;
+    var next = null;
+    for (var gi = 0; gi < state.obstacles.length; gi++) {
+      var go = state.obstacles[gi];
+      if (go.passed || go.x + C.WALL_W < C.BALL_X - C.BALL_R) continue;
+      if (!next || go.x < next.x) next = go;
+    }
+    // Kapı henüz yakın değilse yön verme ("basılı tut" demek topu tavana götürür): yalnız kuralı hatırlat
+    if (!next || next.x > C.BALL_X + 320) return { mode: 'wait', y: state.y };
+    var mid = next.gapY + next.gapH / 2, tol = next.gapH * 0.14;
+    return { mode: state.y > mid + tol ? 'hold' : state.y < mid - tol ? 'release' : 'ok', y: state.y, target: mid, gateX: next.x };
+  }
   var fitCheck = 0;
   function frame(ts) {
     if (last === null) last = ts;
@@ -812,6 +851,7 @@ function bootstrap() {
           fx.rings.push({ x: C.BALL_X, y: state.y, life: RING_S, max: RING_S, color: edgeCol });
           popLeft = POP_S;
           prevScore = state.score;
+          if (!tutorialDone && state.score >= TUTORIAL_GATES) { tutorialDone = true; lsSet('bopgate-rehber', '1'); }
           // Az önce geçilen kapı: parlasın; ortasından geçildiyse "mükemmel" serisi büyür
           var gate = null;
           for (var gi = 0; gi < state.obstacles.length; gi++) {
@@ -877,7 +917,9 @@ function bootstrap() {
           fx.callout = null;
           shakeLeft = SHAKE_MS;
           burst(C.BALL_X, state.y, 24, '#e05656', 320);
-          if (state.score > best) {
+          if (state.easy) {
+            if (state.score > easyBest) { easyBest = state.score; newBest = true; lsSet('bopgate-kolay-best', String(easyBest)); }
+          } else if (state.score > best) {
             best = state.score;
             newBest = true;
             try { window.localStorage.setItem('sekmeguc-best', String(best)); } catch (e) {}
@@ -927,7 +969,8 @@ function bootstrap() {
       }
     }
     window.GameRender.draw(ctx, state, {
-      best: best, muted: muted, phase: phase, fx: fx, touch: touch, time: ts / 1000, viewX0: viewX0,
+      best: shownBest(), muted: muted, phase: phase, fx: fx, touch: touch, time: ts / 1000, viewX0: viewX0,
+      easy: easy, guide: guideFor(),
       newBest: newBest, canRestart: (phase === 'over' || phase === 'won') && canRestart(),
       banner: banner, levelCount: C.LEVEL_COUNT, gatesPerLevel: C.GATES_PER_LEVEL,
       theme: profile ? Shop.equippedMap(profile) : null, skin: profile ? Shop.equippedBall(profile) : null,

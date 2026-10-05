@@ -567,6 +567,33 @@ var pending = [];
     'birleşim=' + ok + ' (★' + p.coins + ', rekor ' + m.best + ') aynı kayıt değişmez=' + !same.changed + ' bozuk=' + junk + ' kurcalanmış=' + safe);
 })();
 
+// T41 — erişilebilirlik: kolay mod dünyayı yavaşlatır ve kapıyı genişletir; rehber kapıları geniş açılır ve
+// sayısı kadar sürer; kolay modda koşu ödülü azalır; varsayılan oyun hiç değişmez
+(function t41() {
+  var C = require('./logic.js').CONST;
+  function run(opts) {
+    var st = createState(5, opts);
+    for (var i = 0; i < 60 * 12; i++) { step(st, { action: (i % 30) < 11 }, 1 / 60); if (st.status !== 'playing') { st.status = 'playing'; } }
+    return st;
+  }
+  var n = run({}), e = run({ easy: true });
+  var easyOk = Math.abs(e.speed - n.speed * C.EASY_SPEED_F) < 1e-6 && Math.abs(e.gapH - n.gapH * C.EASY_GAP_F) < 1e-6;
+  var tut = createState(5, { tutorial: 3 }), plain = createState(5);
+  tut.spawnTimer = plain.spawnTimer = 0;
+  var widths = [];
+  for (var k = 0; k < 5; k++) {
+    step(tut, { action: false }, 1 / 60); step(plain, { action: false }, 1 / 60);
+    widths.push(tut.obstacles[tut.obstacles.length - 1].gapH / plain.obstacles[plain.obstacles.length - 1].gapH);
+    tut.spawnTimer = plain.spawnTimer = 0;
+  }
+  var tutOk = widths.slice(0, 3).every(function (w) { return w > 1.3; }) && widths.slice(3).every(function (w) { return Math.abs(w - 1) < 1e-9; }) && tut.tutorialLeft === 0;
+  var base = { stars: 10, level: 11, milestones: 1 };
+  var rew = Shop.reward(base) === 15 && Shop.reward({ stars: 10, level: 11, milestones: 1, easy: true }) === 9;
+  var def = createState(5).easy === false && createState(5).tutorialLeft === 0;
+  report('T41 kolay mod, ilk oyun rehberi, kolay ödül', easyOk && tutOk && rew && def,
+    'kolay=' + easyOk + ' (hız ' + Math.round(e.speed) + '/' + Math.round(n.speed) + ') rehber=' + tutOk + ' [' + widths.map(function (w) { return w.toFixed(2); }).join(' ') + '] ödül=' + rew + ' varsayılan=' + def);
+})();
+
 // --- Dikey ekran (uzun alan) ---------------------------------------------------
 // T16 — ölçek eşdeğerliği: uzun alanda top, kare alandakiyle normalize edildiğinde birebir aynı hareket eder
 (function t16() {

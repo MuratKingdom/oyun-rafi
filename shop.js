@@ -173,10 +173,13 @@ function equip(p, kind, id) {
 // Bölüm başına ayrı ödül yok: kazanç, ekranda toplanan yıldızla aynı kalsın.
 // Oyun sonsuzdur; eşik sayısı state.milestones'ta, eski kayıtlar için bölümden de hesaplanır.
 var MILESTONE_BONUS = 5;
+// Kolay modda koşu ödülü EASY_REWARD_F ile çarpılır (aşağı yuvarlanır): kolay mod ekonomiyi hızlandırmasın
+var EASY_REWARD_F = 0.6;
 function reward(state) {
   var levelsDone = Math.max(0, (state.level || 1) - 1);
   var ms = typeof state.milestones === 'number' ? state.milestones : Math.floor(levelsDone / 10);
-  return (state.stars || 0) + MILESTONE_BONUS * ms;
+  var r = (state.stars || 0) + MILESTONE_BONUS * ms;
+  return state.easy ? Math.floor(r * EASY_REWARD_F) : r;
 }
 
 // { ok, reason } — reason: 'yok' | 'tamam' (son basamak) | 'yetersiz'
