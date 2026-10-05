@@ -3,6 +3,10 @@
 # Her çalışmada:
 #   • Oyun testleri (node test.js, node test-dom.js) — kırmızıysa derleme yapılmaz.
 #   • Debug APK → "bopgate-debug-apk" eseri. Telefona doğrudan kurulur (bilinmeyen kaynak izni).
+#     Debug imza anahtarı Actions önbelleğinde saklanır: her APK aynı anahtarla imzalanır, telefonda
+#     eski sürüm silinmeden üstüne kurulur (adb install -r). Anahtarı yalnız oyun/sekmeguc'a push
+#     kaydeder; PR derlemeleri onu okur. Bu, Android'in herkese açık debug anahtarı türündendir —
+#     yayın (Play) imzası değildir, yayın imzası aşağıdaki sırlardan gelir.
 # İmza sırları tanımlıysa ek olarak:
 #   • İmzalı AAB → "bopgate-release-aab" eseri. Play Console'a (dahili test) yüklenir.
 #
@@ -69,9 +73,27 @@ jobs:
           node hazirla.js
           npx cap sync android
 
+      # Gradle debug anahtarını ~/.android/debug.keystore'da arar, yoksa yenisini üretir
+      - name: Debug imza anahtarını önbellekten al
+        id: debug-anahtar
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: bopgate-debug-keystore-v1
+
       - name: Debug APK
         working-directory: android-paket/android
         run: ./gradlew --no-daemon assembleDebug
+
+      - name: Debug imza parmak izi (her derlemede aynı olmalı)
+        run: keytool -printcert -jarfile android-paket/android/app/build/outputs/apk/debug/app-debug.apk | grep -m1 'SHA256'
+
+      - name: Debug imza anahtarını önbelleğe kaydet (yalnız ilk kez, yalnız oyun/sekmeguc'ta)
+        if: github.event_name != 'pull_request' && steps.debug-anahtar.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: bopgate-debug-keystore-v1
 
       - uses: actions/upload-artifact@v4
         with:
