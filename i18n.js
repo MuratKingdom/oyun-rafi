@@ -74,6 +74,8 @@ var EN = {
   'Dil': 'Language',
   'Ayarlar': 'Settings',
   'Kolay mod': 'Easy mode',
+  'Titreşim': 'Vibration',
+  'Titreşim: {d}': 'Vibration: {d}',
   'Başlangıç paketi': 'Starter pack',
   '★ 400 + Kor ve Nane topları': '★ 400 + Ember and Mint balls',
   '🎁 Başlangıç paketi mağazada: ★ 400 + 2 top': '🎁 Starter pack in the shop: ★ 400 + 2 balls',
