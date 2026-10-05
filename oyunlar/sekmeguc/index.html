@@ -13,7 +13,9 @@
     --cyan: #5ac8fa; --mor: #b39dfa; --altin: #ffd166; --turuncu: #ff9f43; --pembe: #ff5d7a; --yesil: #46d39a;
     --metin: #e8ecf1; --soluk: #8fa3c4;
     --cam: rgba(16,24,44,0.86); --cizgi: rgba(90,200,250,0.35);
+    --hud: 76px; /* alttaki ipucu + düğmeler; main.js HUD_PX ile aynı */
   }
+  @media (pointer: coarse) { :root { --hud: 60px; } }
   html, body {
     margin: 0;
     padding: 0;
@@ -50,12 +52,14 @@
     /* Mantıksal alan 520 x --h (main.js ayarlar: 540–1000). Oranı koruyarak ekrana sığ;
        uzun telefonda alan da uzadığı için üstte/altta boşluk kalmaz. */
     --h: 540;
-    width: min(98vw, 760px, calc((100dvh - 76px) * 520 / var(--h)));
+    /* Durum/gezinme çubuğu payı (Android edge-to-edge) düşülür; tarayıcıda env() 0'dır */
+    width: min(calc((100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) * 0.98), 760px,
+      calc((100dvh - var(--hud) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 520 / var(--h)));
     aspect-ratio: 520 / var(--h);
     height: auto;
   }
   @supports not (height: 100dvh) {
-    canvas { width: min(98vw, 760px, calc((100vh - 76px) * 520 / var(--h))); }
+    canvas { width: min(98vw, 760px, calc((100vh - var(--hud) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 520 / var(--h))); }
   }
   #hint {
     font-size: 11.5px;
@@ -79,19 +83,33 @@
     color: var(--metin); background: var(--cam); border: 1px solid var(--cizgi); border-radius: 999px;
     padding: 10px 18px; cursor: pointer; box-shadow: 0 0 14px rgba(90,200,250,0.18);
   }
-  #gorevBtn[hidden] { display: none; }
-  #muzikBtn, #sesBtn {
+  #gorevBtn[hidden], #liderBtn[hidden] { display: none; }
+  #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn {
     font: inherit; font-size: 18px; width: 44px; height: 44px; padding: 0; border-radius: 50%;
     border: 1px solid rgba(143,163,196,0.35); background: var(--cam); color: var(--metin); cursor: pointer;
   }
+  #dilBtn { font: 900 13px var(--font); letter-spacing: 0.04em; }
   #muzikBtn.kapali { opacity: 0.45; text-decoration: line-through; }
+  .ayar-kutu { position: relative; display: flex; }
+  #ayarBtn[aria-expanded="true"] { border-color: var(--cyan); box-shadow: 0 0 12px rgba(90,200,250,0.45); }
+  #ayarlar {
+    position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 5;
+    display: flex; gap: 6px; padding: 6px; border-radius: 999px;
+    background: var(--cam); border: 1px solid var(--cizgi); box-shadow: 0 0 18px rgba(90,200,250,0.22);
+  }
+  #ayarlar[hidden] { display: none; }
   #devamBtn {
     font: 900 15px var(--font); color: #fff; border: 0; border-radius: 999px;
     background: linear-gradient(180deg, #ff8aa0, #e0405e);
     box-shadow: 0 0 20px rgba(255,93,122,0.55), inset 0 1px 0 rgba(255,255,255,0.4);
     padding: 10px 20px; cursor: pointer; animation: nabiz 1s ease-in-out infinite;
   }
-  #devamBtn[hidden] { display: none; }
+  #devamBtn[hidden], #reklamDevamBtn[hidden], #ikiKatBtn[hidden] { display: none; }
+  #reklamDevamBtn, #ikiKatBtn {
+    font: 900 15px var(--font); color: #05070c; border: 0; border-radius: 999px; padding: 10px 18px; cursor: pointer;
+    background: linear-gradient(180deg, #a6ecff, var(--cyan)); box-shadow: 0 0 18px rgba(90,200,250,0.5), inset 0 1px 0 rgba(255,255,255,0.5);
+  }
+  #ikiKatBtn { color: #1a1206; background: linear-gradient(180deg, #ffe08a, var(--turuncu)); box-shadow: 0 0 18px rgba(255,159,67,0.5); animation: nabiz 1.2s ease-in-out infinite; }
   @keyframes nabiz { 50% { transform: scale(1.06); } }
 
   /* --- Mağaza ve görevler paneli --- */
@@ -125,7 +143,7 @@
     border: 1px solid rgba(143,163,196,0.35); border-radius: 999px; padding: 7px 14px; cursor: pointer;
   }
   #magaza .sekmeler {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px;
+    display: grid; grid-template-columns: repeat(4, 1fr) 0.7fr; gap: 4px; padding: 4px;
     background: rgba(0,0,0,0.3); border-radius: 14px;
   }
   #magaza [data-sekme] {
@@ -138,12 +156,20 @@
   }
   #magaza .liste { overflow-y: auto; touch-action: pan-y; display: flex; flex-direction: column; gap: 10px; padding: 2px; }
   #magaza .urun {
-    display: grid; grid-template-columns: 76px 1fr auto; align-items: center; gap: 12px;
+    display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; align-items: center; gap: 12px;
     background: rgba(255,255,255,0.04); border: 1px solid rgba(143,163,196,0.18); border-radius: 16px; padding: 10px;
   }
   #magaza .urun:has(.kusanildi) { border-color: rgba(90,200,250,0.6); box-shadow: 0 0 14px rgba(90,200,250,0.2); }
   #magaza .onizleme { width: 76px; height: 55px; border-radius: 10px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); }
-  #magaza .ad { font-size: 16px; font-weight: 800; }
+  #magaza .ad { font-size: 16px; font-weight: 800; overflow-wrap: anywhere; }
+  @media (max-width: 400px) {
+    #magaza .panel { padding: 12px; }
+    #magaza .urun { grid-template-columns: 60px minmax(0, 1fr) auto; gap: 9px; padding: 8px; }
+    #magaza .onizleme { width: 60px; height: 44px; }
+    #magaza .guc .basamak { width: 60px; letter-spacing: 1px; }
+    #magaza .urun button { min-width: 80px; font-size: 13px; padding: 0 10px; }
+    #magaza .ad { font-size: 15px; }
+  }
   #magaza .urun button {
     font: 900 14px var(--font); min-width: 96px; min-height: 42px;
     border-radius: 999px; border: 0; cursor: pointer; color: #05070c;
@@ -157,7 +183,25 @@
     background: transparent; color: var(--cyan); border: 1px solid rgba(90,200,250,0.5); cursor: default; box-shadow: none;
   }
   #magaza .urun button:disabled.al { opacity: 0.4; box-shadow: none; cursor: not-allowed; }
+  /* Yıldızı yetmeyen ürün: soluk turuncu yerine altın çerçeveli, okunur fiyat */
+  #magaza .urun button.al.yetmez:disabled {
+    opacity: 1; color: rgba(255,209,102,0.8); background: rgba(255,209,102,0.06);
+    border: 1px solid rgba(255,209,102,0.35);
+  }
   #magaza .not { font-size: 12px; color: var(--soluk); margin: 0; line-height: 1.4; }
+  #magaza .urun button.para {
+    color: #fff; background: linear-gradient(180deg, #c58bff, #7a4dff); box-shadow: 0 0 14px rgba(150,100,255,0.45);
+  }
+  #magaza .urun button.para:disabled { opacity: 0.5; box-shadow: none; cursor: not-allowed; }
+  #magaza .urun.premium { border-color: rgba(197,139,255,0.45); }
+  #magaza .paket { grid-template-columns: 44px minmax(0, 1fr) auto; }
+  #magaza .paket .paket-ikon { font-size: 30px; text-align: center; filter: drop-shadow(0 0 8px rgba(197,139,255,0.6)); }
+  #magaza .paket .etki { display: block; font-size: 12.5px; color: var(--soluk); margin-top: 3px; font-weight: 500; }
+  #magaza .paket.en-iyi { border-color: rgba(255,209,102,0.7); box-shadow: 0 0 16px rgba(255,209,102,0.25); }
+  #magaza .geri-yukle {
+    font: 800 13px var(--font); color: var(--soluk); background: transparent; border: 1px solid rgba(143,163,196,0.35);
+    border-radius: 999px; padding: 8px 14px; cursor: pointer; align-self: center;
+  }
   #magaza .guc .basamak { width: 76px; text-align: center; color: var(--altin); font-size: 18px; letter-spacing: 3px; text-shadow: 0 0 8px rgba(255,209,102,0.6); }
   #magaza .guc .etki { display: block; font-size: 12.5px; color: var(--soluk); margin-top: 3px; font-weight: 500; }
   #magaza .seri {
@@ -176,41 +220,234 @@
   #magaza .gorev.bitti .cubuk i { background: var(--yesil); box-shadow: 0 0 8px rgba(70,211,154,0.6); }
   #magaza .gorev.bitti .ad { color: var(--yesil); }
   @media (prefers-reduced-motion: reduce) { #devamBtn { animation: none; } .dugmeler button { transition: none; } }
+  /* Dokunmatikte ipucu tekrarı gereksiz: açılış ekranı zaten "Basılı tut · yüksel · kapıdan geç" diyor */
   @media (pointer: coarse) {
-    #hint .kb { display: none; }
+    #hint { display: none; }
   }
   /* Dar telefon: dört düğme tek satıra sığsın (ayrıntılı kurallardan sonra gelmeli) */
   @media (max-width: 440px) {
-    .dugmeler { gap: 6px; }
-    #magazaBtn, #gorevBtn { padding: 9px 12px; font-size: 13px; }
-    #muzikBtn, #sesBtn { width: 38px; height: 38px; font-size: 16px; }
+    .dugmeler { gap: 5px; padding: 0 6px; }
+    #magazaBtn, #gorevBtn { padding: 8px 10px; font-size: 12.5px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn { width: 34px; height: 34px; font-size: 15px; }
+    #dilBtn { font-size: 11px; }
+  }
+  @media (max-width: 380px) {
+    #magazaBtn, #gorevBtn { padding: 7px 8px; font-size: 12px; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn { width: 31px; height: 31px; font-size: 14px; }
   }
   @media (max-width: 340px) {
-    .dugmeler { gap: 4px; padding: 0 4px; }
-    #magazaBtn, #gorevBtn { padding: 7px 8px; font-size: 12px; }
-    #muzikBtn, #sesBtn { width: 32px; height: 32px; font-size: 14px; }
+    .dugmeler { gap: 3px; padding: 0 3px; }
+    #magazaBtn, #gorevBtn { padding: 6px 7px; font-size: 11px; letter-spacing: 0; }
+    #muzikBtn, #sesBtn, #dilBtn, #liderBtn, #ayarBtn { width: 27px; height: 27px; font-size: 12px; }
+    #dilBtn { font-size: 10px; }
   }
 </style>
 </head>
 <body>
 <div id="wrap">
   <canvas id="game" width="520" height="540"></canvas>
-  <div id="hint">Ekranın herhangi bir yerine basılı tut: yükseklik kazan<span class="kb"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
-  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="magazaBtn" type="button" data-ui hidden>🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri">🔊</button></div>
+  <div id="hint"><span data-i18n="Ekranın herhangi bir yerine basılı tut: yükseklik kazan">Ekranın herhangi bir yerine basılı tut: yükseklik kazan</span><span class="kb" data-i18n=" · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat"> · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat</span></div>
+  <div class="dugmeler"><button id="devamBtn" type="button" data-ui hidden>❤ Devam</button><button id="reklamDevamBtn" type="button" data-ui hidden>📺 Reklamla devam</button><button id="ikiKatBtn" type="button" data-ui hidden>📺 ★ x2</button><button id="magazaBtn" type="button" data-ui hidden data-i18n="🛒 Mağaza">🛒 Mağaza</button><button id="gorevBtn" type="button" data-ui hidden>📋 Görevler</button><button id="liderBtn" class="ikon" type="button" data-ui hidden aria-label="Liderlik tablosu" data-i18n-aria="Liderlik tablosu">🏆</button><span class="ayar-kutu" data-ui><button id="ayarBtn" class="ikon" type="button" data-ui aria-label="Ayarlar" data-i18n-aria="Ayarlar" aria-expanded="false" aria-controls="ayarlar">⚙</button><span id="ayarlar" data-ui hidden><button id="muzikBtn" class="ikon" type="button" data-ui aria-label="Müzik" data-i18n-aria="Müzik">🎵</button><button id="sesBtn" class="ikon" type="button" data-ui aria-label="Efekt sesleri" data-i18n-aria="Efekt sesleri">🔊</button><button id="dilBtn" class="ikon" type="button" data-ui aria-label="Dil" data-i18n-aria="Dil">TR</button></span></span></div>
 </div>
 <div id="magaza" data-ui hidden role="dialog" aria-label="Mağaza">
   <div class="panel">
-    <header><h2>Mağaza</h2><span class="cuzdan">★ 0</span><button class="kapat" type="button">Kapat</button></header>
+    <header><h2 data-i18n="Mağaza">Mağaza</h2><span class="cuzdan">★ 0</span><button class="kapat" type="button" data-i18n="Kapat">Kapat</button></header>
     <div class="sekmeler" role="tablist">
-      <button type="button" role="tab" data-sekme="ball" aria-selected="true">Top</button>
-      <button type="button" role="tab" data-sekme="map" aria-selected="false">Harita</button>
-      <button type="button" role="tab" data-sekme="upg" aria-selected="false">Güç</button>
-      <button type="button" role="tab" data-sekme="quests" aria-selected="false">Görevler</button>
+      <button type="button" role="tab" data-sekme="ball" aria-selected="true" data-i18n="Top">Top</button>
+      <button type="button" role="tab" data-sekme="map" aria-selected="false" data-i18n="Harita">Harita</button>
+      <button type="button" role="tab" data-sekme="upg" aria-selected="false" data-i18n="Güç">Güç</button>
+      <button type="button" role="tab" data-sekme="quests" aria-selected="false" data-i18n="Görevler">Görevler</button>
+      <button type="button" role="tab" data-sekme="premium" aria-selected="false">💎</button>
     </div>
     <div class="liste"></div>
-    <p class="not">Yıldız kazanmak için: oyunda yıldız topla, günlük görevleri bitir, her 10 bölümlük eşik +5. Gerçek para yok.</p>
+    <p class="not" data-i18n="Yıldız kazanmak için: oyunda yıldız topla, günlük görevleri bitir, her 10 bölümlük eşik +5.">Yıldız kazanmak için: oyunda yıldız topla, günlük görevleri bitir, her 10 bölümlük eşik +5.</p>
   </div>
 </div>
+<script>
+// Sekme Gücü (Bopgate) — dil desteği (Türkçe / İngilizce)
+//
+// Kaynak dil Türkçedir: kod metinleri Türkçe yazar ve L('Türkçe metin', { parametre }) ile gösterir.
+// İngilizce seçiliyse EN sözlüğünde Türkçe metnin karşılığı aranır; yoksa Türkçe metin kalır
+// (eksik çeviri oyunu bozmaz, testler sözlüğün eksiksiz olduğunu ayrıca denetler: T39).
+// Parametreler {ad} biçimindedir: L('Bölüm {n}', { n: 3 }) → "Bölüm 3" / "Level 3".
+// Dil seçimi: kayıtlı tercih ('bopgate-dil') yoksa cihaz dili; Türkçe değilse İngilizce.
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; dosya kendi kapsamında çalışır.
+(function () {
+
+var STORAGE_KEY = 'bopgate-dil';
+var LANGS = ['tr', 'en'];
+
+var EN = {
+  // Açılış, HUD, ekranlar
+  'Basılı tut · yüksel · kapıdan geç': 'Hold · rise · slip through the gate',
+  '▶  OYNA': '▶  PLAY',
+  '{w} ve başla': '{w} to start',
+  'Dokun': 'Tap',
+  'Boşluk / dokun': 'Space / tap',
+  'Dokun ya da R': 'Tap or R',
+  'DURAKLATILDI': 'PAUSED',
+  'MÜKEMMEL': 'PERFECT',
+  'MÜKEMMEL x{n}': 'PERFECT x{n}',
+  '{w} ve devam et': '{w} to resume',
+  'OYUN BİTTİ': 'GAME OVER',
+  'KAPI': 'GATES',
+  '★ YENİ REKOR ★': '★ NEW BEST ★',
+  'Rekor: {n}': 'Best: {n}',
+  'Bölüm {n}': 'Level {n}',
+  '{n} eşik': '{n} milestones',
+  'Cüzdan ★ {n}': 'Wallet ★ {n}',
+  '+{e} ★   (cüzdan ★ {c})': '+{e} ★   (wallet ★ {c})',
+  '❤ Devam: {how} · aşağıda': '❤ Continue: {how} · below',
+  '★ {n} ya da {ad}': '★ {n} or {ad}',
+  'bedava': 'free',
+  'reklamla': 'with an ad',
+  '{w}: tekrar oyna': '{w}: play again',
+  'BÖLÜM {n}': 'LEVEL {n}',
+  'REKOR': 'BEST',
+  'sessiz': 'muted',
+  // Ölüm sebepleri (logic.js)
+  'Dikene düştün': 'You landed on spikes',
+  'Tavana çarptın': 'You hit the ceiling',
+  'Duvara çarptın': 'You hit a wall',
+  // Bölüm ipuçları ve kutlamalar
+  'Yıldız topla: bir çarpmayı affeder': 'Grab stars: each one forgives a crash',
+  'Mor kapılar hareket eder': 'Purple gates move',
+  'Yeşil kapılar daralıp genişler': 'Green gates breathe in and out',
+  'Güçler: ⏱ dünyayı yavaşlatır, pembe top küçültür': 'Power-ups: ⏱ slows the world, pink shrinks you',
+  'Çift duvarlar geliyor': 'Double walls incoming',
+  'Kırmızı dikenlere sekme: basılı tut, havada kal': "Don't bounce on red spikes: hold to stay airborne",
+  'Eşik {n} geçildi! +{b} ★': 'Milestone {n} cleared! +{b} ★',
+  ' · artık sonsuz: zorluk yavaşça artar': ' · endless now: difficulty slowly rises',
+  'Devam!': 'Continue!',
+  'Bu koşuda {n} devam hakkın kaldı': '{n} continues left this run',
+  'Bu koşudaki son devam hakkı': 'Last continue this run',
+  'Günlük ödül: +{n} ★': 'Daily reward: +{n} ★',
+  '  ({n}. gün üst üste)': '  (day {n} in a row)',
+  // Düğmeler
+  '❤ ★ {n} · {s}': '❤ ★ {n} · {s}',
+  '❤ Bedava · {s}': '❤ Free · {s}',
+  '📺 Devam · {s}': '📺 Continue · {s}',
+  '★ x2  +{n}': '★ x2  +{n}',
+  '📺 ★ x2  +{n}': '📺 ★ x2  +{n}',
+  '🛒 Mağaza': '🛒 Shop',
+  '📋 Görevler': '📋 Quests',
+  'Efekt sesleri: {d}': 'Sound effects: {d}',
+  'Müzik: {d}': 'Music: {d}',
+  'açık': 'on',
+  'kapalı': 'off',
+  'Müzik': 'Music',
+  'Efekt sesleri': 'Sound effects',
+  'Dil': 'Language',
+  'Ayarlar': 'Settings',
+  'Liderlik tablosu': 'Leaderboard',
+  // index.html
+  'Ekranın herhangi bir yerine basılı tut: yükseklik kazan': 'Hold anywhere on the screen to gain height',
+  ' · Boşluk / ↑ · R: yeniden · M: ses · P: duraklat': ' · Space / ↑ · R: restart · M: sound · P: pause',
+  'Mağaza': 'Shop',
+  'Kapat': 'Close',
+  'Top': 'Balls',
+  'Harita': 'Maps',
+  'Güç': 'Boosts',
+  'Görevler': 'Quests',
+  'Yıldız kazanmak için: oyunda yıldız topla, günlük görevleri bitir, her 10 bölümlük eşik +5.':
+    'Earn stars by collecting them in game, finishing daily quests and every 10-level milestone (+5).',
+  // Mağaza
+  'Kuşanıldı': 'Equipped',
+  'Kuşan': 'Equip',
+  'Uygulamada': 'In app',
+  'Sahipsin': 'Owned',
+  '  · en iyi': '  · best value',
+  'Satın alımları geri yükle': 'Restore purchases',
+  'Tek seferlik satın alımlar; telefon değiştirince geri yüklenir. Yıldız ve görevler gerçek paradan bağımsızdır.':
+    'One-time purchases; restored when you change phones. Stars and quests are independent of real money.',
+  'Satın alma yalnız Android uygulamasında (Google Play). Tarayıcı sürümünde gerçek para yok.':
+    'Purchases are only available in the Android app (Google Play). The browser version has no real money.',
+  'Sıradaki: {d}': 'Next: {d}',
+  '{d} (tam)': '{d} (maxed)',
+  'Tam': 'Max',
+  'Güçlendirmeler kalıcıdır ve bir sonraki koşudan itibaren geçerlidir. Ölünce ★ {c} ile devam edebilirsin (koşu başına en çok {m}, fiyat her seferinde ikiye katlanır).':
+    'Boosts are permanent and apply from your next run. When you crash you can continue for ★ {c} (up to {m} per run, the price doubles each time).',
+  // Görevler
+  'Giriş serisi: {n} gün · yarın gelirsen +{r} ★': 'Login streak: {n} days · come back tomorrow for +{r} ★',
+  'Her gün ilk açılışta yıldız kazanırsın.': 'You earn stars on your first visit every day.',
+  'Görevler her gece yarısı yenilenir. Ödül görev bitince kendiliğinden eklenir.':
+    'Quests refresh every midnight. Rewards are added automatically when a quest is done.',
+  'Bir koşuda {n} yıldız topla': 'Collect {n} stars in one run',
+  'Bir koşuda {n} kapı geç': 'Pass {n} gates in one run',
+  '{n}. bölüme ulaş': 'Reach level {n}',
+  'Bugün toplam {n} kapı geç': 'Pass {n} gates today',
+  'Bugün {n} oyun oyna': 'Play {n} games today',
+  'Kalkanla {n} çarpmadan kurtul': 'Survive {n} crashes with a shield',
+  '{n} hareketli (mor) kapıdan geç': 'Pass {n} moving (purple) gates',
+  '10. bölümü geç (ilk eşik)': 'Clear level 10 (first milestone)',
+  '✓ {t}  +{r} ★': '✓ {t}  +{r} ★',
+  // Ürün adları (shop.js)
+  'Klasik': 'Classic', 'Kor': 'Ember', 'Nane': 'Mint', 'Küp': 'Cube', 'Elmas': 'Diamond', 'Yıldız': 'Star',
+  'Gezegen': 'Planet', 'Alev': 'Flame', 'Kristal': 'Crystal',
+  'Gece': 'Night', 'Gün Batımı': 'Sunset', 'Orman': 'Forest', 'Neon': 'Neon', 'Buz': 'Ice', 'Nebula': 'Nebula',
+  'Kalkan kapasitesi': 'Shield capacity', 'Başlangıç kalkanı': 'Starting shield', 'Uzun güçler': 'Longer power-ups',
+  'Yıldız mıknatısı': 'Star magnet',
+  'Aynı anda en çok {v} kalkan': 'Up to {v} shields at once',
+  'Her koşuya 1 kalkanla başla': 'Start every run with 1 shield',
+  'Koşuya kalkansız başla': 'Start runs without a shield',
+  'Güçler normal süre (4 / 6 sn)': 'Power-ups last the normal time (4 / 6 s)',
+  'Güçler %{p} daha uzun': 'Power-ups last {p}% longer',
+  'Yıldız ve güç normal alanda alınır': 'Stars and power-ups are picked up at normal range',
+  'Yıldız ve güç {v} kat geniş alandan alınır': 'Stars and power-ups are picked up from {v}× range',
+  // Gerçek parayla ürünler (monetize.js)
+  'Reklamsız': 'No Ads',
+  'Reklam izlemeden ödül: bedava devam ve ★ x2 anında': 'Rewards without watching ads: free continue and instant ★ x2',
+  'Destekçi paketi': 'Supporter Pack',
+  'Reklamsız + Alev topu + Nebula haritası + ★ 1000': 'No Ads + Flame ball + Nebula map + ★ 1000',
+  'Güç paketi': 'Boost Pack',
+  'Bütün güçlendirmeler son basamakta': 'Every boost at max level',
+  'Alev topu': 'Flame ball',
+  'Kristal topu': 'Crystal ball',
+  'Nebula haritası': 'Nebula map',
+  'Yalnız satın alınabilen top': 'Exclusive ball, purchase only',
+  'Yalnız satın alınabilen harita, kendi müziğiyle': 'Exclusive map with its own music, purchase only'
+};
+
+function detect(storage, nav) {
+  try {
+    var saved = storage && storage.getItem(STORAGE_KEY);
+    if (LANGS.indexOf(saved) >= 0) return saved;
+  } catch (e) {}
+  var l = (nav && (nav.language || (nav.languages && nav.languages[0]))) || '';
+  return /^tr\b/i.test(l) ? 'tr' : 'en';
+}
+
+var lang = 'tr';
+function setLang(l, storage) {
+  if (LANGS.indexOf(l) < 0) return lang;
+  lang = l;
+  try { if (storage) storage.setItem(STORAGE_KEY, l); } catch (e) {}
+  return lang;
+}
+function getLang() { return lang; }
+
+function fmt(s, p) {
+  return String(s).replace(/\{(\w+)\}/g, function (m, k) { return p && p[k] != null ? String(p[k]) : m; });
+}
+// İngilizcede karşılığı olmayan metinler burada birikir (T39 ve T5l eksik çeviriyi böyle yakalar)
+var missing = {};
+function L(s, p) {
+  if (lang === 'en') {
+    if (Object.prototype.hasOwnProperty.call(EN, s)) return fmt(EN[s], p);
+    if (s) missing[s] = 1;
+  }
+  return fmt(s, p);
+}
+
+var I18n = { missing: missing, STORAGE_KEY: STORAGE_KEY, LANGS: LANGS, EN: EN, detect: detect, setLang: setLang, getLang: getLang, L: L, fmt: fmt };
+if (typeof module !== 'undefined') module.exports = I18n;
+if (typeof window !== 'undefined') {
+  window.GameI18n = I18n;
+  try { lang = detect(window.localStorage, window.navigator); } catch (e) {}
+}
+})();
+
+</script>
 <script>
 // Sekme Gücü — saf oyun mantığı (DOM/canvas/window kullanılmaz)
 // Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; aynı adlı değişken ve
@@ -620,19 +857,36 @@ if (typeof window !== 'undefined') window.GameLogic = API;
 // window.Game* ve module.exports çıkar.
 (function () {
 
+// Dil: i18n.js yüklüyse çevirir, değilse Türkçe metni parametreleriyle doldurur
+function tx(s, p) {
+  var I = typeof window !== 'undefined' && window.GameI18n;
+  if (I) return I.L(s, p);
+  return String(s).replace(/\{(\w+)\}/g, function (m, k) { return p && p[k] != null ? String(p[k]) : m; });
+}
+
+// Ondalık ayırıcı dile göre: Türkçede virgül, İngilizcede nokta
+function decimal(v) {
+  var I = typeof window !== 'undefined' && window.GameI18n;
+  return I && I.getLang() === 'en' ? String(v) : String(v).replace('.', ',');
+}
+
 var STORAGE_KEY = 'sekmeguc-profil';
 
 // Top görünümleri. shape: circle | square | diamond | star | ring
 var BALLS = [
-  { id: 'klasik', name: 'Klasik', price: 0, shape: 'circle', color: '#5ac8fa' },
-  { id: 'kor', name: 'Kor', price: 25, shape: 'circle', color: '#ff8a3d' },
-  { id: 'nane', name: 'Nane', price: 60, shape: 'circle', color: '#46d39a' },
-  { id: 'kup', name: 'Küp', price: 150, shape: 'square', color: '#f2f2f2' },
-  { id: 'elmas', name: 'Elmas', price: 250, shape: 'diamond', color: '#7fe3ff' },
-  { id: 'yildiz', name: 'Yıldız', price: 400, shape: 'star', color: '#ff8ee8' },
-  { id: 'gezegen', name: 'Gezegen', price: 600, shape: 'ring', color: '#c49bff' }
+  { id: 'klasik', name: 'Klasik', price: 0, shape: 'circle', color: '#5ac8fa', fx: 'pulse' },
+  { id: 'kor', name: 'Kor', price: 25, shape: 'circle', color: '#ff8a3d', fx: 'ember' },
+  { id: 'nane', name: 'Nane', price: 60, shape: 'circle', color: '#46d39a', fx: 'swirl' },
+  { id: 'kup', name: 'Küp', price: 150, shape: 'square', color: '#f2f2f2', fx: 'spin' },
+  { id: 'elmas', name: 'Elmas', price: 250, shape: 'diamond', color: '#7fe3ff', fx: 'sparkle' },
+  { id: 'yildiz', name: 'Yıldız', price: 400, shape: 'star', color: '#ff8ee8', fx: 'spin' },
+  { id: 'gezegen', name: 'Gezegen', price: 600, shape: 'ring', color: '#c49bff', fx: 'moon' },
+  // Yalnız gerçek parayla (monetize.js): yıldızla alınamaz; premiumBy = bu hakkı veren ürünler
+  { id: 'alev', name: 'Alev', price: null, shape: 'flame', color: '#ff6b2c', premiumBy: ['bopgate.top.alev', 'bopgate.destekci'], fx: 'flicker' },
+  { id: 'kristal', name: 'Kristal', price: null, shape: 'hex', color: '#9ef0ff', premiumBy: ['bopgate.top.kristal'], fx: 'spin' }
 ];
 
+// Top görünümleri: shape gövde biçimi, fx canlı efekt (render.js drawBall: pulse | ember | swirl | spin | sparkle | moon | flicker)
 // Harita temaları. deco: arka plan süsü (dots | sun | trees | grid | flakes)
 var MAPS = [
   { id: 'gece', name: 'Gece', price: 0, deco: 'dots',
@@ -644,7 +898,9 @@ var MAPS = [
   { id: 'neon', name: 'Neon', price: 350, deco: 'grid',
     c: { bg: '#07050f', line: '#ff2bd6', wall: '#1a0f33', wallPassed: '#120a24', wallMove: '#2a0f3a', edge: '#2bf0ff', edgeMove: '#ff2bd6', deco: 'rgba(255,43,214,0.18)' } },
   { id: 'buz', name: 'Buz', price: 450, deco: 'flakes',
-    c: { bg: '#e8f3fb', line: '#9ac0da', wall: '#b9d6ea', wallPassed: '#d3e5f2', wallMove: '#c9c2ec', edge: '#2a7fb8', edgeMove: '#6a4fc4', deco: 'rgba(120,170,210,0.6)', text: '#12324a', textDim: '#4f7591' } }
+    c: { bg: '#e8f3fb', line: '#9ac0da', wall: '#b9d6ea', wallPassed: '#d3e5f2', wallMove: '#c9c2ec', edge: '#2a7fb8', edgeMove: '#6a4fc4', deco: 'rgba(120,170,210,0.6)', text: '#12324a', textDim: '#4f7591' } },
+  { id: 'nebula', name: 'Nebula', price: null, deco: 'nebula', premiumBy: ['bopgate.harita.nebula', 'bopgate.destekci'],
+    c: { bg: '#0d0820', line: '#3a2560', wall: '#2a1748', wallPassed: '#1b1030', wallMove: '#3a1650', edge: '#ff7ad9', edgeMove: '#7af0ff', deco: 'rgba(255,170,240,0.4)' } }
 ];
 
 var CATALOG = { ball: BALLS, map: MAPS };
@@ -654,13 +910,13 @@ var CATALOG = { ball: BALLS, map: MAPS };
 // Bunlar yalnız oynayarak kazanılan yıldızla alınır; gerçek parayla yıldız satılmaz.
 var UPGRADES = [
   { id: 'kalkan', name: 'Kalkan kapasitesi', prices: [200, 600], values: [1, 2, 3],
-    desc: function (v) { return 'Aynı anda en çok ' + v + ' kalkan'; } },
+    desc: function (v) { return tx('Aynı anda en çok {v} kalkan', { v: v }); } },
   { id: 'baslangic', name: 'Başlangıç kalkanı', prices: [450], values: [0, 1],
-    desc: function (v) { return v ? 'Her koşuya 1 kalkanla başla' : 'Koşuya kalkansız başla'; } },
+    desc: function (v) { return tx(v ? 'Her koşuya 1 kalkanla başla' : 'Koşuya kalkansız başla'); } },
   { id: 'sure', name: 'Uzun güçler', prices: [150, 400], values: [1, 1.25, 1.5],
-    desc: function (v) { return v === 1 ? 'Güçler normal süre (4 / 6 sn)' : 'Güçler %' + Math.round((v - 1) * 100) + ' daha uzun'; } },
+    desc: function (v) { return v === 1 ? tx('Güçler normal süre (4 / 6 sn)') : tx('Güçler %{p} daha uzun', { p: Math.round((v - 1) * 100) }); } },
   { id: 'miknatis', name: 'Yıldız mıknatısı', prices: [250, 650], values: [1, 1.6, 2.2],
-    desc: function (v) { return v === 1 ? 'Yıldız ve güç normal alanda alınır' : 'Yıldız ve güç ' + String(v).replace('.', ',') + ' kat geniş alandan alınır'; } }
+    desc: function (v) { return v === 1 ? tx('Yıldız ve güç normal alanda alınır') : tx('Yıldız ve güç {v} kat geniş alandan alınır', { v: decimal(v) }); } }
 ];
 
 // Ölünce devam: koşu başına en çok REVIVE_MAX kez, fiyat her seferinde ikiye katlanır
@@ -681,7 +937,16 @@ function findUpgrade(id) {
 function createProfile() {
   var upg = {};
   UPGRADES.forEach(function (u) { upg[u.id] = 0; });
-  return { coins: 0, owned: { ball: ['klasik'], map: ['gece'] }, equipped: { ball: 'klasik', map: 'gece' }, upg: upg };
+  return { coins: 0, owned: { ball: ['klasik'], map: ['gece'] }, equipped: { ball: 'klasik', map: 'gece' }, upg: upg,
+    ent: { noads: false, products: [] } };
+}
+
+function isPremium(item) { return !!(item && item.premiumBy); }
+// Gerçek parayla alınan ürünün hakkı kayıtta var mı (kurcalanmış kayıt premium ürünü sahiplenemesin)
+function premiumAllowed(ent, item) {
+  if (!isPremium(item)) return true;
+  for (var i = 0; i < item.premiumBy.length; i++) if (ent.products.indexOf(item.premiumBy[i]) >= 0) return true;
+  return false;
 }
 
 // Dışarıdan gelen (localStorage) veriyi doğrular; tanınmayan her şeyi atar.
@@ -690,10 +955,21 @@ function sanitize(raw) {
   if (!raw || typeof raw !== 'object') return p;
   var coins = Math.floor(Number(raw.coins));
   p.coins = isFinite(coins) && coins > 0 ? Math.min(coins, 999999) : 0;
+  var re = /^bopgate\.[a-z.]{3,40}$/;
+  var rawEnt = raw.ent && typeof raw.ent === 'object' ? raw.ent : {};
+  (Array.isArray(rawEnt.products) ? rawEnt.products : []).forEach(function (id) {
+    if (typeof id === 'string' && re.test(id) && p.ent.products.indexOf(id) < 0 && p.ent.products.length < 20) p.ent.products.push(id);
+  });
+  p.ent.noads = rawEnt.noads === true && p.ent.products.length > 0;
+  if (raw.ads && typeof raw.ads === 'object' && typeof raw.ads.day === 'string' && raw.ads.day.length <= 10) {
+    var x2 = Math.floor(Number(raw.ads.x2));
+    p.ads = { day: raw.ads.day, x2: isFinite(x2) && x2 > 0 ? Math.min(x2, 99) : 0 };
+  }
   ['ball', 'map'].forEach(function (kind) {
     var owned = raw.owned && Array.isArray(raw.owned[kind]) ? raw.owned[kind] : [];
     owned.forEach(function (id) {
-      if (find(kind, id) && p.owned[kind].indexOf(id) < 0) p.owned[kind].push(id);
+      var it = find(kind, id);
+      if (it && premiumAllowed(p.ent, it) && p.owned[kind].indexOf(id) < 0) p.owned[kind].push(id);
     });
     var eq = raw.equipped && raw.equipped[kind];
     if (eq && p.owned[kind].indexOf(eq) >= 0) p.equipped[kind] = eq;
@@ -722,11 +998,12 @@ function owns(p, kind, id) {
   return p.owned[kind].indexOf(id) >= 0;
 }
 
-// { ok, reason } — reason: 'yok' | 'zaten-var' | 'yetersiz'
+// { ok, reason } — reason: 'yok' | 'zaten-var' | 'premium' (yıldızla alınmaz) | 'yetersiz'
 function buy(p, kind, id) {
   var item = find(kind, id);
   if (!item) return { ok: false, reason: 'yok' };
   if (owns(p, kind, id)) return { ok: false, reason: 'zaten-var' };
+  if (isPremium(item)) return { ok: false, reason: 'premium' };
   if (p.coins < item.price) return { ok: false, reason: 'yetersiz' };
   p.coins -= item.price;
   p.owned[kind].push(id);
@@ -791,13 +1068,215 @@ function equippedMap(p) { return find('map', p.equipped.map) || MAPS[0]; }
 var Shop = {
   STORAGE_KEY: STORAGE_KEY, CATALOG: CATALOG, find: find,
   createProfile: createProfile, sanitize: sanitize, load: load, save: save,
-  owns: owns, buy: buy, equip: equip, reward: reward, MILESTONE_BONUS: MILESTONE_BONUS,
+  owns: owns, buy: buy, equip: equip, isPremium: isPremium, reward: reward, MILESTONE_BONUS: MILESTONE_BONUS,
   equippedBall: equippedBall, equippedMap: equippedMap,
   UPGRADES: UPGRADES, findUpgrade: findUpgrade, buyUpgrade: buyUpgrade, upgradeValue: upgradeValue, mods: mods,
   REVIVE_BASE: REVIVE_BASE, REVIVE_MAX: REVIVE_MAX, reviveCost: reviveCost, canRevive: canRevive, payRevive: payRevive
 };
 if (typeof module !== 'undefined') module.exports = Shop;
 if (typeof window !== 'undefined') window.GameShop = Shop;
+})();
+
+</script>
+<script>
+// Sekme Gücü (Bopgate) — gerçek parayla satın alma ve ödüllü reklam (saf mantık + sağlayıcı sarmalayıcı)
+//
+// Ürünler tek seferliktir (Play'de "yönetilen, tüketilmeyen" ürün). Fiyatı Play Console belirler;
+// burada yalnız önerilen fiyat (suggest) ve ürünün verdiği haklar durur.
+// Haklar profilde tutulur: p.ent = { noads: bool, products: [ürün kimlikleri] }. Bir ürünün
+// hakkı bir kez uygulanır (yıldız hediyesi tekrar verilmez); geri yüklemede eksikler uygulanır.
+//
+// Sağlayıcı: Android paketinde window.BopgateNative (android-paket/bridge.js) gerçek Play Billing
+// ve AdMob'a bağlanır. Tarayıcıda yerel köprü yoktur: satın alma ve reklam kapalıdır (dürüstçe
+// "uygulamada" yazar). Testler ve elle deneme için sahte sağlayıcı (mockProvider) vardır;
+// tarayıcıda adres çubuğuna ?demo-odeme eklenirse o kullanılır (gerçek para yok).
+//
+// Ödüllü reklam yerleri: 'devam' (koşu başına 1 bedava devam) ve 'iki_kat' (koşunun yıldızını
+// ikiye katlar, günde en çok AD_X2_PER_DAY kez). Reklamsız hakkı olan oyuncu reklam izlemeden
+// aynı ödülü alır. Ara reklam ve banner yoktur.
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; dosya kendi kapsamında çalışır.
+(function () {
+
+var AD_X2_PER_DAY = 5;
+var PRODUCT_RE = /^bopgate\.[a-z.]{3,40}$/;
+
+var PRODUCTS = [
+  { id: 'bopgate.reklamsiz', name: 'Reklamsız', suggest: '₺49,99',
+    desc: 'Reklam izlemeden ödül: bedava devam ve ★ x2 anında', grants: { noads: true } },
+  { id: 'bopgate.destekci', name: 'Destekçi paketi', suggest: '₺149,99', best: true,
+    desc: 'Reklamsız + Alev topu + Nebula haritası + ★ 1000', grants: { noads: true, items: [['ball', 'alev'], ['map', 'nebula']], coins: 1000 } },
+  { id: 'bopgate.ozellik.paket', name: 'Güç paketi', suggest: '₺99,99',
+    desc: 'Bütün güçlendirmeler son basamakta', grants: { maxUpgrades: true } },
+  { id: 'bopgate.top.alev', name: 'Alev topu', suggest: '₺29,99',
+    desc: 'Yalnız satın alınabilen top', grants: { items: [['ball', 'alev']] } },
+  { id: 'bopgate.top.kristal', name: 'Kristal topu', suggest: '₺29,99',
+    desc: 'Yalnız satın alınabilen top', grants: { items: [['ball', 'kristal']] } },
+  { id: 'bopgate.harita.nebula', name: 'Nebula haritası', suggest: '₺39,99',
+    desc: 'Yalnız satın alınabilen harita, kendi müziğiyle', grants: { items: [['map', 'nebula']] } }
+];
+
+function product(id) {
+  for (var i = 0; i < PRODUCTS.length; i++) if (PRODUCTS[i].id === id) return PRODUCTS[i];
+  return null;
+}
+function ids() { return PRODUCTS.map(function (p) { return p.id; }); }
+
+function ent(p) {
+  if (!p.ent || typeof p.ent !== 'object') p.ent = { noads: false, products: [] };
+  if (!Array.isArray(p.ent.products)) p.ent.products = [];
+  return p.ent;
+}
+function owned(p, id) { return ent(p).products.indexOf(id) >= 0; }
+function hasNoAds(p) { return !!ent(p).noads; }
+
+// Bir ürünün haklarını profile uygular. Yeni uygulandıysa true; zaten varsa false (hediye tekrar yok).
+function grant(Shop, p, id) {
+  var pr = product(id);
+  if (!pr || owned(p, id)) return false;
+  var e = ent(p);
+  e.products.push(id);
+  var g = pr.grants;
+  if (g.noads) e.noads = true;
+  (g.items || []).forEach(function (it) {
+    if (p.owned[it[0]].indexOf(it[1]) < 0) p.owned[it[0]].push(it[1]);
+  });
+  if (g.coins) p.coins = Math.min(999999, p.coins + g.coins);
+  if (g.maxUpgrades) Shop.UPGRADES.forEach(function (u) { p.upg[u.id] = u.prices.length; });
+  return true;
+}
+
+// --- Ödüllü reklam günlük sayacı (profilde: p.ads = { day, x2 }) ---------------
+function adState(p, day) {
+  if (!p.ads || typeof p.ads !== 'object' || p.ads.day !== day) p.ads = { day: day, x2: 0 };
+  return p.ads;
+}
+function x2Left(p, day) { return Math.max(0, AD_X2_PER_DAY - adState(p, day).x2); }
+function useX2(p, day) {
+  var s = adState(p, day);
+  if (s.x2 >= AD_X2_PER_DAY) return false;
+  s.x2++;
+  return true;
+}
+
+// --- Sağlayıcılar --------------------------------------------------------------
+// call: köprüyü çağıran fonksiyon. Köprü anında fırlatsa da, reddetse de oyun yedek sonucu alır.
+function softly(call, fallback) {
+  try {
+    return Promise.resolve(call()).then(function (v) { return v == null ? fallback : v; }, function () { return fallback; });
+  } catch (e) {
+    return Promise.resolve(fallback);
+  }
+}
+
+// native: window.BopgateNative ya da null. Dönen nesne hiçbir zaman fırlatmaz.
+function provider(native) {
+  if (!native || !native.iap || !native.ads) {
+    return {
+      platform: 'web', canBuy: false, canAds: false,
+      products: function () { return Promise.resolve([]); },
+      buy: function (id) { return Promise.resolve({ ok: false, id: id, reason: 'yok' }); },
+      restore: function () { return Promise.resolve([]); },
+      rewarded: function () { return Promise.resolve({ rewarded: false }); }
+    };
+  }
+  return {
+    platform: native.platform || 'android', canBuy: true, canAds: true,
+    products: function (list) { return softly(function () { return native.iap.products(list || ids()); }, []); },
+    buy: function (id) { return softly(function () { return native.iap.buy(id); }, { ok: false, id: id, reason: 'hata' }); },
+    restore: function () { return softly(function () { return native.iap.restore(); }, []); },
+    rewarded: function (placement) { return softly(function () { return native.ads.rewarded(placement); }, { rewarded: false }); }
+  };
+}
+
+// Testler ve ?demo-odeme için: gerçek para ve reklam yok, her şey anında olur.
+// opts: { adResult: true|false, buyResult: true|false, owned: [ids] }
+function mockProvider(opts) {
+  opts = opts || {};
+  var calls = { buy: 0, ads: 0, restore: 0 };
+  var bought = (opts.owned || []).slice();
+  return {
+    platform: 'demo', canBuy: true, canAds: true, calls: calls,
+    products: function (list) {
+      return Promise.resolve((list || ids()).map(function (id) { var p = product(id); return { id: id, price: p ? p.suggest : '?' }; }));
+    },
+    buy: function (id) {
+      calls.buy++;
+      var ok = opts.buyResult !== false && !!product(id);
+      if (ok && bought.indexOf(id) < 0) bought.push(id);
+      return Promise.resolve(ok ? { ok: true, id: id } : { ok: false, id: id, reason: 'iptal' });
+    },
+    restore: function () { calls.restore++; return Promise.resolve(bought.slice()); },
+    rewarded: function () { calls.ads++; return Promise.resolve({ rewarded: opts.adResult !== false }); }
+  };
+}
+
+// Reklamsız hakkı varsa reklam gösterilmeden ödül verilir.
+function rewardedOrSkip(prov, p, placement) {
+  if (hasNoAds(p)) return Promise.resolve({ rewarded: true, skipped: true });
+  if (!prov.canAds) return Promise.resolve({ rewarded: false });
+  return prov.rewarded(placement);
+}
+
+var Monetize = {
+  PRODUCTS: PRODUCTS, PRODUCT_RE: PRODUCT_RE, AD_X2_PER_DAY: AD_X2_PER_DAY,
+  product: product, ids: ids, ent: ent, owned: owned, hasNoAds: hasNoAds, grant: grant,
+  x2Left: x2Left, useX2: useX2, provider: provider, mockProvider: mockProvider, rewardedOrSkip: rewardedOrSkip
+};
+if (typeof module !== 'undefined') module.exports = Monetize;
+if (typeof window !== 'undefined') window.GameMonetize = Monetize;
+})();
+
+</script>
+<script>
+// Sekme Gücü (Bopgate) — bulut kayıt birleştirme (saf mantık; DOM yok)
+//
+// Android'de Play Games kayıtlı oyunu (window.BopgateNative.games.saveGame / loadGame) profili
+// cihazlar arasında taşır. İki kayıt (bu cihaz + bulut) çakışırsa hiçbir kazanım kaybolmasın diye
+// birleştirilir: sahip olunan görünümler ve satın alma hakları birleşimi, güçlendirme basamakları ve
+// rekor en büyüğü, cüzdan en büyüğü (iki cihazda ayrı ayrı biriken yıldız toplanmaz — çift sayım
+// olmasın), kuşanılan görünüm bu cihazınki. Bulut verisi her zaman Shop.sanitize'dan geçer.
+// Tarayıcıda bütün betikler aynı genel kapsamı paylaşır; dosya kendi kapsamında çalışır.
+(function () {
+
+var VERSION = 1;
+
+function pack(profile, best) {
+  return JSON.stringify({ v: VERSION, profile: profile, best: best || 0 });
+}
+
+// Bozuk / tanınmayan veri → null
+function unpack(Shop, text) {
+  try {
+    var d = JSON.parse(text);
+    if (!d || d.v !== VERSION || typeof d.profile !== 'object') return null;
+    var best = Math.floor(Number(d.best));
+    return { profile: Shop.sanitize(d.profile), best: isFinite(best) && best > 0 ? Math.min(best, 1e6) : 0 };
+  } catch (e) {
+    return null;
+  }
+}
+
+function merge(Shop, local, localBest, remote) {
+  if (!remote) return { profile: local, best: localBest || 0, changed: false };
+  var before = pack(local, localBest);
+  var p = Shop.sanitize(JSON.parse(JSON.stringify(local)));
+  var r = remote.profile;
+  p.coins = Math.max(p.coins, r.coins);
+  ['ball', 'map'].forEach(function (k) {
+    r.owned[k].forEach(function (id) { if (p.owned[k].indexOf(id) < 0) p.owned[k].push(id); });
+  });
+  Shop.UPGRADES.forEach(function (u) { p.upg[u.id] = Math.max(p.upg[u.id] || 0, r.upg[u.id] || 0); });
+  r.ent.products.forEach(function (id) { if (p.ent.products.indexOf(id) < 0) p.ent.products.push(id); });
+  p.ent.noads = p.ent.noads || r.ent.noads;
+  // sahip olunan her şey yerleşti; premium kuralları için son bir doğrulama
+  p = Shop.sanitize(p);
+  var best = Math.max(localBest || 0, remote.best || 0);
+  return { profile: p, best: best, changed: pack(p, best) !== before };
+}
+
+var Cloud = { VERSION: VERSION, pack: pack, unpack: unpack, merge: merge };
+if (typeof module !== 'undefined') module.exports = Cloud;
+if (typeof window !== 'undefined') window.GameCloud = Cloud;
 })();
 
 </script>
@@ -812,6 +1291,13 @@ if (typeof window !== 'undefined') window.GameShop = Shop;
 // fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
 // window.Game* ve module.exports çıkar.
 (function () {
+
+// Dil: i18n.js yüklüyse çevirir, değilse Türkçe metni parametreleriyle doldurur
+function tx(s, p) {
+  var I = typeof window !== 'undefined' && window.GameI18n;
+  if (I) return I.L(s, p);
+  return String(s).replace(/\{(\w+)\}/g, function (m, k) { return p && p[k] != null ? String(p[k]) : m; });
+}
 
 var DAILY_KEY = 'sekmeguc-gunluk';
 var QUESTS_PER_DAY = 3;
@@ -850,7 +1336,7 @@ function hash(str) {
 function describe(q) {
   var tpl = null;
   for (var i = 0; i < TEMPLATES.length; i++) if (TEMPLATES[i].kind === q.kind) tpl = TEMPLATES[i];
-  return tpl ? tpl.text.replace('{n}', q.target) : q.kind;
+  return tpl ? tx(tpl.text, { n: q.target }) : q.kind;
 }
 
 // Günün 3 görevi: farklı türlerden, tarihten deterministik
@@ -1016,7 +1502,8 @@ var TUNES = {
   gunbatimi: { root: 60, scale: MAJOR, prog: [0, 4, 5, 3], lead: 'sine' },     // Do majör
   orman: { root: 62, scale: DORIAN, prog: [0, 3, 0, 4], lead: 'triangle' },    // Re dorian
   neon: { root: 55, scale: MINOR, prog: [0, 6, 5, 4], lead: 'square' },        // Sol minör
-  buz: { root: 64, scale: PENTA, prog: [0, 3, 4, 2], lead: 'sine' }            // Mi pentatonik
+  buz: { root: 64, scale: PENTA, prog: [0, 3, 4, 2], lead: 'sine' },           // Mi pentatonik
+  nebula: { root: 53, scale: DORIAN, prog: [0, 2, 5, 3], lead: 'sine' }         // Fa dorian (premium harita)
 };
 
 function tune(mapId) { return TUNES[mapId] || TUNES.gece; }
@@ -1133,6 +1620,13 @@ if (typeof window !== 'undefined') window.GameAudio = AudioAPI;
 // fonksiyonlar birbirini ezmesin diye dosya kendi kapsamında çalışır. Dışarıya yalnız
 // window.Game* ve module.exports çıkar.
 (function () {
+
+// Dil: i18n.js yüklüyse çevirir, değilse Türkçe metni parametreleriyle doldurur
+function L(s, p) {
+  var I = typeof window !== 'undefined' && window.GameI18n;
+  if (I) return I.L(s, p);
+  return String(s).replace(/\{(\w+)\}/g, function (m, k) { return p && p[k] != null ? String(p[k]) : m; });
+}
 
 var TITLE = 'BOPGATE';
 var FONT = "ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif";
@@ -1269,13 +1763,44 @@ function starShape(ctx, cx, cy, r, color) {
 }
 
 var DEFAULT_THEME = { deco: 'dots', c: { bg: '#0b1220', line: '#223352', wall: '#1f3150', wallPassed: '#16233b', wallMove: '#2b2650', edge: '#5ac8fa', edgeMove: '#b39dfa', deco: 'rgba(200,220,255,0.35)' } };
-var DEFAULT_SKIN = { shape: 'circle', color: '#5ac8fa' };
+var DEFAULT_SKIN = { shape: 'circle', color: '#5ac8fa', fx: 'pulse' };
 
 // Top şekli (0,0 merkezli). Mağaza önizlemesi de bunu kullanır.
 // opts.shine: üstte parlama + hacim gradyanı; opts.glow: çevresine ışıma (bulanıklık px)
+function rot(ctx, a) { if (ctx.rotate) ctx.rotate(a); }
+
+// opts: { shine, glow, fx, t } — fx topun canlı efekti (shop.js), t saniye (yoksa durağan: mağaza önizlemesi)
 function drawBall(ctx, shape, r, color, opts) {
   opts = opts || {};
+  var t = opts.t || 0, fx = opts.fx || '';
   ctx.save();
+  // Arka efektler (gövdenin arkasında)
+  if (fx === 'ember' || fx === 'flicker') {
+    var fl = 0.75 + 0.25 * Math.sin(t * 17) * Math.sin(t * 7.3);
+    ctx.save();
+    ctx.globalAlpha = 0.35 * fl;
+    ctx.fillStyle = rad(ctx, 0, 0, r * 0.5, r * 2.1, [[0, rgba(mix(color, '#ffd166', 0.4), 0.9)], [1, rgba(color, 0)]], rgba(color, 0.3));
+    ctx.beginPath(); ctx.arc(0, 0, r * 2.1, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  if (fx === 'pulse' && t) {
+    var pk = (t * 0.8) % 1;
+    ctx.save();
+    ctx.globalAlpha = 0.5 * (1 - pk);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(0, 0, r * (1.15 + 0.7 * pk), 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+  if (fx === 'moon') {
+    // Uydu halkanın arkasından geçerken gövdenin arkasında çizilir
+    var ma = t * 1.8;
+    if (Math.sin(ma) < 0) moonDot(ctx, r, ma, color);
+  }
+  // Dönen biçimler kendi ekseninde döner (top yuvarlak olmadığında hareket hissi)
+  if (fx === 'spin' && t) rot(ctx, t * (shape === 'square' ? 2.2 : shape === 'hex' ? 1.3 : 1.7));
+  if (fx === 'sparkle' && t) rot(ctx, Math.sin(t * 2.4) * 0.22);
+  if (fx === 'flicker' && t) { var sy = 1 + 0.07 * Math.sin(t * 19); ctx.scale(1 / sy, sy); }
   if (opts.glow) glow(ctx, color, opts.glow);
   ctx.fillStyle = opts.shine
     ? rad(ctx, -r * 0.35, -r * 0.4, r * 0.1, r * 1.4, [[0, mix(color, '#ffffff', 0.55)], [0.55, color], [1, mix(color, '#000000', 0.35)]], color)
@@ -1288,11 +1813,38 @@ function drawBall(ctx, shape, r, color, opts) {
     ctx.closePath();
   } else if (shape === 'star') {
     starPath(ctx, 0, 0, r * 1.25);
+  } else if (shape === 'hex') {
+    for (var hi = 0; hi < 6; hi++) {
+      var ha = Math.PI / 6 + hi * Math.PI / 3;
+      if (hi === 0) ctx.moveTo(Math.cos(ha) * r * 1.1, Math.sin(ha) * r * 1.1); else ctx.lineTo(Math.cos(ha) * r * 1.1, Math.sin(ha) * r * 1.1);
+    }
+    ctx.closePath();
+  } else if (shape === 'flame') {
+    // Damla: altta yuvarlak gövde, üstte sivri alev ucu
+    ctx.arc(0, r * 0.2, r * 0.9, Math.PI * 0.05, Math.PI * 0.95);
+    ctx.lineTo(-r * 0.55, -r * 0.35);
+    ctx.lineTo(0, -r * 1.35);
+    ctx.lineTo(r * 0.55, -r * 0.35);
+    ctx.closePath();
   } else {
     ctx.arc(0, 0, r, 0, Math.PI * 2);
   }
   ctx.fill();
   noGlow(ctx);
+  if (shape === 'flame') {
+    // İç alev
+    ctx.fillStyle = mix(color, '#ffe08a', 0.7);
+    ctx.beginPath();
+    ctx.arc(0, r * 0.35, r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (shape === 'hex') {
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.55, -r * 0.95); ctx.lineTo(r * 0.55, r * 0.95);
+    ctx.moveTo(r * 0.55, -r * 0.95); ctx.lineTo(-r * 0.55, r * 0.95);
+    ctx.stroke();
+  }
   if (shape === 'ring') {
     ctx.strokeStyle = mix(color, '#ffffff', 0.25);
     ctx.lineWidth = 2;
@@ -1311,67 +1863,233 @@ function drawBall(ctx, shape, r, color, opts) {
     ctx.fill();
     ctx.globalAlpha = 1;
   }
-  ctx.restore();
-}
-
-// Arka plan süsü: kaymalı (paralaks) ama deterministik; dist = katedilen yol.
-function drawDeco(ctx, theme, dist, geo) {
-  if (geo) setGeo(geo);
-  var col = theme.c.deco;
-  var d = dist || 0;
-  ctx.fillStyle = col;
-  ctx.strokeStyle = col;
-  var i, x;
-  if (theme.deco === 'sun') {
-    // Ufukta çizgili neon güneş; oyun alanında engel gibi görünmesin diye soluk
-    var sr = 70;
+  // Ön efektler (gövdenin üstünde)
+  if (fx === 'swirl') {
+    // Nane: içinde dönen ferah bir kıvrım
     ctx.save();
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = lin(ctx, 0, FLOOR_Y - sr, 0, FLOOR_Y, [[0, 'rgba(255,200,110,0.30)'], [1, 'rgba(255,90,150,0.16)']], col);
-    ctx.beginPath();
-    ctx.arc(390, FLOOR_Y, sr, Math.PI, Math.PI * 2);
-    ctx.fill();
+    rot(ctx, t * 3);
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = Math.max(1, r * 0.16);
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 0.9); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.55, Math.PI, Math.PI * 1.9); ctx.stroke();
     ctx.restore();
-    for (i = 0; i < 3; i++) ctx.fillRect(0, FLOOR_Y - 14 - i * 16, W0, 1);
-  } else if (theme.deco === 'trees') {
-    for (i = 0; i < 9; i++) {
-      x = ((i * 83 - d * 0.25) % (W0 + 80) + W0 + 80) % (W0 + 80) - 40;
-      var h = 60 + (i * 37) % 70;
-      ctx.beginPath();
-      ctx.moveTo(x, FLOOR_Y); ctx.lineTo(x + 26, FLOOR_Y - h); ctx.lineTo(x + 52, FLOOR_Y);
-      ctx.closePath();
-      ctx.fill();
+  }
+  if (fx === 'sparkle' || (fx === 'spin' && shape === 'star')) {
+    // Elmas / yıldız: köşede yanıp sönen dört kollu pırıltı
+    var sp = Math.max(0, Math.sin(t * 3.1));
+    if (!t) sp = 0.8;
+    ctx.save();
+    ctx.globalAlpha = sp;
+    ctx.fillStyle = '#ffffff';
+    sparkle(ctx, r * 0.55, -r * 0.6, r * 0.5 * (0.6 + 0.4 * sp));
+    ctx.restore();
+  }
+  if (fx === 'ember') {
+    // Kor: çevresinde süzülen kıvılcımlar
+    ctx.save();
+    ctx.fillStyle = mix(color, '#ffe08a', 0.6);
+    for (var e = 0; e < 3; e++) {
+      var ea = t * (1.6 + e * 0.5) + e * 2.1;
+      var er = r * (1.45 + 0.2 * Math.sin(t * 3 + e));
+      ctx.globalAlpha = 0.55 + 0.45 * Math.sin(t * 6 + e * 2);
+      ctx.beginPath(); ctx.arc(Math.cos(ea) * er, Math.sin(ea) * er, Math.max(1, r * 0.13), 0, Math.PI * 2); ctx.fill();
     }
-  } else if (theme.deco === 'grid') {
-    ctx.lineWidth = 1;
-    var off = (d * 0.5) % 40;
-    for (x = -off; x < W0; x += 40) { ctx.beginPath(); ctx.moveTo(x, CEIL_Y); ctx.lineTo(x, FLOOR_Y); ctx.stroke(); }
-    for (var y = CEIL_Y; y < FLOOR_Y; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W0, y); ctx.stroke(); }
-  } else if (theme.deco === 'flakes') {
-    for (i = 0; i < 26; i++) {
-      x = ((i * 61 - d * 0.15) % W0 + W0) % W0;
-      var fy = CEIL_Y + 10 + ((i * 97) % (FLOOR_Y - CEIL_Y - 20));
-      ctx.fillRect(x - 1.5, fy - 1.5, 3, 3);
-    }
-  } else {
-    // İki katman yıldız: uzak (küçük, yavaş) ve yakın (büyük, hızlı) — derinlik hissi
-    for (i = 0; i < 30; i++) {
-      x = ((i * 53 - d * 0.1) % W0 + W0) % W0;
-      ctx.fillRect(x, CEIL_Y + 8 + ((i * 71) % (FLOOR_Y - CEIL_Y - 16)), 2, 2);
-    }
-    ctx.globalAlpha = 0.6;
-    for (i = 0; i < 12; i++) {
-      x = ((i * 97 - d * 0.3) % W0 + W0) % W0;
-      ctx.beginPath();
-      ctx.arc(x, CEIL_Y + 20 + ((i * 131) % (FLOOR_Y - CEIL_Y - 40)), 1.6, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+  if (fx === 'flicker') {
+    // Alev: içte titreyen sıcak çekirdek
+    ctx.save();
+    ctx.globalAlpha = 0.6 + 0.4 * Math.sin(t * 23);
+    ctx.fillStyle = '#fff3c4';
+    ctx.beginPath(); ctx.arc(0, r * 0.4, r * 0.22, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+  if (fx === 'moon') {
+    var mb = t * 1.8;
+    if (Math.sin(mb) >= 0) { ctx.save(); moonDot(ctx, r, mb, color); ctx.restore(); }
   }
 }
 
+// Gezegenin uydusu: yatık yörüngede döner (yörünge halkayla aynı basıklıkta)
+function moonDot(ctx, r, a, color) {
+  ctx.fillStyle = mix(color, '#ffffff', 0.6);
+  ctx.beginPath();
+  ctx.arc(Math.cos(a) * r * 1.9, Math.sin(a) * r * 0.62, Math.max(1.2, r * 0.22), 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Dört kollu pırıltı (✦)
+function sparkle(ctx, x, y, s) {
+  ctx.beginPath();
+  ctx.moveTo(x, y - s); ctx.lineTo(x + s * 0.25, y - s * 0.25); ctx.lineTo(x + s, y);
+  ctx.lineTo(x + s * 0.25, y + s * 0.25); ctx.lineTo(x, y + s); ctx.lineTo(x - s * 0.25, y + s * 0.25);
+  ctx.lineTo(x - s, y); ctx.lineTo(x - s * 0.25, y - s * 0.25);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// Arka plan süsü: kaymalı (paralaks) ama deterministik; dist = katedilen yol, t = saniye (pırıltı,
+// kar, ateş böceği gibi yerinde canlanan ayrıntılar; mağaza önizlemesinde verilmez → durağan).
+// Uzak katman yavaş, yakın katman hızlı kayar: derinlik hissi. Süsler soluk tutulur ki kapılarla karışmasın.
+function wrapX(base, speed, d, span) { return ((base - d * speed) % span + span) % span; }
+function ridge(ctx, d, speed, baseY, amp, step, seed) {
+  // Kayan dağ/tepe silueti: sabit tohumlu yükseklikler, dünya ile birlikte akar
+  var off = (d * speed) % step;
+  var first = Math.floor(d * speed / step);
+  ctx.beginPath();
+  ctx.moveTo(0, FLOOR_Y);
+  for (var k = 0; k <= Math.ceil(W0 / step) + 1; k++) {
+    var n = first + k;
+    var hv = Math.sin(n * 12.9898 + seed * 78.233) * 43758.5453;
+    var hgt = amp * (0.35 + 0.65 * (hv - Math.floor(hv)));
+    ctx.lineTo(k * step - off, baseY - hgt);
+  }
+  ctx.lineTo(W0, FLOOR_Y);
+  ctx.closePath();
+  ctx.fill();
+}
+function drawDeco(ctx, theme, dist, geo, t) {
+  if (geo) setGeo(geo);
+  var col = theme.c.deco;
+  var d = dist || 0;
+  t = t || 0;
+  var span = FLOOR_Y - CEIL_Y;
+  ctx.fillStyle = col;
+  ctx.strokeStyle = col;
+  var i, x, y;
+  ctx.save();
+  if (theme.deco === 'sun') {
+    // Ufukta çizgili neon güneş + iki kat kayan dağ silueti
+    var sr = 78;
+    ctx.fillStyle = lin(ctx, 0, FLOOR_Y - sr, 0, FLOOR_Y, [[0, 'rgba(255,214,120,0.42)'], [1, 'rgba(255,90,150,0.22)']], col);
+    ctx.beginPath();
+    ctx.arc(390, FLOOR_Y - 26, sr, Math.PI, Math.PI * 2);
+    ctx.fill();
+    // Güneşin üstünden geçen boşluk çizgileri (synthwave)
+    ctx.fillStyle = theme.c.bg;
+    for (i = 0; i < 4; i++) ctx.fillRect(390 - sr, FLOOR_Y - 34 - i * 14, sr * 2, 2 + i * 0.6);
+    ctx.fillStyle = 'rgba(120,40,90,0.45)';
+    ridge(ctx, d, 0.08, FLOOR_Y, 70, 64, 1);
+    ctx.fillStyle = 'rgba(60,18,48,0.75)';
+    ridge(ctx, d, 0.2, FLOOR_Y, 38, 46, 2);
+  } else if (theme.deco === 'trees') {
+    // Uzak (soluk, yavaş) ve yakın (koyu, hızlı) çam sırası + yanıp sönen ateş böcekleri
+    var layers = [[0.12, 0.35, 0.6, 61, 11], [0.3, 0.75, 1, 83, 9]];
+    for (var L2 = 0; L2 < layers.length; L2++) {
+      var ly = layers[L2];
+      ctx.globalAlpha = ly[1];
+      for (i = 0; i < ly[4]; i++) {
+        x = wrapX(i * ly[3], ly[0], d, W0 + 80) - 40;
+        var h = (60 + (i * 37) % 70) * ly[2];
+        var w = 26 * ly[2];
+        ctx.beginPath();
+        ctx.moveTo(x - w, FLOOR_Y); ctx.lineTo(x, FLOOR_Y - h); ctx.lineTo(x + w, FLOOR_Y);
+        ctx.moveTo(x - w * 0.8, FLOOR_Y - h * 0.35); ctx.lineTo(x, FLOOR_Y - h * 1.12); ctx.lineTo(x + w * 0.8, FLOOR_Y - h * 0.35);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+    for (i = 0; i < 14; i++) {
+      var blink = Math.sin(t * (1.3 + (i % 4) * 0.4) + i * 1.7);
+      if (blink <= 0.2) continue;
+      x = wrapX(i * 71 + 30 * Math.sin(t * 0.5 + i), 0.18, d, W0);
+      y = FLOOR_Y - 30 - ((i * 53) % Math.max(60, span * 0.55)) + 8 * Math.sin(t * 0.9 + i);
+      ctx.globalAlpha = blink;
+      ctx.fillStyle = '#e8ff8a';
+      glow(ctx, '#d8ff6a', 8);
+      ctx.beginPath(); ctx.arc(x, y, 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+    noGlow(ctx);
+  } else if (theme.deco === 'grid') {
+    // Uzakta ışıklı pencereli şehir silueti, önde akan neon ızgara
+    var bw = 34, bspan = W0 + bw * 2;
+    for (i = 0; i < 18; i++) {
+      x = wrapX(i * 37, 0.07, d, bspan) - bw;
+      var bh = 50 + ((i * 67) % 120);
+      ctx.fillStyle = 'rgba(20,10,45,0.9)';
+      ctx.fillRect(x, FLOOR_Y - bh, bw - 4, bh);
+      for (var wy = FLOOR_Y - bh + 8; wy < FLOOR_Y - 6; wy += 11) {
+        for (var wx = 0; wx < 3; wx++) {
+          var on = ((i * 7 + wx * 3 + Math.floor(wy)) % 5) === 0;
+          if (!on) continue;
+          ctx.fillStyle = (i + wx) % 3 ? 'rgba(43,240,255,0.45)' : 'rgba(255,43,214,0.45)';
+          ctx.fillRect(x + 4 + wx * 9, wy, 4, 4);
+        }
+      }
+    }
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1;
+    var off = (d * 0.5) % 40;
+    for (x = -off; x < W0; x += 40) { ctx.beginPath(); ctx.moveTo(x, CEIL_Y); ctx.lineTo(x, FLOOR_Y); ctx.stroke(); }
+    for (y = CEIL_Y; y < FLOOR_Y; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W0, y); ctx.stroke(); }
+  } else if (theme.deco === 'nebula') {
+    // Yavaş kayan, hafifçe nefes alan bulutsular + pırıldayan yıldız tozu
+    var blobs = [['rgba(255,90,210,0.16)', 0, 0.3, 150], ['rgba(90,220,255,0.13)', 260, 0.55, 180], ['rgba(170,110,255,0.15)', 470, 0.2, 130]];
+    for (i = 0; i < blobs.length; i++) {
+      var bx = wrapX(blobs[i][1], 0.05, d, W0 + 300) - 150;
+      var byy = CEIL_Y + span * blobs[i][2];
+      var br = blobs[i][3] * (1 + 0.06 * Math.sin(t * 0.7 + i * 2));
+      ctx.fillStyle = rad(ctx, bx, byy, 0, br, [[0, blobs[i][0]], [1, 'rgba(0,0,0,0)']], blobs[i][0]);
+      ctx.beginPath(); ctx.arc(bx, byy, br, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = col;
+    for (i = 0; i < 40; i++) {
+      x = wrapX(i * 47, 0.12, d, W0);
+      ctx.globalAlpha = 0.5 + 0.5 * Math.abs(Math.sin(t * 1.5 + i * 0.9));
+      var ss = i % 5 === 0 ? 2.5 : 1.5;
+      ctx.fillRect(x, CEIL_Y + 6 + ((i * 89) % (span - 12)), ss, ss);
+    }
+  } else if (theme.deco === 'flakes') {
+    // Uzakta buzul tepeleri; önde yavaşça yağan, salınan kar
+    ctx.fillStyle = 'rgba(160,200,230,0.35)';
+    ridge(ctx, d, 0.08, FLOOR_Y, 90, 70, 3);
+    ctx.fillStyle = 'rgba(200,225,245,0.55)';
+    ridge(ctx, d, 0.18, FLOOR_Y, 45, 52, 4);
+    ctx.fillStyle = col;
+    for (i = 0; i < 34; i++) {
+      var fall = (t * (14 + (i % 5) * 5) + (i * 97)) % span;
+      x = wrapX(i * 61 + 10 * Math.sin(t * 1.1 + i), 0.15, d, W0);
+      y = CEIL_Y + fall;
+      var fs = i % 3 === 0 ? 4 : 2.6;
+      ctx.beginPath(); ctx.arc(x, y, fs / 2, 0, Math.PI * 2); ctx.fill();
+    }
+  } else {
+    // Gece: hilal ay, iki kat yıldız (uzak küçük, yakın büyük) ve pırıltı
+    var mx = wrapX(420, 0.02, d, W0 + 120) - 60, my = CEIL_Y + Math.min(90, span * 0.16);
+    glow(ctx, '#cfe3ff', 16);
+    ctx.fillStyle = 'rgba(225,236,255,0.85)';
+    ctx.beginPath(); ctx.arc(mx, my, 20, 0, Math.PI * 2); ctx.fill();
+    noGlow(ctx);
+    ctx.fillStyle = theme.c.bg;
+    ctx.beginPath(); ctx.arc(mx + 9, my - 6, 18, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = col;
+    for (i = 0; i < 30; i++) {
+      x = wrapX(i * 53, 0.1, d, W0);
+      ctx.globalAlpha = 0.55 + 0.45 * Math.sin(t * (1 + (i % 3) * 0.6) + i);
+      ctx.fillRect(x, CEIL_Y + 8 + ((i * 71) % (span - 16)), 2, 2);
+    }
+    ctx.globalAlpha = 0.6;
+    for (i = 0; i < 12; i++) {
+      x = wrapX(i * 97, 0.3, d, W0);
+      ctx.beginPath();
+      ctx.arc(x, CEIL_Y + 20 + ((i * 131) % (span - 40)), 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Ara sıra parlayan bir yıldız
+    var tw = Math.max(0, Math.sin(t * 1.3));
+    if (tw > 0.05) {
+      ctx.globalAlpha = tw;
+      ctx.fillStyle = '#ffffff';
+      sparkle(ctx, wrapX(140, 0.1, d, W0), CEIL_Y + span * 0.22, 5 * tw);
+    }
+  }
+  ctx.restore();
+}
+
 // Gök, zemin ızgarası, neon tavan/zemin çizgisi
-function drawStage(ctx, theme, dist) {
+function drawStage(ctx, theme, dist, t) {
   var tc = theme.c, light = isLight(theme);
   ctx.fillStyle = lin(ctx, 0, 0, 0, H0, light
     ? [[0, mix(tc.bg, '#ffffff', 0.5)], [1, tc.bg]]
@@ -1382,7 +2100,7 @@ function drawStage(ctx, theme, dist) {
     ctx.fillStyle = lin(ctx, 0, FLOOR_Y - 140, 0, FLOOR_Y, [[0, rgba(tc.edge, 0)], [1, rgba(tc.edge, 0.10)]], 'rgba(0,0,0,0)');
     ctx.fillRect(0, FLOOR_Y - 140, W0, 140);
   }
-  drawDeco(ctx, theme, dist);
+  drawDeco(ctx, theme, dist, null, t);
 
   // Zemin: perspektif ızgara (ufuk = zemin çizgisi), yolla birlikte akar
   var floorH = H0 - FLOOR_Y;
@@ -1420,7 +2138,7 @@ function drawStage(ctx, theme, dist) {
   ctx.restore();
 }
 
-function drawWall(ctx, o, tc, light) {
+function drawWall(ctx, o, tc, light, flash) {
   var neon = o.passed ? tc.line : (o.move ? tc.edgeMove : (o.pulse ? PULSE_EDGE : tc.edge));
   var base = o.passed || o.hit ? tc.wallPassed : (o.move ? tc.wallMove : tc.wall);
   ctx.save();
@@ -1447,6 +2165,19 @@ function drawWall(ctx, o, tc, light) {
   ctx.fillStyle = neon;
   rrect(ctx, o.x - 4, o.gapY - 7, WALL_W + 8, 7, 3.5); ctx.fill();
   rrect(ctx, o.x - 4, botY, WALL_W + 8, 7, 3.5); ctx.fill();
+  // Az önce geçildi: ağız kapakları ve perde kısa bir an beyaz parlar
+  if (flash > 0) {
+    var hot = o.move ? tc.edgeMove : (o.pulse ? PULSE_EDGE : tc.edge);
+    ctx.globalAlpha = flash;
+    glow(ctx, hot, 26);
+    ctx.fillStyle = mix(hot, '#ffffff', 0.6);
+    rrect(ctx, o.x - 7, o.gapY - 9, WALL_W + 14, 9, 4.5); ctx.fill();
+    rrect(ctx, o.x - 7, botY, WALL_W + 14, 9, 4.5); ctx.fill();
+    noGlow(ctx);
+    ctx.globalAlpha = flash * 0.35;
+    ctx.fillStyle = hot;
+    ctx.fillRect(o.x, o.gapY, WALL_W, o.gapH);
+  }
   ctx.restore();
 }
 
@@ -1454,7 +2185,7 @@ function questLines(view) {
   var q = view.questDone || [];
   var out = [];
   for (var i = 0; i < q.length && i < 3; i++) {
-    out.push({ text: '✓ ' + q[i].text + '  +' + q[i].reward + ' ★', font: font(600, 15), color: '#46d39a', h: 24 });
+    out.push({ text: L('✓ {t}  +{r} ★', { t: q[i].text, r: q[i].reward }), font: font(600, 15), color: '#46d39a', h: 24 });
   }
   return out;
 }
@@ -1576,7 +2307,7 @@ function draw(ctx, state, view) {
   var skin = view.skin || DEFAULT_SKIN;
   var textCol = tc.text || '#e8ecf1';
   var textDim = tc.textDim || '#9fb3d1';
-  drawStage(ctx, theme, state.distance);
+  drawStage(ctx, theme, state.distance, t);
 
   // Ekran sarsıntısı (≤ 200 ms, zamanlamayı main.js yapar)
   var shake = fx.shake || 0;
@@ -1588,7 +2319,9 @@ function draw(ctx, state, view) {
   var i;
   for (i = 0; i < state.obstacles.length; i++) {
     var o = state.obstacles[i];
-    drawWall(ctx, o, tc, light);
+    var fl = 0;
+    for (var f = 0; f < (fx.flash || []).length; f++) if (fx.flash[f].o === o) fl = Math.max(fl, fx.flash[f].life / fx.flash[f].max);
+    drawWall(ctx, o, tc, light, fl);
     if (o.spike) {
       ctx.globalAlpha = o.spike.hit ? 0.3 : 1;
       spikes(ctx, o.x + WALL_W + o.spike.dx, o.spike.w, FLOOR_Y);
@@ -1652,11 +2385,13 @@ function draw(ctx, state, view) {
   var sq = fx.squash || 0;
   var sx = 1 + 0.35 * sq;
   var sy = 1 - 0.3 * sq;
-  ctx.save();
-  ctx.translate(BALL_X, state.y + R0 * (1 - sy));
-  ctx.scale(sx, sy);
-  drawBall(ctx, skin.shape, R0, ballCol, { shine: true, glow: 18 });
-  ctx.restore();
+  if (phase !== 'ready') {
+    ctx.save();
+    ctx.translate(BALL_X, state.y + R0 * (1 - sy));
+    ctx.scale(sx, sy);
+    drawBall(ctx, skin.shape, R0, ballCol, { shine: true, glow: 18, fx: state.status === 'over' ? '' : skin.fx, t: t });
+    ctx.restore();
+  }
 
   // Kalkan: dönen çift halka
   if (state.shield > 0 && state.status === 'playing') {
@@ -1687,8 +2422,23 @@ function draw(ctx, state, view) {
   ctx.restore();
   ctx.globalAlpha = 1;
 
+  if (fx.callout && phase === 'playing') {
+    var co = fx.callout, k = 1 - co.life / co.max;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, co.life / co.max * 2.5);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    var cs = (co.big ? 24 : 19) * (k < 0.15 ? 0.7 + 2 * k : 1);
+    ctx.font = font(900, Math.round(cs));
+    ctx.fillStyle = GOLD;
+    glow(ctx, GOLD, co.big ? 18 : 10);
+    var cyy = Math.max(CEIL_Y + 22, Math.min(FLOOR_Y - 22, co.y - 34 - 30 * k));
+    ctx.fillText(co.text, BALL_X + 22, cyy);
+    ctx.restore();
+  }
+
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
-  drawHud(ctx, state, view, tc, textCol, textDim);
+  if (phase !== 'ready') drawHud(ctx, state, view, tc, textCol, textDim);
 
   // Bölüm geçişi yazısı (main.js süreyi tutar)
   if (view.banner && view.banner.a > 0) {
@@ -1700,7 +2450,8 @@ function draw(ctx, state, view) {
     ctx.fillStyle = textCol;
     ctx.font = font(900, 40);
     glow(ctx, tc.edge, 20);
-    ctx.fillText(view.banner.title.toLocaleUpperCase('tr'), W0 / 2, by);
+    var I = typeof window !== 'undefined' && window.GameI18n;
+    ctx.fillText(view.banner.title.toLocaleUpperCase(I && I.getLang() === 'en' ? 'en' : 'tr'), W0 / 2, by);
     noGlow(ctx);
     if (view.banner.sub) {
       ctx.font = font(700, 17);
@@ -1713,10 +2464,10 @@ function draw(ctx, state, view) {
   if (view.muted) {
     ctx.fillStyle = textDim;
     ctx.font = font(600, 14);
-    ctx.fillText('sessiz', 14, FLOOR_Y + 28);
+    ctx.fillText(L('sessiz'), 14, FLOOR_Y + 28);
   }
 
-  drawScreens(ctx, state, view, phase, theme, best, t);
+  drawScreens(ctx, state, view, phase, theme, best, t, skin);
 }
 
 function drawHud(ctx, state, view, tc, textCol, textDim) {
@@ -1727,7 +2478,7 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   var pop = fx.scorePop || 0;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = font(900, Math.round(26 + 8 * pop));
+  ctx.font = font(900, Math.round(28 + 8 * pop));
   ctx.fillStyle = textCol;
   glow(ctx, tc.edge, 10 + 10 * pop);
   ctx.fillText(String(state.score), W0 / 2, CEIL_Y / 2 + 1);
@@ -1736,7 +2487,7 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   ctx.textAlign = 'left';
   ctx.font = font(800, 12);
   ctx.fillStyle = textDim;
-  ctx.fillText('BÖLÜM ' + state.level, 14, 10);
+  ctx.fillText(L('BÖLÜM {n}', { n: state.level }), 14, 10);
   var done = state.score % per;
   for (var s = 0; s < per; s++) {
     ctx.fillStyle = s < done ? tc.edge : rgba(tc.edge, 0.2);
@@ -1747,7 +2498,7 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   ctx.textAlign = 'right';
   ctx.font = font(800, 12);
   ctx.fillStyle = textDim;
-  ctx.fillText('REKOR', W0 - 14, 10);
+  ctx.fillText(L('REKOR'), W0 - 14, 10);
   ctx.font = font(800, 14);
   ctx.fillStyle = textCol;
   ctx.fillText(String(view.best || 0), W0 - 14, 22);
@@ -1772,28 +2523,44 @@ function drawHud(ctx, state, view, tc, textCol, textDim) {
   });
 }
 
-function drawScreens(ctx, state, view, phase, theme, best, t) {
+function drawScreens(ctx, state, view, phase, theme, best, t, skin) {
   var tc = theme.c, light = isLight(theme);
-  var tapWord = view.touch ? 'Dokun' : 'Boşluk / dokun';
+  var tapWord = L(view.touch ? 'Dokun' : 'Boşluk / dokun');
   var hasCoins = typeof view.coins === 'number';
   if (phase === 'ready') {
     dim(ctx, light);
-    var ly = Math.max(CEIL_Y + 90, H0 * 0.3);
+    // İçerik bloğu (zıplayan top → logo → düğme → rozetler) oyun alanının ortasına oturur
+    var mid = (CEIL_Y + FLOOR_Y) / 2;
+    var ly = Math.max(CEIL_Y + 150, mid - 120);
+    // Kuşanılmış top logonun üstünde zıplar: oyuncu neyi oynayacağını hemen görür
+    var hop = Math.abs(Math.sin(t * 2.6));
+    var bY = ly - 74 - 46 * hop;
+    var land = 1 - hop;
+    ctx.save();
+    ctx.fillStyle = rgba(tc.edge, 0.18 + 0.2 * land);
+    ctx.beginPath();
+    if (ctx.ellipse) ctx.ellipse(W0 / 2, ly - 52, 20 - 8 * hop, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.translate(W0 / 2, bY);
+    var sqz = land > 0.85 ? (land - 0.85) / 0.15 : 0;
+    ctx.scale(1 + 0.18 * sqz, 1 - 0.15 * sqz);
+    drawBall(ctx, (skin || DEFAULT_SKIN).shape, 20, (skin || DEFAULT_SKIN).color, { shine: true, glow: 26, fx: (skin || DEFAULT_SKIN).fx, t: t });
+    ctx.restore();
     drawLogo(ctx, W0 / 2, ly, theme, t);
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = font(600, 17);
     ctx.fillStyle = tc.textDim || '#9fb3d1';
-    ctx.fillText('Basılı tut · yüksel · kapıdan geç', W0 / 2, ly + 52);
+    ctx.fillText(L('Basılı tut · yüksel · kapıdan geç'), W0 / 2, ly + 52);
     ctx.restore();
-    var by = Math.min(ly + 170, H0 - 230);
-    pillButton(ctx, W0 / 2, by, 230, 66, '▶  OYNA', t);
+    var by = Math.min(ly + 150, FLOOR_Y - 170);
+    pillButton(ctx, W0 / 2, by, 230, 66, L('▶  OYNA'), t);
     ctx.save();
     ctx.textAlign = 'center';
     ctx.font = font(600, 15);
     ctx.fillStyle = tc.textDim || '#9fb3d1';
-    ctx.fillText(tapWord + ' ve başla', W0 / 2, by + 58);
+    ctx.fillText(L('{w} ve başla', { w: tapWord }), W0 / 2, by + 58);
     ctx.restore();
     var cy = by + 104;
     chip(ctx, W0 / 2 - 82, cy, '🏆 ' + best, tc.edge, light);
@@ -1810,8 +2577,8 @@ function drawScreens(ctx, state, view, phase, theme, best, t) {
   } else if (phase === 'paused') {
     dim(ctx, light);
     card(ctx, [
-      { text: 'DURAKLATILDI', font: font(900, 28), glow: tc.edge, h: 46 },
-      { text: tapWord + ' ve devam et', font: font(600, 17), color: tc.edge, h: 30 }
+      { text: L('DURAKLATILDI'), font: font(900, 28), glow: tc.edge, h: 46 },
+      { text: L('{w} ve devam et', { w: tapWord }), font: font(600, 17), color: tc.edge, h: 30 }
     ], tc.edge, light, 360);
   } else if (phase === 'over' || phase === 'won') {
     // Oyun sonsuz: tek bitiş ekranı. 'won' yalnız eski durumlar için aynı ekrana düşer.
@@ -1820,22 +2587,25 @@ function drawScreens(ctx, state, view, phase, theme, best, t) {
     var body = light ? '#12324a' : '#e8ecf1';
     var muted = light ? '#4f7591' : '#9fb3d1';
     var rows = [
-      { text: 'OYUN BİTTİ', font: font(900, 30), color: '#ff5d7a', glow: '#ff5d7a', h: 44 },
-      { text: state.overReason, font: font(500, 16), color: muted, h: 26 },
+      { text: L('OYUN BİTTİ'), font: font(900, 30), color: '#ff5d7a', glow: '#ff5d7a', h: 44 },
+      { text: L(state.overReason), font: font(500, 16), color: muted, h: 26 },
       { text: String(state.score), font: font(900, 76), color: body, glow: tc.edge, h: 84 },
-      { text: 'KAPI', font: font(800, 13), color: muted, h: 22 }
+      { text: L('KAPI'), font: font(800, 13), color: muted, h: 22 }
     ];
-    if (view.newBest) rows.push({ text: '★ YENİ REKOR ★', font: font(900, 18), color: GOLD, glow: GOLD, pill: GOLD, pillW: 210, h: 40 });
-    else rows.push({ text: 'Rekor: ' + best, font: font(700, 16), color: body, h: 32 });
-    rows.push({ text: 'Bölüm ' + state.level + (ms ? '  ·  ' + ms + ' eşik' : ''), font: font(600, 15), color: ms ? GOLD : muted, h: 28 });
-    if (hasCoins && view.earned) rows.push({ text: '+' + view.earned + ' ★   (cüzdan ★ ' + view.coins + ')', font: font(800, 18), color: GOLD, h: 34 });
-    else if (hasCoins) rows.push({ text: 'Cüzdan ★ ' + view.coins, font: font(700, 15), color: GOLD, h: 30 });
+    if (view.newBest) rows.push({ text: L('★ YENİ REKOR ★'), font: font(900, 18), color: GOLD, glow: GOLD, pill: GOLD, pillW: 210, h: 40 });
+    else rows.push({ text: L('Rekor: {n}', { n: best }), font: font(700, 16), color: body, h: 32 });
+    rows.push({ text: L('Bölüm {n}', { n: state.level }) + (ms ? '  ·  ' + L('{n} eşik', { n: ms }) : ''), font: font(600, 15), color: ms ? GOLD : muted, h: 28 });
+    if (hasCoins && view.earned) rows.push({ text: L('+{e} ★   (cüzdan ★ {c})', { e: view.earned, c: view.coins }), font: font(800, 18), color: GOLD, h: 34 });
+    else if (hasCoins) rows.push({ text: L('Cüzdan ★ {n}', { n: view.coins }), font: font(700, 15), color: GOLD, h: 30 });
     rows = rows.concat(questLines(view));
     if (view.revive) {
-      rows.push({ text: '❤ Devam: aşağıdaki düğme (★ ' + view.revive.cost + ')' + (view.touch ? '' : ' · C'), font: font(800, 16), color: PINK, h: 34 });
+      var rv = view.revive;
+      var adWord = L(rv.noads ? 'bedava' : 'reklamla');
+      var how = rv.cost && rv.ad ? L('★ {n} ya da {ad}', { n: rv.cost, ad: adWord }) : rv.cost ? '★ ' + rv.cost : adWord;
+      rows.push({ text: L('❤ Devam: {how} · aşağıda', { how: how }) + (view.touch || !rv.cost ? '' : ' · C'), font: font(800, 16), color: PINK, h: 34 });
     }
     rows.push(view.canRestart
-      ? { text: (view.touch ? 'Dokun' : 'Dokun ya da R') + ': tekrar oyna', font: font(800, 17), color: tc.edge, glow: tc.edge, h: 38 }
+      ? { text: L('{w}: tekrar oyna', { w: L(view.touch ? 'Dokun' : 'Dokun ya da R') }), font: font(800, 17), color: tc.edge, glow: tc.edge, h: 38 }
       : { text: ' ', h: 38 });
     card(ctx, rows, view.newBest ? GOLD : '#ff5d7a', light, 420);
   }
@@ -1864,7 +2634,17 @@ var SQUASH_MS = 120;
 var TRAIL_LEN = 10;
 var RING_S = 0.35; // kapı geçiş halkasının ömrü (sn)
 var POP_S = 0.25;  // skor sıçramasının süresi (sn)
+var FLASH_S = 0.3; // geçilen kapının parlama süresi (sn)
+var CALLOUT_S = 0.9; // "MÜKEMMEL" yazısının ömrü (sn)
+var PERFECT_F = 0.2; // kapı ortasına bu oran (ağız yüksekliğinin) kadar yakın geçiş "mükemmel" sayılır
 var REVIVE_MS = 5000; // ölünce "★ ile devam" teklifinin süresi
+
+// Dil: i18n.js yüklüyse çevirir, değilse Türkçe metni parametreleriyle doldurur
+function L(s, p) {
+  var I = typeof window !== 'undefined' && window.GameI18n;
+  if (I) return I.L(s, p);
+  return String(s).replace(/\{(\w+)\}/g, function (m, k) { return p && p[k] != null ? String(p[k]) : m; });
+}
 
 function bootstrap() {
   var canvas = document.getElementById('game');
@@ -1879,20 +2659,46 @@ function bootstrap() {
 
   // Dikey ekran: görünür alanın oranına göre mantıksal yükseklik (540–1000). Yalnız yeni
   // oyunda değişir; oyun sürerken ekran dönerse alan sabit kalır, CSS yalnız ölçekler.
-  var HUD_PX = 76; // alttaki ipucu + mağaza düğmesi için ayrılan yer
+  // Dokunmatik cihaz: ilk dokunuştan önce de "Dokun" yazsın, klavye ipucu gizlensin (index.html ile aynı ölçüt)
+  var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  var HUD_PX = coarse ? 60 : 76; // alttaki ipucu + düğmeler için ayrılan yer (index.html --hud ile aynı)
+  // Telefonun durum çubuğu / gezinme çubuğu / kamera çentiği payı (CSS env(safe-area-inset-*)).
+  // Android uygulamasında (edge-to-edge) sayfa bu çubukların altına kadar uzanır; pay düşülmezse
+  // oyun alanı çubukların altına taşar. Tarayıcıda genelde 0'dır.
+  var insetProbe = null;
+  function safeInsets() {
+    try {
+      if (!insetProbe && document.createElement && document.body) {
+        insetProbe = document.createElement('div');
+        insetProbe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;' +
+          'padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);' +
+          'padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)';
+        document.body.appendChild(insetProbe);
+      }
+      if (!insetProbe || !window.getComputedStyle) return { t: 0, b: 0, l: 0, r: 0 };
+      var cs = window.getComputedStyle(insetProbe);
+      return { t: parseFloat(cs.paddingTop) || 0, b: parseFloat(cs.paddingBottom) || 0,
+        l: parseFloat(cs.paddingLeft) || 0, r: parseFloat(cs.paddingRight) || 0 };
+    } catch (e) {
+      return { t: 0, b: 0, l: 0, r: 0 };
+    }
+  }
   function desiredHeight() {
     var w = window.innerWidth, h = window.innerHeight;
     if (!w || !h) return C.CANVAS_H;
-    var availW = Math.min(w * 0.98, 760);
-    var availH = Math.max(200, h - HUD_PX);
+    var ins = safeInsets();
+    var availW = Math.min((w - ins.l - ins.r) * 0.98, 760);
+    var availH = Math.max(200, h - ins.t - ins.b - HUD_PX);
     return Math.round(C.CANVAS_W * availH / availW);
   }
+  // Mantıksal yükseklik logic.js'in sınırlarına (540–1000) kırpılmış hali: ekran değişti mi diye karşılaştırmak için
+  function clampH(H) { return Math.max(C.MIN_H || 540, Math.min(C.MAX_H || 1000, H)); }
   function applyCanvasHeight(H) {
     canvas.height = Math.round(H * dpr);
     if (canvas.style && canvas.style.setProperty) canvas.style.setProperty('--h', String(H));
   }
 
-  var touch = false;
+  var touch = coarse;
   var input = { action: false };
   // Ses ayarları (müzik / efekt ayrı; M ikisini birden açar-kapatır)
   var Snd = window.GameAudio || null;
@@ -1910,12 +2716,45 @@ function bootstrap() {
   var daily = Quests && profile ? Quests.load(window.localStorage) : null;
   var questDone = [];
   var notice = '';
+  // Gerçek para ve ödüllü reklam (monetize.js). Android'de window.BopgateNative, tarayıcıda kapalı;
+  // ?demo-odeme ile sahte sağlayıcı (gerçek para yok). Testler window.BopgateTestProvider verebilir.
+  var Mon = window.GameMonetize || null;
+  var prov = null;
+  var prices = {};
+  if (Mon && profile) {
+    var demo = false;
+    try { demo = /[?&]demo-odeme/.test(window.location.search || ''); } catch (e) {}
+    prov = window.BopgateTestProvider || (window.BopgateNative ? Mon.provider(window.BopgateNative)
+      : demo ? Mon.mockProvider() : Mon.provider(null));
+    if (prov.canBuy) {
+      prov.products(Mon.ids()).then(function (list) {
+        (list || []).forEach(function (it) { if (it && it.id) prices[it.id] = it.price; });
+        if (shopOpen) renderShop();
+      });
+      // Yeniden kurulumda / başka cihazda alınmış ürünler: eksik hakları uygula
+      prov.restore().then(function (list) {
+        var changed = false;
+        (list || []).forEach(function (id) { if (Mon.grant(Shop, profile, id)) changed = true; });
+        if (changed) { Shop.save(window.localStorage, profile); if (shopOpen) renderShop(); }
+      });
+    }
+  }
+  function todayKey() { return Quests ? Quests.dayKey(new Date()) : ''; }
+  // Çevrimiçi (yalnız Android paketinde): Play Games liderlik tablosu ve bulut kayıt. Sunucu yok;
+  // köprü (window.BopgateNative.games) Google'ın altyapısını kullanır. Tarayıcıda hepsi kapalı.
+  var Cloud = window.GameCloud || null;
+  var games = window.BopgateNative && window.BopgateNative.games ? window.BopgateNative.games : null;
+  function soft(fn) { try { return Promise.resolve(fn()).catch(function () { return null; }); } catch (e) { return Promise.resolve(null); } }
+  function cloudSave() {
+    if (!games || !Cloud || !profile) return;
+    soft(function () { return games.saveGame(Cloud.pack(profile, best)); });
+  }
   function checkDay() {
     if (!daily) return;
     var lr = Quests.ensureDay(daily, Quests.dayKey(new Date()));
     if (lr.coins > 0) {
       profile.coins += lr.coins;
-      notice = 'Günlük ödül: +' + lr.coins + ' ★' + (lr.streak > 1 ? '  (' + lr.streak + '. gün üst üste)' : '');
+      notice = L('Günlük ödül: +{n} ★', { n: lr.coins }) + (lr.streak > 1 ? L('  ({n}. gün üst üste)', { n: lr.streak }) : '');
       Shop.save(window.localStorage, profile);
     }
     Quests.save(window.localStorage, daily);
@@ -1925,6 +2764,19 @@ function bootstrap() {
     var saved = window.localStorage.getItem('sekmeguc-best');
     if (saved) best = parseInt(saved, 10) || 0;
   } catch (e) {}
+  if (games && Cloud && profile) {
+    soft(function () { return games.loadGame(); }).then(function (text) {
+      var m = Cloud.merge(Shop, profile, best, typeof text === 'string' ? Cloud.unpack(Shop, text) : null);
+      if (m.changed) {
+        profile = m.profile;
+        best = m.best;
+        Shop.save(window.localStorage, profile);
+        try { window.localStorage.setItem('sekmeguc-best', String(best)); } catch (e) {}
+        if (shopOpen) renderShop();
+      }
+      cloudSave();
+    });
+  }
 
   var audioCtx = null;
   function ensureAudio() {
@@ -1991,15 +2843,42 @@ function bootstrap() {
     if (!sound.music) seq = null;
     updateSoundBtns();
   }
+  // Ayarlar (müzik, efekt, dil) tek ⚙ düğmesinin açtığı küçük bir kutuda: alt çubuk sıkışmasın
+  var ayarBtn = document.getElementById('ayarBtn');
+  var ayarlar = document.getElementById('ayarlar');
+  if (ayarBtn && ayarlar) ayarBtn.addEventListener('click', function () {
+    ayarlar.hidden = !ayarlar.hidden;
+    ayarBtn.setAttribute('aria-expanded', String(!ayarlar.hidden));
+  });
   var sesBtn = document.getElementById('sesBtn');
   var muzikBtn = document.getElementById('muzikBtn');
   function updateSoundBtns() {
-    if (sesBtn) { sesBtn.textContent = sound.sfx ? '🔊' : '🔇'; sesBtn.setAttribute('aria-pressed', String(sound.sfx)); sesBtn.title = 'Efekt sesleri: ' + (sound.sfx ? 'açık' : 'kapalı'); }
-    if (muzikBtn) { muzikBtn.textContent = '🎵'; muzikBtn.className = sound.music ? '' : 'kapali'; muzikBtn.setAttribute('aria-pressed', String(sound.music)); muzikBtn.title = 'Müzik: ' + (sound.music ? 'açık' : 'kapalı'); }
+    if (sesBtn) { sesBtn.textContent = sound.sfx ? '🔊' : '🔇'; sesBtn.setAttribute('aria-pressed', String(sound.sfx)); sesBtn.title = L('Efekt sesleri: {d}', { d: L(sound.sfx ? 'açık' : 'kapalı') }); }
+    if (muzikBtn) { muzikBtn.textContent = '🎵'; muzikBtn.className = sound.music ? '' : 'kapali'; muzikBtn.setAttribute('aria-pressed', String(sound.music)); muzikBtn.title = L('Müzik: {d}', { d: L(sound.music ? 'açık' : 'kapalı') }); }
   }
   if (sesBtn) sesBtn.addEventListener('click', function () { ensureAudio(); setSound({ music: sound.music, sfx: !sound.sfx }); sfx('buy'); });
   if (muzikBtn) muzikBtn.addEventListener('click', function () { ensureAudio(); setSound({ music: !sound.music, sfx: sound.sfx }); });
   updateSoundBtns();
+  // Dil: sayfadaki sabit metinler (data-i18n) ve dil düğmesi; canvas her karede yeniden çizildiği için kendiliğinden güncellenir
+  var I18n = window.GameI18n || null;
+  var dilBtn = document.getElementById('dilBtn');
+  function applyLang() {
+    if (!I18n) return;
+    if (document.documentElement) document.documentElement.lang = I18n.getLang();
+    var els = document.querySelectorAll ? document.querySelectorAll('[data-i18n]') : [];
+    for (var di = 0; di < els.length; di++) els[di].textContent = L(els[di].getAttribute('data-i18n'));
+    var aria = document.querySelectorAll ? document.querySelectorAll('[data-i18n-aria]') : [];
+    for (var da = 0; da < aria.length; da++) aria[da].setAttribute('aria-label', L(aria[da].getAttribute('data-i18n-aria')));
+    if (dilBtn) dilBtn.textContent = I18n.getLang().toUpperCase();
+    updateSoundBtns();
+  }
+  if (dilBtn) dilBtn.addEventListener('click', function () {
+    if (!I18n) return;
+    I18n.setLang(I18n.getLang() === 'tr' ? 'en' : 'tr', window.localStorage);
+    applyLang();
+    if (shopOpen) renderShop();
+  });
+  applyLang();
   function buzz(ms) {
     if (muted) return;
     try {
@@ -2008,7 +2887,8 @@ function bootstrap() {
   }
 
   // Efekt durumu — oyun mantığından ayrı; testler mantığı bundan bağımsız doğrular.
-  var fx = { particles: [], shake: 0, squash: 0, trail: [], rings: [], scorePop: 0 };
+  // combo: art arda "mükemmel" (kapının tam ortasından) geçiş sayısı — yalnız görsel, ödülü etkilemez
+  var fx = { particles: [], shake: 0, squash: 0, trail: [], rings: [], scorePop: 0, flash: [], callout: null, combo: 0 };
   var popLeft = 0;
   var shakeLeft = 0;
   var squashLeft = 0;
@@ -2038,6 +2918,13 @@ function bootstrap() {
       if (fx.rings[r].life > 0) ringsKept.push(fx.rings[r]);
     }
     fx.rings = ringsKept;
+    var flashKept = [];
+    for (var fl = 0; fl < fx.flash.length; fl++) {
+      fx.flash[fl].life -= dt;
+      if (fx.flash[fl].life > 0) flashKept.push(fx.flash[fl]);
+    }
+    fx.flash = flashKept;
+    if (fx.callout) { fx.callout.life -= dt; if (fx.callout.life <= 0) fx.callout = null; }
     popLeft = Math.max(0, popLeft - dt);
     fx.scorePop = popLeft / POP_S;
     shakeLeft = Math.max(0, shakeLeft - dt * 1000);
@@ -2067,12 +2954,12 @@ function bootstrap() {
   var prevShieldUsed = state.shieldUsed;
   var prevPowers = state.powers;
   var prevMilestones = state.milestones;
-  var banner = { title: 'Bölüm 1', sub: '', a: 0 };
+  var banner = { title: L('Bölüm {n}', { n: 1 }), sub: '', a: 0 };
 
   function nowMs() { return Date.now(); }
 
   function startPlaying() {
-    if (phase === 'ready') banner = { title: 'Bölüm 1', sub: '', a: 1.4 };
+    if (phase === 'ready') banner = { title: L('Bölüm {n}', { n: 1 }), sub: '', a: 1.4 };
     phase = 'playing';
     ensureAudio();
   }
@@ -2080,6 +2967,10 @@ function bootstrap() {
     settle(true); // devam teklifi açıkken yeniden başlanırsa ödül yine de yazılsın
     earned = 0;
     settled = false;
+    runReward = 0;
+    doubled = false;
+    adRevived = false;
+    adBusy = false;
     questDone = [];
     notice = '';
     checkDay();
@@ -2091,11 +2982,14 @@ function bootstrap() {
     prevShieldUsed = state.shieldUsed;
     prevPowers = state.powers;
     prevMilestones = state.milestones;
-    banner = { title: 'Bölüm 1', sub: '', a: 1.4 };
+    banner = { title: L('Bölüm {n}', { n: 1 }), sub: '', a: 1.4 };
     newBest = false;
     fx.particles = [];
     fx.trail = [];
     fx.rings = [];
+    fx.flash = [];
+    fx.callout = null;
+    fx.combo = 0;
     popLeft = 0;
     shakeLeft = 0;
     squashLeft = 0;
@@ -2149,6 +3043,7 @@ function bootstrap() {
   function onPointerDown(e) {
     // Mağaza düğmesi ve paneli oyun girdisi değildir
     if (e.target && e.target.closest && e.target.closest('[data-ui]')) return;
+    if (ayarlar && !ayarlar.hidden) { ayarlar.hidden = true; if (ayarBtn) ayarBtn.setAttribute('aria-expanded', 'false'); }
     if (e.pointerType === 'touch' || e.pointerType === 'pen') touch = true;
     if (e.cancelable) e.preventDefault();
     press();
@@ -2164,28 +3059,76 @@ function bootstrap() {
   // Ölünce devam hakkı: yıldız yetiyorsa REVIVE_MS boyunca ❤ Devam düğmesi görünür.
   // Teklif açıkken ödül yazılmaz (koşu sürebilir); süre dolunca ya da yeniden başlayınca yazılır.
   var devamBtn = document.getElementById('devamBtn');
+  var reklamDevamBtn = document.getElementById('reklamDevamBtn');
+  var liderBtn = document.getElementById('liderBtn');
+  if (liderBtn) liderBtn.addEventListener('click', function () {
+    if (games) soft(function () { return games.showLeaderboard(); });
+  });
+  var ikiKatBtn = document.getElementById('ikiKatBtn');
+  var runReward = 0;     // koşunun kendi ödülü (görevler hariç): ★ x2 bunu bir kez daha verir
+  var doubled = false;
+  var adRevived = false; // reklamla bedava devam: koşu başına 1
+  var adBusy = false;    // reklam gösterilirken teklif kapanmasın, ödül yazılmasın
+  function adsUsable() { return !!(Mon && prov && (Mon.hasNoAds(profile) || prov.canAds)); }
+  function starReviveOk() { return Shop.canRevive(profile, state.revives); }
+  function adReviveOk() { return adsUsable() && !adRevived && (state.revives || 0) < Shop.REVIVE_MAX; }
   function reviveOpen() {
-    return !!profile && !settled && state.status === 'over' && Shop.canRevive(profile, state.revives) &&
-      nowMs() - overAt < REVIVE_MS;
+    if (!profile || settled || state.status !== 'over') return false;
+    if (adBusy) return true;
+    return (starReviveOk() || adReviveOk()) && nowMs() - overAt < REVIVE_MS;
   }
-  function doRevive() {
-    if (!reviveOpen() || !Shop.payRevive(profile, state.revives)) return;
+  function doRevive(free) {
+    if (!reviveOpen()) return false;
+    if (free !== true && !Shop.payRevive(profile, state.revives)) return false;
     Shop.save(window.localStorage, profile);
     window.GameLogic.revive(state);
     var left = Shop.REVIVE_MAX - state.revives;
-    banner = { title: 'Devam!', sub: left > 0 ? 'Bu koşuda ' + left + ' devam hakkın kaldı' : 'Bu koşudaki son devam hakkı', a: 1.8 };
+    banner = { title: L('Devam!'), sub: left > 0 ? L('Bu koşuda {n} devam hakkın kaldı', { n: left }) : L('Bu koşudaki son devam hakkı'), a: 1.8 };
     sfx('level');
     burst(C.BALL_X, state.y, 24, '#ff7a90', 260);
     input.action = false;
     acc = 0;
     phase = 'playing';
+    return true;
   }
-  if (devamBtn) devamBtn.addEventListener('click', doRevive);
+  if (devamBtn) devamBtn.addEventListener('click', function () { doRevive(false); });
+  function adRevive() {
+    if (adBusy || !reviveOpen() || !adReviveOk()) return;
+    adBusy = true;
+    Mon.rewardedOrSkip(prov, profile, 'devam').then(function (r) {
+      adBusy = false;
+      // Reklam uzun sürebilir (teklif süresinden uzun): izlendiyse teklif süresi tazelenir.
+      // Hak ancak devam gerçekten olunca harcanır.
+      if (r && r.rewarded) { overAt = nowMs(); if (doRevive(true)) adRevived = true; }
+      else overAt = Math.max(overAt, nowMs() - REVIVE_MS + 2000); // izlenmediyse 2 sn daha süre
+    });
+  }
+  if (reklamDevamBtn) reklamDevamBtn.addEventListener('click', adRevive);
+  function canDouble() {
+    return settled && !doubled && !adBusy && runReward > 0 && adsUsable() && Mon.x2Left(profile, todayKey()) > 0 &&
+      (state.status === 'over' || state.status === 'won');
+  }
+  function doubleStars() {
+    if (!canDouble()) return;
+    adBusy = true;
+    Mon.rewardedOrSkip(prov, profile, 'iki_kat').then(function (r) {
+      adBusy = false;
+      if (!r || !r.rewarded || doubled || !Mon.useX2(profile, todayKey())) return;
+      doubled = true;
+      profile.coins += runReward;
+      earned += runReward;
+      Shop.save(window.localStorage, profile);
+      sfx('quest');
+      burst(C.BALL_X, state.y, 30, '#ffd166', 300);
+    });
+  }
+  if (ikiKatBtn) ikiKatBtn.addEventListener('click', doubleStars);
   function settle(force) {
     if (!profile || settled || (state.status !== 'over' && state.status !== 'won')) return;
     if (!force && reviveOpen()) return;
     settled = true;
     earned = Shop.reward(state);
+    runReward = earned;
     if (daily) {
       questDone = Quests.applyRun(daily, state);
       for (var qi = 0; qi < questDone.length; qi++) earned += questDone[qi].reward;
@@ -2194,6 +3137,8 @@ function bootstrap() {
     }
     profile.coins += earned;
     Shop.save(window.localStorage, profile);
+    if (games && newBest) soft(function () { return games.submitScore(best); });
+    cloudSave();
   }
   function preview(item, kind) {
     var cv = document.createElement('canvas');
@@ -2221,8 +3166,8 @@ function bootstrap() {
     var head = document.createElement('p');
     head.className = 'seri';
     head.textContent = daily.streak > 0
-      ? 'Giriş serisi: ' + daily.streak + ' gün · yarın gelirsen +' + Quests.loginRewardFor(daily.streak + 1) + ' ★'
-      : 'Her gün ilk açılışta yıldız kazanırsın.';
+      ? L('Giriş serisi: {n} gün · yarın gelirsen +{r} ★', { n: daily.streak, r: Quests.loginRewardFor(daily.streak + 1) })
+      : L('Her gün ilk açılışta yıldız kazanırsın.');
     list.appendChild(head);
     daily.quests.forEach(function (q) {
       var row = document.createElement('div');
@@ -2243,7 +3188,7 @@ function bootstrap() {
     });
     var foot = document.createElement('p');
     foot.className = 'not';
-    foot.textContent = 'Görevler her gece yarısı yenilenir. Ödül görev bitince kendiliğinden eklenir.';
+    foot.textContent = L('Görevler her gece yarısı yenilenir. Ödül görev bitince kendiliğinden eklenir.');
     list.appendChild(foot);
   }
   function renderUpgrades(list) {
@@ -2260,14 +3205,14 @@ function bootstrap() {
       var info = document.createElement('div');
       var name = document.createElement('span');
       name.className = 'ad';
-      name.textContent = u.name;
+      name.textContent = L(u.name);
       var now = document.createElement('span');
       now.className = 'etki';
-      now.textContent = lv < max ? 'Sıradaki: ' + u.desc(u.values[lv + 1]) : u.desc(u.values[lv]) + ' (tam)';
+      now.textContent = lv < max ? L('Sıradaki: {d}', { d: u.desc(u.values[lv + 1]) }) : L('{d} (tam)', { d: u.desc(u.values[lv]) });
       info.appendChild(name); info.appendChild(now);
       var b = document.createElement('button');
-      if (lv >= max) { b.textContent = 'Tam'; b.disabled = true; b.className = 'kusanildi'; }
-      else { b.textContent = '★ ' + u.prices[lv]; b.disabled = profile.coins < u.prices[lv]; b.className = 'al'; }
+      if (lv >= max) { b.textContent = L('Tam'); b.disabled = true; b.className = 'kusanildi'; }
+      else { b.textContent = '★ ' + u.prices[lv]; b.disabled = profile.coins < u.prices[lv]; b.className = b.disabled ? 'al yetmez' : 'al'; }
       b.addEventListener('click', function () {
         if (!Shop.buyUpgrade(profile, u.id).ok) return;
         Shop.save(window.localStorage, profile);
@@ -2279,8 +3224,8 @@ function bootstrap() {
     });
     var foot = document.createElement('p');
     foot.className = 'not';
-    foot.textContent = 'Güçlendirmeler kalıcıdır ve bir sonraki koşudan itibaren geçerlidir. Ölünce ★ ' +
-      Shop.reviveCost(0) + ' ile devam edebilirsin (koşu başına en çok ' + Shop.REVIVE_MAX + ', fiyat her seferinde ikiye katlanır).';
+    foot.textContent = L('Güçlendirmeler kalıcıdır ve bir sonraki koşudan itibaren geçerlidir. Ölünce ★ {c} ile devam edebilirsin (koşu başına en çok {m}, fiyat her seferinde ikiye katlanır).',
+      { c: Shop.reviveCost(0), m: Shop.REVIVE_MAX });
     list.appendChild(foot);
   }
   function renderShop() {
@@ -2292,21 +3237,26 @@ function bootstrap() {
     list.innerHTML = '';
     if (shopTab === 'quests') { if (daily) renderQuests(list); return; }
     if (shopTab === 'upg') { renderUpgrades(list); return; }
+    if (shopTab === 'premium') { renderPremium(list); return; }
     Shop.CATALOG[shopTab].forEach(function (item) {
       var row = document.createElement('div');
       row.className = 'urun';
       row.appendChild(preview(item, shopTab));
       var name = document.createElement('span');
       name.className = 'ad';
-      name.textContent = item.name;
+      name.textContent = L(item.name);
       row.appendChild(name);
       var b = document.createElement('button');
       var owned = Shop.owns(profile, shopTab, item.id);
       var on = profile.equipped[shopTab] === item.id;
-      if (on) { b.textContent = 'Kuşanıldı'; b.disabled = true; b.className = 'kusanildi'; }
-      else if (owned) { b.textContent = 'Kuşan'; }
-      else { b.textContent = '★ ' + item.price; b.disabled = profile.coins < item.price; b.className = 'al'; }
+      var prem = Shop.isPremium(item);
+      if (prem) row.className += ' premium';
+      if (on) { b.textContent = L('Kuşanıldı'); b.disabled = true; b.className = 'kusanildi'; }
+      else if (owned) { b.textContent = L('Kuşan'); }
+      else if (prem) { b.textContent = '💎 ' + priceText(item.premiumBy[0]); b.disabled = !prov || !prov.canBuy; b.className = 'para'; }
+      else { b.textContent = '★ ' + item.price; b.disabled = profile.coins < item.price; b.className = b.disabled ? 'al yetmez' : 'al'; }
       b.addEventListener('click', function () {
+        if (prem && !Shop.owns(profile, shopTab, item.id)) { buyProduct(item.premiumBy[0], [shopTab, item.id]); return; }
         if (Shop.owns(profile, shopTab, item.id)) Shop.equip(profile, shopTab, item.id);
         else if (!Shop.buy(profile, shopTab, item.id).ok) return;
         Shop.save(window.localStorage, profile);
@@ -2316,6 +3266,69 @@ function bootstrap() {
       row.appendChild(b);
       list.appendChild(row);
     });
+  }
+  function priceText(id) {
+    if (!prov || !prov.canBuy) return L('Uygulamada');
+    return prices[id] || (Mon.product(id) ? Mon.product(id).suggest : '?');
+  }
+  // equipAfter: [tür, kimlik] — tek ürün alınınca hemen kuşanılsın
+  var buying = false;
+  function buyProduct(id, equipAfter) {
+    if (!prov || !prov.canBuy || buying || Mon.owned(profile, id)) return;
+    buying = true;
+    prov.buy(id).then(function (r) {
+      buying = false;
+      if (!r || !r.ok) return;
+      Mon.grant(Shop, profile, id);
+      if (equipAfter) Shop.equip(profile, equipAfter[0], equipAfter[1]);
+      Shop.save(window.localStorage, profile);
+      cloudSave();
+      sfx('buy');
+      renderShop();
+    });
+  }
+  function renderPremium(list) {
+    Mon.PRODUCTS.forEach(function (pr) {
+      var row = document.createElement('div');
+      row.className = 'urun paket' + (pr.best ? ' en-iyi' : '');
+      var icon = document.createElement('span');
+      icon.className = 'paket-ikon';
+      icon.textContent = pr.grants.noads ? (pr.grants.items ? '👑' : '🚫') : pr.grants.maxUpgrades ? '⚡' : '💎';
+      var info = document.createElement('div');
+      var name = document.createElement('span');
+      name.className = 'ad';
+      name.textContent = L(pr.name) + (pr.best ? L('  · en iyi') : '');
+      var d = document.createElement('span');
+      d.className = 'etki';
+      d.textContent = L(pr.desc);
+      info.appendChild(name); info.appendChild(d);
+      var b = document.createElement('button');
+      if (Mon.owned(profile, pr.id)) { b.textContent = L('Sahipsin'); b.disabled = true; b.className = 'kusanildi'; }
+      else { b.textContent = priceText(pr.id); b.disabled = !prov || !prov.canBuy; b.className = 'para'; }
+      b.addEventListener('click', function () { buyProduct(pr.id, null); });
+      row.appendChild(icon); row.appendChild(info); row.appendChild(b);
+      list.appendChild(row);
+    });
+    var foot = document.createElement('p');
+    foot.className = 'not';
+    foot.textContent = prov && prov.canBuy
+      ? L('Tek seferlik satın alımlar; telefon değiştirince geri yüklenir. Yıldız ve görevler gerçek paradan bağımsızdır.')
+      : L('Satın alma yalnız Android uygulamasında (Google Play). Tarayıcı sürümünde gerçek para yok.');
+    list.appendChild(foot);
+    if (prov && prov.canBuy) {
+      var rb = document.createElement('button');
+      rb.className = 'geri-yukle';
+      rb.textContent = L('Satın alımları geri yükle');
+      rb.addEventListener('click', function () {
+        prov.restore().then(function (ids) {
+          var changed = false;
+          (ids || []).forEach(function (id) { if (Mon.grant(Shop, profile, id)) changed = true; });
+          if (changed) Shop.save(window.localStorage, profile);
+          renderShop();
+        });
+      });
+      list.appendChild(rb);
+    }
   }
   function openShop(tab) {
     if (!shopEl || phase === 'playing') return;
@@ -2327,6 +3340,7 @@ function bootstrap() {
   }
   function closeShop() {
     if (!shopEl) return;
+    if (shopOpen) cloudSave(); // mağazada yapılan alımlar buluta
     shopOpen = false;
     shopEl.hidden = true;
   }
@@ -2367,8 +3381,12 @@ function bootstrap() {
   var acc = 0;
   var last = null;
 
+  // Android, çubuk paylarını sayfa açıldıktan sonra bildirir (resize olayı gelmeyebilir):
+  // başlangıç ekranındayken arada bir yeniden ölç, alan değiştiyse yeni oyunu ona göre kur.
+  var fitCheck = 0;
   function frame(ts) {
     if (last === null) last = ts;
+    if (phase === 'ready' && ++fitCheck % 30 === 0 && Math.abs(clampH(desiredHeight()) - state.geo.H) > 2) state = newGame();
     var frameDt = (ts - last) / 1000;
     last = ts;
     if (frameDt > 0.25) frameDt = 0.25;
@@ -2395,6 +3413,23 @@ function bootstrap() {
           fx.rings.push({ x: C.BALL_X, y: state.y, life: RING_S, max: RING_S, color: edgeCol });
           popLeft = POP_S;
           prevScore = state.score;
+          // Az önce geçilen kapı: parlasın; ortasından geçildiyse "mükemmel" serisi büyür
+          var gate = null;
+          for (var gi = 0; gi < state.obstacles.length; gi++) {
+            var go = state.obstacles[gi];
+            if (go.passed && (!gate || go.x > gate.x)) gate = go;
+          }
+          if (gate) {
+            fx.flash.push({ o: gate, life: FLASH_S, max: FLASH_S });
+            if (Math.abs(state.y - (gate.gapY + gate.gapH / 2)) <= gate.gapH * PERFECT_F) {
+              fx.combo++;
+              fx.callout = { text: fx.combo > 1 ? L('MÜKEMMEL x{n}', { n: fx.combo }) : L('MÜKEMMEL'), life: CALLOUT_S, max: CALLOUT_S, y: state.y, big: fx.combo >= 3 };
+              fx.rings.push({ x: C.BALL_X, y: state.y, life: RING_S * 1.4, max: RING_S * 1.4, color: '#ffd166' });
+              if (fx.combo >= 3) burst(C.BALL_X, state.y, 8 + Math.min(fx.combo, 10), '#ffd166', 260);
+            } else {
+              fx.combo = 0;
+            }
+          }
         }
         if (state.stars !== prevStars) {
           sfx('star');
@@ -2416,16 +3451,16 @@ function bootstrap() {
           prevShieldUsed = state.shieldUsed;
         }
         if (state.level !== prevLevel) {
-          var sub = state.level === C.STAR_FROM ? 'Yıldız topla: bir çarpmayı affeder'
+          var sub = L(state.level === C.STAR_FROM ? 'Yıldız topla: bir çarpmayı affeder'
             : state.level === C.MOVE_FROM ? 'Mor kapılar hareket eder'
             : state.level === C.PULSE_FROM ? 'Yeşil kapılar daralıp genişler'
             : state.level === C.POWER_FROM ? 'Güçler: ⏱ dünyayı yavaşlatır, pembe top küçültür'
             : state.level === C.DOUBLE_FROM ? 'Çift duvarlar geliyor'
-            : state.level === C.SPIKE_FROM ? 'Kırmızı dikenlere sekme: basılı tut, havada kal' : '';
+            : state.level === C.SPIKE_FROM ? 'Kırmızı dikenlere sekme: basılı tut, havada kal' : '');
           var milestone = state.milestones !== prevMilestones;
           if (milestone) {
             // Her 10 bölümde bir eşik: büyük kutlama, ödülde +MILESTONE_BONUS
-            sub = 'Eşik ' + state.milestones + ' geçildi! +' + (Shop ? Shop.MILESTONE_BONUS : 5) + ' ★' + (state.milestones === 1 ? ' · artık sonsuz: zorluk yavaşça artar' : '');
+            sub = L('Eşik {n} geçildi! +{b} ★', { n: state.milestones, b: Shop ? Shop.MILESTONE_BONUS : 5 }) + (state.milestones === 1 ? L(' · artık sonsuz: zorluk yavaşça artar') : '');
             prevMilestones = state.milestones;
             sfx('win');
             buzz(40);
@@ -2433,12 +3468,14 @@ function bootstrap() {
           } else {
             sfx('level');
           }
-          banner = { title: 'Bölüm ' + state.level, sub: sub, a: milestone ? 3 : sub ? 2.2 : 1.4 };
+          banner = { title: L('Bölüm {n}', { n: state.level }), sub: sub, a: milestone ? 3 : sub ? 2.2 : 1.4 };
           prevLevel = state.level;
         }
         if (state.status === 'over') {
           sfx('over');
           buzz(60);
+          fx.combo = 0;
+          fx.callout = null;
           shakeLeft = SHAKE_MS;
           burst(C.BALL_X, state.y, 24, '#e05656', 320);
           if (state.score > best) {
@@ -2464,19 +3501,30 @@ function bootstrap() {
     musicTick();
     settle();
     var rOpen = reviveOpen();
+    var secs = Math.max(0, Math.ceil((REVIVE_MS - (nowMs() - overAt)) / 1000));
     if (devamBtn) {
-      devamBtn.hidden = !rOpen;
-      if (rOpen) devamBtn.textContent = '❤ Devam  ★ ' + Shop.reviveCost(state.revives) + '  (' + Math.ceil((REVIVE_MS - (nowMs() - overAt)) / 1000) + ')';
+      devamBtn.hidden = !rOpen || adBusy || !starReviveOk();
+      if (!devamBtn.hidden) devamBtn.textContent = L('❤ ★ {n} · {s}', { n: Shop.reviveCost(state.revives), s: secs });
+    }
+    if (reklamDevamBtn) {
+      reklamDevamBtn.hidden = !rOpen || adBusy || !adReviveOk();
+      if (!reklamDevamBtn.hidden) reklamDevamBtn.textContent = L(Mon.hasNoAds(profile) ? '❤ Bedava · {s}' : '📺 Devam · {s}', { s: secs });
+    }
+    var dbl = !rOpen && canDouble() && !shopOpen;
+    if (ikiKatBtn) {
+      ikiKatBtn.hidden = !dbl;
+      if (dbl) ikiKatBtn.textContent = L(Mon.hasNoAds(profile) ? '★ x2  +{n}' : '📺 ★ x2  +{n}', { n: runReward });
     }
     var showBtns = !rOpen && !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
     if (shopBtn) shopBtn.hidden = !showBtns;
+    if (liderBtn) liderBtn.hidden = !showBtns || !games;
     var qb = document.getElementById('gorevBtn');
     if (qb) {
       qb.hidden = !showBtns || !daily;
       if (daily) {
         var left = 0;
         for (var qn = 0; qn < daily.quests.length; qn++) if (!daily.quests[qn].done) left++;
-        qb.textContent = '📋 Görevler' + (left ? ' (' + left + ')' : ' ✓');
+        qb.textContent = L('📋 Görevler') + (left ? ' (' + left + ')' : ' ✓');
       }
     }
     window.GameRender.draw(ctx, state, {
@@ -2488,7 +3536,7 @@ function bootstrap() {
       earned: phase === 'over' || phase === 'won' ? earned : 0,
       questDone: phase === 'over' || phase === 'won' ? questDone : [],
       notice: phase === 'ready' ? notice : '',
-      revive: rOpen ? { cost: Shop.reviveCost(state.revives), touch: touch } : null
+      revive: rOpen ? { cost: starReviveOk() ? Shop.reviveCost(state.revives) : 0, ad: adReviveOk(), noads: !!(Mon && Mon.hasNoAds(profile)), touch: touch } : null
     });
     window.requestAnimationFrame(frame);
   }

@@ -98,7 +98,7 @@
   <div class="card">
     <h2>Sekme Gücü <small>· Bopgate</small></h2>
     <p class="meta"><span class="kanat">arcade/fizik</span> · eklendi 2026-09-24</p>
-    <p class="ne">Zıplayan bir topu tek tuşla havada tutarak sonsuz bölüm boyunca dar kapılardan geçiriyorsun; her 10 bölüm bir eşik, asıl hedef rekor. Yıldızlar kalkan verir, mor kapılar hareket eder, yeşil kapılar daralır, dikenler ve güçler sonradan açılır. Topladığın yıldızla kalıcı güçlendirme, yeni top ve harita alır, ölünce devam edersin; her gün 3 görev ve her haritanın kendi müziği var. Neon arcade görünümü; Play Store'a <em>Bopgate</em> adıyla hazırlanıyor.</p>
+    <p class="ne">Zıplayan bir topu tek tuşla havada tutarak sonsuz bölüm boyunca dar kapılardan geçiriyorsun; her 10 bölüm bir eşik, asıl hedef rekor. Yıldızlar kalkan verir, mor kapılar hareket eder, yeşil kapılar daralır, dikenler ve güçler sonradan açılır; kapının tam ortasından geçmek "MÜKEMMEL" serisi başlatır. Topladığın yıldızla kalıcı güçlendirme, canlı efektli toplar ve katmanlı haritalar alır, ölünce devam edersin; her gün 3 görev, Türkçe/İngilizce. Neon arcade görünümü; Play Store'a <em>Bopgate</em> adıyla hazırlanıyor, Android paketi telefonda deneniyor.</p>
     <div class="actions">
       <a class="btn" href="oyunlar/sekmeguc/index.html">Oyna</a>
       <a class="btn ghost" href="https://github.com/MuratKingdom/oyun-rafi/tree/oyun/sekmeguc">Kaynak</a>
@@ -106,9 +106,9 @@
     <details>
       <summary>Ne çalışıyor, ne eksik</summary>
       <ul>
-        <li><strong>Çalışıyor:</strong> zıplama fiziği ve basılı-tutma ile yükseklik kontrolü · kapı/duvar çarpışması ve kayıp sebebi · <strong>10 bölüm + kazanma</strong>, <strong>mağaza</strong> (7 top, 5 harita, yıldız cüzdanı), <strong>dikey ekran</strong> (alan uzun telefonu doldurur), yıldız/kalkan, hareketli kapı, çift duvar (bot ile 8/8 tohum kalkansız kazanılabilir) · doygunluğa giden zorluk eğrisi · <strong>mobil cila</strong>: dokun-başla, tüm ekran dokunma, duraklatma, parçacık/sarsıntı/titreşim · ses ve rekor</li>
-        <li><strong>Eksik:</strong> denge botla ölçüldü, insan oynanışıyla ayarlanmadı · gerçek telefonda elle denenmedi</li>
-        <li><strong>Geliştirmek için ilk adım:</strong> <code>logic.js</code> başındaki bölüm sabitlerini değiştir, <code>node tools/kazanilabilirlik.js --kalkansiz</code> ile ölç (sıradaki: Play Store)</li>
+        <li><strong>Çalışıyor:</strong> zıplama fiziği ve basılı-tutma ile yükseklik kontrolü · kapı/duvar çarpışması ve kayıp sebebi · <strong>sonsuz mod</strong> (10 bölümde bir eşik) · <strong>mağaza</strong> (9 top, 6 harita, kalıcı güçlendirmeler; yavaş yıldız ekonomisi) · günlük görevler · ölünce devam · <strong>dikey ekran</strong>, telefonun durum/gezinme çubuklarına sığar · Türkçe/İngilizce · satın alma, ödüllü reklam, liderlik ve bulut kayıt altyapısı (tarayıcıda kapalı, Android paketinde etkin) · ses ve rekor</li>
+        <li><strong>Eksik:</strong> denge botla ölçüldü, insan oynanışıyla ayarlanmadı · gerçek AdMob/Play kimlikleri ve imza sırları henüz girilmedi · satın alma ve reklam yalnız test kimlikleriyle</li>
+        <li><strong>Geliştirmek için ilk adım:</strong> <code>logic.js</code> başındaki bölüm sabitlerini değiştir, <code>node tools/kazanilabilirlik.js --kalkansiz</code> ile ölç; Android için <code>android-paket/README.md</code></li>
       </ul>
     </details>
   </div>
@@ -127,6 +127,24 @@
         <li><strong>Çalışıyor:</strong> ekim, büyüme, hasat, çürüme ve gün sonu yemek payı · kıtlıkla kaybetme ve sebep gösterimi · 15 günü bitirerek kazanma erişilebilir · tek tuşla temiz restart · ses ve rekor</li>
         <li><strong>Eksik:</strong> zorluk yalnızca doğrusal artan yemek payı (hava/kuraklık olayı yok) · insan oynanışına göre denge ayarı yapılmadı · mobilde denenmedi · görsel çeşitlilik minimal</li>
         <li><strong>Geliştirmek için ilk adım:</strong> <code>logic.js</code>’teki <code>GROW</code>/<code>SPOIL</code>/<code>needFor()</code> değerlerini değiştir veya <code>step()</code>’e hava olayı ekle</li>
+      </ul>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Kayar Taş</h2>
+    <p class="meta"><span class="kanat">arcade/fizik</span> · eklendi 2026-10-05</p>
+    <p class="ne">Boşluk tuşunu basılı tutarak güç doldurup taşı bırakıyorsun; sürtünmeyle kayıp yeşil hedef bölgede durması gerekiyor. Hedef her seviyede daralır, buz ve kum yamaları sürtünmeyi değiştirir; 12 hedefi tutan kazanır.</p>
+    <div class="actions">
+      <a class="btn" href="oyunlar/kayartas/index.html">Oyna</a>
+      <a class="btn ghost" href="https://github.com/MuratKingdom/oyun-rafi/tree/oyun/kayartas">Kaynak</a>
+    </div>
+    <details>
+      <summary>Ne çalışıyor, ne eksik</summary>
+      <ul>
+        <li><strong>Çalışıyor:</strong> güç doldurma, fırlatma, sürtünmeyle durma ve hedef kontrolü · üç kayıp sebebi ekranda · 12 hedef botla tutulabiliyor, kazanma erişilebilir · tek tuşla temiz restart · ses ve rekor</li>
+        <li><strong>Eksik:</strong> dokunmatik için ayrı düzen yok (canvas'a basılı tutma çalışır), mobilde denenmedi · insan oynanışına göre denge yok · can yok, ilk hata oyunu bitirir · görsel çeşitlilik minimal</li>
+        <li><strong>Geliştirmek için ilk adım:</strong> <code>logic.js</code>’teki <code>C.A</code>, <code>C.CHARGE</code> ve <code>genLevel()</code> yama değerlerini değiştir ya da <code>step()</code>’e can sayacı ekle</li>
       </ul>
     </details>
   </div>
