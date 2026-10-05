@@ -91,6 +91,13 @@ var MARGIN = 40;
 // kapıdan hemen sonra çok yüksek bir kapı hızlanan oyunda fiziksel olarak
 // yetişilemez olabiliyordu. Bu sınır her dizilimi oynanabilir tutar.
 var MAX_JUMP = 150;
+// Erişilebilirlik:
+// Kolay mod (ayarlardan): dünya daha yavaş akar, kapılar daha geniş, aralar biraz daha uzun.
+// İlk oyun rehberi: ilk TUTORIAL kapı daha geniş açılır (yalnız rehber açıkken; main.js ilk oyunda açar).
+var EASY_SPEED_F = 0.82;
+var EASY_GAP_F = 1.25;
+var EASY_SPAWN_F = 1.12;
+var TUTORIAL_GAP_F = 1.4;
 
 // --- Geometri --------------------------------------------------------------
 // Oyun alanının mantıksal yüksekliği cihaza göre değişebilir (dikey telefonda uzun).
@@ -108,15 +115,20 @@ function makeGeo(height) {
 
 // opts.height: mantıksal alan yüksekliği (540–1000); verilmezse 540 (klasik kare alan)
 // opts.mods: mağazadaki kalıcı güçlendirmeler { maxShield, startShield, powerMul, magnet }
+// opts.easy: kolay mod · opts.tutorial: ilk kaç kapı rehber genişliğinde açılsın (0 = rehber yok)
 function createState(seed, opts) {
   var g = makeGeo(opts && opts.height);
   var m = (opts && opts.mods) || {};
+  var easy = !!(opts && opts.easy);
+  var tutorial = Math.max(0, Math.floor((opts && opts.tutorial) || 0));
   var maxShield = typeof m.maxShield === 'number' ? m.maxShield : MAX_SHIELD;
   return {
     maxShield: maxShield,
     powerMul: m.powerMul || 1,
     magnet: m.magnet || 1,
     revives: 0,
+    easy: easy,
+    tutorialLeft: tutorial,
     geo: g,
     rngA: (seed || 1) >>> 0,
     y: g.floorY - BALL_R - 60 * g.k,
@@ -180,6 +192,11 @@ function makeWall(state, x, baseY, gapH) {
 function spawn(state) {
   var g = state.geo;
   var gapH = state.gapH;
+  if (state.tutorialLeft > 0) {
+    // Rehber kapısı: daha geniş; alan dışına taşmasın
+    gapH = Math.min(gapH * TUTORIAL_GAP_F, (g.floorY - g.ceilY) - 2 * MARGIN * g.k);
+    state.tutorialLeft--;
+  }
   var minTop = g.ceilY + MARGIN * g.k;
   var maxTop = g.floorY - MARGIN * g.k - gapH;
   var span = Math.max(10, maxTop - minTop);
@@ -265,6 +282,7 @@ function step(state, input, dt) {
   var e = endless(state.level);
   state.speed = SPEED0 + (SPEED_MAX + ENDLESS_SPEED * e - SPEED0) * d;
   state.gapH = (GAP_H0 - (GAP_H0 - (GAP_MIN - ENDLESS_GAP * e)) * d) * g.k;
+  if (state.easy) { state.speed *= EASY_SPEED_F; state.gapH *= EASY_GAP_F; }
 
   state.spawnTimer -= dt * wf;
   if (state.spawnTimer <= 0) {
@@ -272,6 +290,7 @@ function step(state, input, dt) {
     var interval = SPAWN_INTERVAL_MAX - state.t * SPAWN_RAMP;
     var imin = SPAWN_INTERVAL_MIN - (SPAWN_INTERVAL_MIN - ENDLESS_SPAWN_MIN) * e;
     if (interval < imin) interval = imin;
+    if (state.easy) interval *= EASY_SPAWN_F;
     state.spawnTimer = interval + extra;
   }
 
@@ -386,7 +405,8 @@ var CONST = {
   ENDLESS_LEVELS: ENDLESS_LEVELS, ENDLESS_SPEED: ENDLESS_SPEED, ENDLESS_GAP: ENDLESS_GAP, ENDLESS_SPAWN_MIN: ENDLESS_SPAWN_MIN,
   PULSE_FROM: PULSE_FROM, POWER_FROM: POWER_FROM, SPIKE_FROM: SPIKE_FROM, PULSE_MIN: PULSE_MIN,
   POWER_SLOW_F: POWER_SLOW_F, POWER_SLOW_T: POWER_SLOW_T, POWER_SMALL_F: POWER_SMALL_F, POWER_SMALL_T: POWER_SMALL_T,
-  SPIKE_DX: SPIKE_DX, SPIKE_W: SPIKE_W, MAX_SHIELD: MAX_SHIELD, REVIVE_CLEAR: REVIVE_CLEAR
+  SPIKE_DX: SPIKE_DX, SPIKE_W: SPIKE_W, MAX_SHIELD: MAX_SHIELD, REVIVE_CLEAR: REVIVE_CLEAR,
+  EASY_SPEED_F: EASY_SPEED_F, EASY_GAP_F: EASY_GAP_F, EASY_SPAWN_F: EASY_SPAWN_F, TUTORIAL_GAP_F: TUTORIAL_GAP_F
 };
 var API = { createState: createState, step: step, difficulty: difficulty, endless: endless, revive: revive, makeGeo: makeGeo, radius: radius, CONST: CONST };
 if (typeof module !== 'undefined') module.exports = API;
