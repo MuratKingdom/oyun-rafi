@@ -9,6 +9,19 @@
 // window.Game* ve module.exports çıkar.
 (function () {
 
+// Dil: i18n.js yüklüyse çevirir, değilse Türkçe metni parametreleriyle doldurur
+function tx(s, p) {
+  var I = typeof window !== 'undefined' && window.GameI18n;
+  if (I) return I.L(s, p);
+  return String(s).replace(/\{(\w+)\}/g, function (m, k) { return p && p[k] != null ? String(p[k]) : m; });
+}
+
+// Ondalık ayırıcı dile göre: Türkçede virgül, İngilizcede nokta
+function decimal(v) {
+  var I = typeof window !== 'undefined' && window.GameI18n;
+  return I && I.getLang() === 'en' ? String(v) : String(v).replace('.', ',');
+}
+
 var STORAGE_KEY = 'sekmeguc-profil';
 
 // Top görünümleri. shape: circle | square | diamond | star | ring
@@ -48,13 +61,13 @@ var CATALOG = { ball: BALLS, map: MAPS };
 // Bunlar yalnız oynayarak kazanılan yıldızla alınır; gerçek parayla yıldız satılmaz.
 var UPGRADES = [
   { id: 'kalkan', name: 'Kalkan kapasitesi', prices: [200, 600], values: [1, 2, 3],
-    desc: function (v) { return 'Aynı anda en çok ' + v + ' kalkan'; } },
+    desc: function (v) { return tx('Aynı anda en çok {v} kalkan', { v: v }); } },
   { id: 'baslangic', name: 'Başlangıç kalkanı', prices: [450], values: [0, 1],
-    desc: function (v) { return v ? 'Her koşuya 1 kalkanla başla' : 'Koşuya kalkansız başla'; } },
+    desc: function (v) { return tx(v ? 'Her koşuya 1 kalkanla başla' : 'Koşuya kalkansız başla'); } },
   { id: 'sure', name: 'Uzun güçler', prices: [150, 400], values: [1, 1.25, 1.5],
-    desc: function (v) { return v === 1 ? 'Güçler normal süre (4 / 6 sn)' : 'Güçler %' + Math.round((v - 1) * 100) + ' daha uzun'; } },
+    desc: function (v) { return v === 1 ? tx('Güçler normal süre (4 / 6 sn)') : tx('Güçler %{p} daha uzun', { p: Math.round((v - 1) * 100) }); } },
   { id: 'miknatis', name: 'Yıldız mıknatısı', prices: [250, 650], values: [1, 1.6, 2.2],
-    desc: function (v) { return v === 1 ? 'Yıldız ve güç normal alanda alınır' : 'Yıldız ve güç ' + String(v).replace('.', ',') + ' kat geniş alandan alınır'; } }
+    desc: function (v) { return v === 1 ? tx('Yıldız ve güç normal alanda alınır') : tx('Yıldız ve güç {v} kat geniş alandan alınır', { v: decimal(v) }); } }
 ];
 
 // Ölünce devam: koşu başına en çok REVIVE_MAX kez, fiyat her seferinde ikiye katlanır

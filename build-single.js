@@ -3,7 +3,7 @@ var fs = require('fs');
 var path = require('path');
 
 var dir = __dirname;
-var FILES = ['logic.js', 'shop.js', 'monetize.js', 'quests.js', 'audio.js', 'render.js', 'main.js'];
+var FILES = ['i18n.js', 'logic.js', 'shop.js', 'monetize.js', 'quests.js', 'audio.js', 'render.js', 'main.js'];
 var html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
 
 var tags = FILES.map(function (f) { return '<script src="' + f + '"></script>'; }).join('\n');

@@ -94,7 +94,8 @@ diken çarpmasını da yutar. Etkin güçler ve kalan süreleri zeminin altında
 
 ## Mağaza (2 Ekim 2026)
 Başlangıç ve oyun sonu ekranındaki **🛒 Mağaza** düğmesiyle açılır. Para birimi **yıldız**dır:
-oyunda topladığın yıldızlar + her 10 bölümlük eşik için 5 + günlük görev ve giriş ödülleri. Gerçek para yok.
+oyunda topladığın yıldızlar + her 10 bölümlük eşik için 5 + günlük görev ve giriş ödülleri. Yıldız tek başına
+satılmaz; yalnız Destekçi paketi hediye olarak ★ 1000 içerir (bkz. Para kazanma).
 
 | Top | Fiyat | | Harita | Fiyat |
 |---|---|---|---|---|
@@ -188,6 +189,14 @@ Bilinen risk: ışıma (`shadowBlur`) eski/zayıf telefonlarda kare hızını d�
   sahiplenemez (T37). Köprü hata verse ya da anında fırlatsa da oyun bozulmaz (T38).
 - Bilinen sınır: gerçek doğrulama (sunucu tarafı satın alma doğrulaması) yok; hak cihazda tutulur ve
   Play'den geri yüklenir.
+
+## Dil: Türkçe / İngilizce (4 Ekim 2026)
+`i18n.js`: kaynak dil Türkçe; kod metni `L('Türkçe metin', { parametre })` ile gösterir, İngilizce
+seçiliyse `EN` sözlüğünden karşılığı gelir. Dil ilk açılışta cihaz dilinden seçilir (Türkçe değilse
+İngilizce); alttaki **TR/EN** düğmesi değiştirir ve tercihi saklar (`bopgate-dil`). Saf modüller
+(`shop.js`, `quests.js`) metinlerini aynı yoldan çevirir; Node testlerinde i18n yüklü değilse Türkçe kalır.
+T39 sözlüğün ürün/görev/güçlendirme/ölüm metinlerini eksiksiz kapsadığını ve parametrelerin iki dilde
+aynı olduğunu denetler; eksik çeviri `GameI18n.missing`'de birikir (tarayıcıda İngilizce tam turda boş çıktı).
 
 ## NE ÇALIŞIYOR
 - Zıplama fiziği, basılı-tutma ile yükseklik kontrolü, kapı/duvar çarpışması ve kayıp sebebi gösterimi (kanıt: T1, T2, T3, T5c, tarayıcı)

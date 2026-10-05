@@ -16,6 +16,13 @@ var RING_S = 0.35; // kapı geçiş halkasının ömrü (sn)
 var POP_S = 0.25;  // skor sıçramasının süresi (sn)
 var REVIVE_MS = 5000; // ölünce "★ ile devam" teklifinin süresi
 
+// Dil: i18n.js yüklüyse çevirir, değilse Türkçe metni parametreleriyle doldurur
+function L(s, p) {
+  var I = typeof window !== 'undefined' && window.GameI18n;
+  if (I) return I.L(s, p);
+  return String(s).replace(/\{(\w+)\}/g, function (m, k) { return p && p[k] != null ? String(p[k]) : m; });
+}
+
 function bootstrap() {
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');
@@ -89,7 +96,7 @@ function bootstrap() {
     var lr = Quests.ensureDay(daily, Quests.dayKey(new Date()));
     if (lr.coins > 0) {
       profile.coins += lr.coins;
-      notice = 'Günlük ödül: +' + lr.coins + ' ★' + (lr.streak > 1 ? '  (' + lr.streak + '. gün üst üste)' : '');
+      notice = L('Günlük ödül: +{n} ★', { n: lr.coins }) + (lr.streak > 1 ? L('  ({n}. gün üst üste)', { n: lr.streak }) : '');
       Shop.save(window.localStorage, profile);
     }
     Quests.save(window.localStorage, daily);
@@ -168,12 +175,32 @@ function bootstrap() {
   var sesBtn = document.getElementById('sesBtn');
   var muzikBtn = document.getElementById('muzikBtn');
   function updateSoundBtns() {
-    if (sesBtn) { sesBtn.textContent = sound.sfx ? '🔊' : '🔇'; sesBtn.setAttribute('aria-pressed', String(sound.sfx)); sesBtn.title = 'Efekt sesleri: ' + (sound.sfx ? 'açık' : 'kapalı'); }
-    if (muzikBtn) { muzikBtn.textContent = '🎵'; muzikBtn.className = sound.music ? '' : 'kapali'; muzikBtn.setAttribute('aria-pressed', String(sound.music)); muzikBtn.title = 'Müzik: ' + (sound.music ? 'açık' : 'kapalı'); }
+    if (sesBtn) { sesBtn.textContent = sound.sfx ? '🔊' : '🔇'; sesBtn.setAttribute('aria-pressed', String(sound.sfx)); sesBtn.title = L('Efekt sesleri: {d}', { d: L(sound.sfx ? 'açık' : 'kapalı') }); }
+    if (muzikBtn) { muzikBtn.textContent = '🎵'; muzikBtn.className = sound.music ? '' : 'kapali'; muzikBtn.setAttribute('aria-pressed', String(sound.music)); muzikBtn.title = L('Müzik: {d}', { d: L(sound.music ? 'açık' : 'kapalı') }); }
   }
   if (sesBtn) sesBtn.addEventListener('click', function () { ensureAudio(); setSound({ music: sound.music, sfx: !sound.sfx }); sfx('buy'); });
   if (muzikBtn) muzikBtn.addEventListener('click', function () { ensureAudio(); setSound({ music: !sound.music, sfx: sound.sfx }); });
   updateSoundBtns();
+  // Dil: sayfadaki sabit metinler (data-i18n) ve dil düğmesi; canvas her karede yeniden çizildiği için kendiliğinden güncellenir
+  var I18n = window.GameI18n || null;
+  var dilBtn = document.getElementById('dilBtn');
+  function applyLang() {
+    if (!I18n) return;
+    if (document.documentElement) document.documentElement.lang = I18n.getLang();
+    var els = document.querySelectorAll ? document.querySelectorAll('[data-i18n]') : [];
+    for (var di = 0; di < els.length; di++) els[di].textContent = L(els[di].getAttribute('data-i18n'));
+    var aria = document.querySelectorAll ? document.querySelectorAll('[data-i18n-aria]') : [];
+    for (var da = 0; da < aria.length; da++) aria[da].setAttribute('aria-label', L(aria[da].getAttribute('data-i18n-aria')));
+    if (dilBtn) dilBtn.textContent = I18n.getLang().toUpperCase();
+    updateSoundBtns();
+  }
+  if (dilBtn) dilBtn.addEventListener('click', function () {
+    if (!I18n) return;
+    I18n.setLang(I18n.getLang() === 'tr' ? 'en' : 'tr', window.localStorage);
+    applyLang();
+    if (shopOpen) renderShop();
+  });
+  applyLang();
   function buzz(ms) {
     if (muted) return;
     try {
@@ -241,12 +268,12 @@ function bootstrap() {
   var prevShieldUsed = state.shieldUsed;
   var prevPowers = state.powers;
   var prevMilestones = state.milestones;
-  var banner = { title: 'Bölüm 1', sub: '', a: 0 };
+  var banner = { title: L('Bölüm {n}', { n: 1 }), sub: '', a: 0 };
 
   function nowMs() { return Date.now(); }
 
   function startPlaying() {
-    if (phase === 'ready') banner = { title: 'Bölüm 1', sub: '', a: 1.4 };
+    if (phase === 'ready') banner = { title: L('Bölüm {n}', { n: 1 }), sub: '', a: 1.4 };
     phase = 'playing';
     ensureAudio();
   }
@@ -269,7 +296,7 @@ function bootstrap() {
     prevShieldUsed = state.shieldUsed;
     prevPowers = state.powers;
     prevMilestones = state.milestones;
-    banner = { title: 'Bölüm 1', sub: '', a: 1.4 };
+    banner = { title: L('Bölüm {n}', { n: 1 }), sub: '', a: 1.4 };
     newBest = false;
     fx.particles = [];
     fx.trail = [];
@@ -362,7 +389,7 @@ function bootstrap() {
     Shop.save(window.localStorage, profile);
     window.GameLogic.revive(state);
     var left = Shop.REVIVE_MAX - state.revives;
-    banner = { title: 'Devam!', sub: left > 0 ? 'Bu koşuda ' + left + ' devam hakkın kaldı' : 'Bu koşudaki son devam hakkı', a: 1.8 };
+    banner = { title: L('Devam!'), sub: left > 0 ? L('Bu koşuda {n} devam hakkın kaldı', { n: left }) : L('Bu koşudaki son devam hakkı'), a: 1.8 };
     sfx('level');
     burst(C.BALL_X, state.y, 24, '#ff7a90', 260);
     input.action = false;
@@ -443,8 +470,8 @@ function bootstrap() {
     var head = document.createElement('p');
     head.className = 'seri';
     head.textContent = daily.streak > 0
-      ? 'Giriş serisi: ' + daily.streak + ' gün · yarın gelirsen +' + Quests.loginRewardFor(daily.streak + 1) + ' ★'
-      : 'Her gün ilk açılışta yıldız kazanırsın.';
+      ? L('Giriş serisi: {n} gün · yarın gelirsen +{r} ★', { n: daily.streak, r: Quests.loginRewardFor(daily.streak + 1) })
+      : L('Her gün ilk açılışta yıldız kazanırsın.');
     list.appendChild(head);
     daily.quests.forEach(function (q) {
       var row = document.createElement('div');
@@ -465,7 +492,7 @@ function bootstrap() {
     });
     var foot = document.createElement('p');
     foot.className = 'not';
-    foot.textContent = 'Görevler her gece yarısı yenilenir. Ödül görev bitince kendiliğinden eklenir.';
+    foot.textContent = L('Görevler her gece yarısı yenilenir. Ödül görev bitince kendiliğinden eklenir.');
     list.appendChild(foot);
   }
   function renderUpgrades(list) {
@@ -482,13 +509,13 @@ function bootstrap() {
       var info = document.createElement('div');
       var name = document.createElement('span');
       name.className = 'ad';
-      name.textContent = u.name;
+      name.textContent = L(u.name);
       var now = document.createElement('span');
       now.className = 'etki';
-      now.textContent = lv < max ? 'Sıradaki: ' + u.desc(u.values[lv + 1]) : u.desc(u.values[lv]) + ' (tam)';
+      now.textContent = lv < max ? L('Sıradaki: {d}', { d: u.desc(u.values[lv + 1]) }) : L('{d} (tam)', { d: u.desc(u.values[lv]) });
       info.appendChild(name); info.appendChild(now);
       var b = document.createElement('button');
-      if (lv >= max) { b.textContent = 'Tam'; b.disabled = true; b.className = 'kusanildi'; }
+      if (lv >= max) { b.textContent = L('Tam'); b.disabled = true; b.className = 'kusanildi'; }
       else { b.textContent = '★ ' + u.prices[lv]; b.disabled = profile.coins < u.prices[lv]; b.className = 'al'; }
       b.addEventListener('click', function () {
         if (!Shop.buyUpgrade(profile, u.id).ok) return;
@@ -501,8 +528,8 @@ function bootstrap() {
     });
     var foot = document.createElement('p');
     foot.className = 'not';
-    foot.textContent = 'Güçlendirmeler kalıcıdır ve bir sonraki koşudan itibaren geçerlidir. Ölünce ★ ' +
-      Shop.reviveCost(0) + ' ile devam edebilirsin (koşu başına en çok ' + Shop.REVIVE_MAX + ', fiyat her seferinde ikiye katlanır).';
+    foot.textContent = L('Güçlendirmeler kalıcıdır ve bir sonraki koşudan itibaren geçerlidir. Ölünce ★ {c} ile devam edebilirsin (koşu başına en çok {m}, fiyat her seferinde ikiye katlanır).',
+      { c: Shop.reviveCost(0), m: Shop.REVIVE_MAX });
     list.appendChild(foot);
   }
   function renderShop() {
@@ -521,15 +548,15 @@ function bootstrap() {
       row.appendChild(preview(item, shopTab));
       var name = document.createElement('span');
       name.className = 'ad';
-      name.textContent = item.name;
+      name.textContent = L(item.name);
       row.appendChild(name);
       var b = document.createElement('button');
       var owned = Shop.owns(profile, shopTab, item.id);
       var on = profile.equipped[shopTab] === item.id;
       var prem = Shop.isPremium(item);
       if (prem) row.className += ' premium';
-      if (on) { b.textContent = 'Kuşanıldı'; b.disabled = true; b.className = 'kusanildi'; }
-      else if (owned) { b.textContent = 'Kuşan'; }
+      if (on) { b.textContent = L('Kuşanıldı'); b.disabled = true; b.className = 'kusanildi'; }
+      else if (owned) { b.textContent = L('Kuşan'); }
       else if (prem) { b.textContent = '💎 ' + priceText(item.premiumBy[0]); b.disabled = !prov || !prov.canBuy; b.className = 'para'; }
       else { b.textContent = '★ ' + item.price; b.disabled = profile.coins < item.price; b.className = 'al'; }
       b.addEventListener('click', function () {
@@ -545,7 +572,7 @@ function bootstrap() {
     });
   }
   function priceText(id) {
-    if (!prov || !prov.canBuy) return 'Uygulamada';
+    if (!prov || !prov.canBuy) return L('Uygulamada');
     return prices[id] || (Mon.product(id) ? Mon.product(id).suggest : '?');
   }
   // equipAfter: [tür, kimlik] — tek ürün alınınca hemen kuşanılsın
@@ -573,13 +600,13 @@ function bootstrap() {
       var info = document.createElement('div');
       var name = document.createElement('span');
       name.className = 'ad';
-      name.textContent = pr.name + (pr.best ? '  · en iyi' : '');
+      name.textContent = L(pr.name) + (pr.best ? L('  · en iyi') : '');
       var d = document.createElement('span');
       d.className = 'etki';
-      d.textContent = pr.desc;
+      d.textContent = L(pr.desc);
       info.appendChild(name); info.appendChild(d);
       var b = document.createElement('button');
-      if (Mon.owned(profile, pr.id)) { b.textContent = 'Sahipsin'; b.disabled = true; b.className = 'kusanildi'; }
+      if (Mon.owned(profile, pr.id)) { b.textContent = L('Sahipsin'); b.disabled = true; b.className = 'kusanildi'; }
       else { b.textContent = priceText(pr.id); b.disabled = !prov || !prov.canBuy; b.className = 'para'; }
       b.addEventListener('click', function () { buyProduct(pr.id, null); });
       row.appendChild(icon); row.appendChild(info); row.appendChild(b);
@@ -588,13 +615,13 @@ function bootstrap() {
     var foot = document.createElement('p');
     foot.className = 'not';
     foot.textContent = prov && prov.canBuy
-      ? 'Tek seferlik satın alımlar; telefon değiştirince geri yüklenir. Yıldız ve görevler gerçek paradan bağımsızdır.'
-      : 'Satın alma yalnız Android uygulamasında (Google Play). Tarayıcı sürümünde gerçek para yok.';
+      ? L('Tek seferlik satın alımlar; telefon değiştirince geri yüklenir. Yıldız ve görevler gerçek paradan bağımsızdır.')
+      : L('Satın alma yalnız Android uygulamasında (Google Play). Tarayıcı sürümünde gerçek para yok.');
     list.appendChild(foot);
     if (prov && prov.canBuy) {
       var rb = document.createElement('button');
       rb.className = 'geri-yukle';
-      rb.textContent = 'Satın alımları geri yükle';
+      rb.textContent = L('Satın alımları geri yükle');
       rb.addEventListener('click', function () {
         prov.restore().then(function (ids) {
           var changed = false;
@@ -705,16 +732,16 @@ function bootstrap() {
           prevShieldUsed = state.shieldUsed;
         }
         if (state.level !== prevLevel) {
-          var sub = state.level === C.STAR_FROM ? 'Yıldız topla: bir çarpmayı affeder'
+          var sub = L(state.level === C.STAR_FROM ? 'Yıldız topla: bir çarpmayı affeder'
             : state.level === C.MOVE_FROM ? 'Mor kapılar hareket eder'
             : state.level === C.PULSE_FROM ? 'Yeşil kapılar daralıp genişler'
             : state.level === C.POWER_FROM ? 'Güçler: ⏱ dünyayı yavaşlatır, pembe top küçültür'
             : state.level === C.DOUBLE_FROM ? 'Çift duvarlar geliyor'
-            : state.level === C.SPIKE_FROM ? 'Kırmızı dikenlere sekme: basılı tut, havada kal' : '';
+            : state.level === C.SPIKE_FROM ? 'Kırmızı dikenlere sekme: basılı tut, havada kal' : '');
           var milestone = state.milestones !== prevMilestones;
           if (milestone) {
             // Her 10 bölümde bir eşik: büyük kutlama, ödülde +MILESTONE_BONUS
-            sub = 'Eşik ' + state.milestones + ' geçildi! +' + (Shop ? Shop.MILESTONE_BONUS : 5) + ' ★' + (state.milestones === 1 ? ' · artık sonsuz: zorluk yavaşça artar' : '');
+            sub = L('Eşik {n} geçildi! +{b} ★', { n: state.milestones, b: Shop ? Shop.MILESTONE_BONUS : 5 }) + (state.milestones === 1 ? L(' · artık sonsuz: zorluk yavaşça artar') : '');
             prevMilestones = state.milestones;
             sfx('win');
             buzz(40);
@@ -722,7 +749,7 @@ function bootstrap() {
           } else {
             sfx('level');
           }
-          banner = { title: 'Bölüm ' + state.level, sub: sub, a: milestone ? 3 : sub ? 2.2 : 1.4 };
+          banner = { title: L('Bölüm {n}', { n: state.level }), sub: sub, a: milestone ? 3 : sub ? 2.2 : 1.4 };
           prevLevel = state.level;
         }
         if (state.status === 'over') {
@@ -756,16 +783,16 @@ function bootstrap() {
     var secs = Math.max(0, Math.ceil((REVIVE_MS - (nowMs() - overAt)) / 1000));
     if (devamBtn) {
       devamBtn.hidden = !rOpen || adBusy || !starReviveOk();
-      if (!devamBtn.hidden) devamBtn.textContent = '❤ ★ ' + Shop.reviveCost(state.revives) + ' · ' + secs;
+      if (!devamBtn.hidden) devamBtn.textContent = L('❤ ★ {n} · {s}', { n: Shop.reviveCost(state.revives), s: secs });
     }
     if (reklamDevamBtn) {
       reklamDevamBtn.hidden = !rOpen || adBusy || !adReviveOk();
-      if (!reklamDevamBtn.hidden) reklamDevamBtn.textContent = (Mon.hasNoAds(profile) ? '❤ Bedava' : '📺 Devam') + ' · ' + secs;
+      if (!reklamDevamBtn.hidden) reklamDevamBtn.textContent = L(Mon.hasNoAds(profile) ? '❤ Bedava · {s}' : '📺 Devam · {s}', { s: secs });
     }
     var dbl = !rOpen && canDouble() && !shopOpen;
     if (ikiKatBtn) {
       ikiKatBtn.hidden = !dbl;
-      if (dbl) ikiKatBtn.textContent = (Mon.hasNoAds(profile) ? '★ x2' : '📺 ★ x2') + '  +' + runReward;
+      if (dbl) ikiKatBtn.textContent = L(Mon.hasNoAds(profile) ? '★ x2  +{n}' : '📺 ★ x2  +{n}', { n: runReward });
     }
     var showBtns = !rOpen && !shopOpen && !!profile && (phase === 'ready' || phase === 'over' || phase === 'won') && canRestart();
     if (shopBtn) shopBtn.hidden = !showBtns;
@@ -775,7 +802,7 @@ function bootstrap() {
       if (daily) {
         var left = 0;
         for (var qn = 0; qn < daily.quests.length; qn++) if (!daily.quests[qn].done) left++;
-        qb.textContent = '📋 Görevler' + (left ? ' (' + left + ')' : ' ✓');
+        qb.textContent = L('📋 Görevler') + (left ? ' (' + left + ')' : ' ✓');
       }
     }
     window.GameRender.draw(ctx, state, {
