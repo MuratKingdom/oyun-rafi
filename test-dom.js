@@ -455,6 +455,36 @@ pending5 = pending5.then(function () {
   });
 });
 
+// T5m — zayıf cihaz: kareler uzun süre yavaşsa hafif çizime geçilir ve saklanır; hızlı cihazda geçilmez
+pending5 = pending5.then(function () {
+  function boot(stepMs, frames) {
+    rafQueue.length = 0;
+    listeners.keydown.length = 0; listeners.keyup.length = 0;
+    listeners.pointerdown.length = 0; listeners.pointerup.length = 0;
+    delete global.window.BopgateNative;
+    var seen = null, prevDraw = global.window.GameRender.draw;
+    global.window.GameRender.draw = function (ctx, st, view) { seen = view; return prevDraw(ctx, st, view); };
+    require('./main.js').bootstrap();
+    for (var i = 0; i < frames; i++) {
+      t += stepMs;
+      var q = rafQueue.slice(); rafQueue.length = 0;
+      for (var j = 0; j < q.length; j++) q[j](t);
+    }
+    global.window.GameRender.draw = prevDraw;
+    return seen;
+  }
+  global.localStorage.setItem('bopgate-hafif', '0');
+  var fast = boot(16, 300);
+  var fastOk = fast && fast.lite === false && global.localStorage.getItem('bopgate-hafif') !== '1';
+  var slow = boot(40, 150);
+  var slowOk = slow && slow.lite === true && global.localStorage.getItem('bopgate-hafif') === '1';
+  var again = boot(16, 5);
+  var sticky = again && again.lite === true;
+  global.localStorage.setItem('bopgate-hafif', '0');
+  report('T5m zayıf cihazda hafif çizim', fastOk && slowOk && sticky,
+    'hızlı cihazda kapalı=' + fastOk + ' yavaşta açıldı=' + slowOk + ' saklandı=' + sticky);
+});
+
 pending5.then(function () {
   console.log('--- özet: ' + (fails === 0 ? 'tüm testler PASS' : fails + ' test FAIL'));
   process.exit(fails === 0 ? 0 : 1);

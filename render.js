@@ -704,7 +704,7 @@ function draw(ctx, state, view) {
   var theme = view.theme || DEFAULT_THEME;
   var tc = theme.c;
   var light = isLight(theme);
-  glowOn = !light;
+  glowOn = !light && !view.lite;
   var skin = view.skin || DEFAULT_SKIN;
   var textCol = tc.text || '#e8ecf1';
   var textDim = tc.textDim || '#9fb3d1';

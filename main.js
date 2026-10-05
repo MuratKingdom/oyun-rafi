@@ -34,6 +34,24 @@ function bootstrap() {
 
   // Keskin çizim: canvas'ın piksel boyutu ekran yoğunluğuna göre, görünen boyutu CSS'ten.
   var dpr = Math.min(3, Math.max(1, (window.devicePixelRatio || 1)));
+  // Hafif çizim (zayıf telefon): oyun sırasında kare süresi uzun süre yüksek kalırsa ışıma (shadowBlur),
+  // eklemeli karışım ve parçacıklar azaltılır, çizim çözünürlüğü en çok 2x olur. Karar cihazda saklanır
+  // (bopgate-hafif); adres satırında ?hafif ile zorla açılır (deneme için).
+  var lite = false;
+  try { lite = window.localStorage.getItem('bopgate-hafif') === '1' || /[?&]hafif\b/.test(String(window.location && window.location.search || '')); } catch (e) {}
+  if (lite) dpr = Math.min(dpr, 2);
+  var LITE_MS = 24, LITE_HOLD_S = 3;
+  var slowFor = 0, frameAvg = 16;
+  function watchFrame(dtSec) {
+    if (lite || dtSec <= 0 || dtSec > 0.1) return; // sekme değişimi, uyku vb. sayılmaz
+    frameAvg += (dtSec * 1000 - frameAvg) * 0.1;
+    slowFor = frameAvg > LITE_MS ? slowFor + dtSec : 0;
+    if (slowFor >= LITE_HOLD_S) {
+      lite = true;
+      dpr = Math.min(dpr, 2);
+      try { window.localStorage.setItem('bopgate-hafif', '1'); } catch (e) {}
+    }
+  }
   canvas.width = Math.round(C.CANVAS_W * dpr);
   canvas.height = Math.round(C.CANVAS_H * dpr);
 
@@ -315,12 +333,14 @@ function bootstrap() {
   var shakeLeft = 0;
   var squashLeft = 0;
   function burst(x, y, n, color, speed) {
+    if (lite) n = Math.ceil(n / 2);
     for (var i = 0; i < n; i++) {
       var ang = Math.random() * Math.PI * 2;
       var sp = speed * (0.4 + Math.random() * 0.6);
       fx.particles.push({ x: x, y: y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 0.5, max: 0.5, color: color });
     }
-    if (fx.particles.length > 160) fx.particles.splice(0, fx.particles.length - 160);
+    var cap = lite ? 80 : 160;
+    if (fx.particles.length > cap) fx.particles.splice(0, fx.particles.length - cap);
   }
   function updateFx(dt) {
     var kept = [];
@@ -828,6 +848,7 @@ function bootstrap() {
     var frameDt = (ts - last) / 1000;
     last = ts;
     if (frameDt > 0.25) frameDt = 0.25;
+    if (phase === 'playing' || phase === 'ready') watchFrame(frameDt);
 
     if (phase === 'playing') {
       acc += frameDt;
@@ -970,7 +991,7 @@ function bootstrap() {
     }
     window.GameRender.draw(ctx, state, {
       best: shownBest(), muted: muted, phase: phase, fx: fx, touch: touch, time: ts / 1000, viewX0: viewX0,
-      easy: easy, guide: guideFor(),
+      easy: easy, guide: guideFor(), lite: lite,
       newBest: newBest, canRestart: (phase === 'over' || phase === 'won') && canRestart(),
       banner: banner, levelCount: C.LEVEL_COUNT, gatesPerLevel: C.GATES_PER_LEVEL,
       theme: profile ? Shop.equippedMap(profile) : null, skin: profile ? Shop.equippedBall(profile) : null,
