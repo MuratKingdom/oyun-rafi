@@ -54,6 +54,7 @@
     iap: {
       // Play Console'da "tek seferlik ürün" (yönetilen, tüketilemeyen) olarak açılmalı.
       urunler: [
+        'bopgate.baslangic',
         'bopgate.reklamsiz',
         'bopgate.destekci',
         'bopgate.top.alev',

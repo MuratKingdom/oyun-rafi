@@ -656,6 +656,18 @@ var pending = [];
     'bir kez=' + once + ' (' + ids1 + ') birikimli=' + total + ' kayıt=' + safe + ' toplam ödül ★' + sum);
 })();
 
+// T44 — Android köprüsünün Play'e kaydettiği ürün listesi oyunun ürün listesiyle birebir aynı
+// (bir ürün yalnız oyuna eklenirse Play'de satın alınamaz)
+(function t44() {
+  var src = require('fs').readFileSync(require('path').join(__dirname, 'android-paket', 'bridge.js'), 'utf8');
+  var m = src.match(/urunler:\s*\[([\s\S]*?)\]/);
+  var bridgeIds = m ? (m[1].match(/'([^']+)'/g) || []).map(function (x) { return x.slice(1, -1); }).sort() : [];
+  var gameIds = Mon.PRODUCTS.map(function (p) { return p.id; }).sort();
+  var starter = Mon.product('bopgate.baslangic');
+  var ok = bridgeIds.join() === gameIds.join() && !!starter && starter.starter === true;
+  report('T44 köprü ve oyun ürün listesi aynı', ok, 'köprü=' + bridgeIds.length + ' oyun=' + gameIds.length + (ok ? '' : ' fark: ' + bridgeIds.join(',') + ' / ' + gameIds.join(',')));
+})();
+
 // --- Dikey ekran (uzun alan) ---------------------------------------------------
 // T16 — ölçek eşdeğerliği: uzun alanda top, kare alandakiyle normalize edildiğinde birebir aynı hareket eder
 (function t16() {

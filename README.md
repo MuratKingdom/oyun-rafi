@@ -169,6 +169,7 @@ Bilinen risk: ışıma (`shadowBlur`) eski/zayıf telefonlarda kare hızını d�
 
 | Ürün kimliği (Play Console) | Ad | Verdiği | Önerilen |
 |---|---|---|---|
+| `bopgate.baslangic` | Başlangıç paketi | ★ 400 + Kor ve Nane topları (ilk alım; rekoru 10+ oyuncuya açılışta haftada en çok bir kez hatırlatılır) | ₺19,99 |
 | `bopgate.reklamsiz` | Reklamsız | Reklam izlemeden ödül (bedava devam, ★ x2 anında) | ₺49,99 |
 | `bopgate.destekci` | Destekçi paketi | Reklamsız + Alev topu + Nebula haritası + ★ 1000 | ₺149,99 |
 | `bopgate.ozellik.paket` | Güç paketi | Bütün güçlendirmeler son basamakta | ₺99,99 |
