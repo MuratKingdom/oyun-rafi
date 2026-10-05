@@ -224,6 +224,10 @@ Actions sekmesinden elle de başlatılabilir ("Run workflow").
    indirilir, zip açılır, `app-debug.apk` telefona aktarılıp kurulur (ilk seferde "bilinmeyen
    kaynaklardan yüklemeye izin ver" istenir). Reklamlar Google'ın test reklamlarıdır; satın alma
    debug sürümünde Play'den gelmez (Play Billing yalnız Play'den kurulan sürümde çalışır).
+   Debug anahtarı Actions önbelleğinde tutulduğu için her APK aynı imzayla çıkar; yeni sürüm
+   `adb install -r app-debug.apk` ile eskisinin üstüne kurulur, ilerleme silinmez. İş günlüğündeki
+   "Debug imza parmak izi" satırı her derlemede aynı olmalı. Önbellek silinir ya da 7 gün kullanılmazsa
+   yeni anahtar üretilir: o zaman bir kez `adb uninstall com.cozulur.bopgate` gerekir.
 2. **İmzalı AAB (Play Console):** bir kez *upload key* oluşturulur ve GitHub'a sır olarak eklenir:
    ```
    keytool -genkeypair -v -keystore bopgate-upload.jks -alias bopgate -keyalg RSA -keysize 2048 -validity 10000
