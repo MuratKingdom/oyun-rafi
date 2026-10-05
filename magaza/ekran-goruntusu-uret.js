@@ -14,8 +14,8 @@ var GAME = 'file://' + path.join(ROOT, 'oyun-tek-dosya.html');
 var OUT = path.join(__dirname, 'ekran');
 
 var CAPTIONS = {
-  tr: ['Basılı tut · yüksel · kapıdan geç', 'Güçler, kalkanlar, hareketli kapılar', 'Rekorunu kır, liderlikte yüksel'],
-  en: ['Hold to rise. Slip through the gate.', 'Power-ups, shields, moving gates', 'Beat your best. Climb the leaderboard.']
+  tr: ['Basılı tut · yüksel · kapıdan geç', 'Güçler, kalkanlar, hareketli kapılar', 'Rekorunu kır, liderlikte yüksel', 'Günün parkuru: rekorunun hayaletiyle yarış'],
+  en: ['Hold to rise. Slip through the gate.', 'Power-ups, shields, moving gates', 'Beat your best. Climb the leaderboard.', 'Daily course: race your best run\'s ghost']
 };
 
 // Sahne: oyunun kendi mantığıyla ilerletilmiş, kapı ve yıldız dolu bir an
@@ -37,8 +37,8 @@ function sceneScript(kind, lang, caption) {
     cv.width = 520 * 3; cv.height = H * 3;
     cv.style.cssText = 'display:block;width:360px;height:522px';
     document.body.appendChild(cv);
-    var theme = S.find('map', kind === 'guc' ? 'nebula' : kind === 'son' ? 'neon' : 'gece');
-    var skin = S.find('ball', kind === 'guc' ? 'kristal' : kind === 'son' ? 'alev' : 'klasik');
+    var theme = S.find('map', kind === 'guc' ? 'nebula' : kind === 'son' ? 'neon' : kind === 'gunluk' ? 'gunbatimi' : 'gece');
+    var skin = S.find('ball', kind === 'guc' ? 'kristal' : kind === 'son' ? 'alev' : kind === 'gunluk' ? 'gezegen' : 'klasik');
     var st = L.createState(kind === 'guc' ? 11 : kind === 'son' ? 5 : 3, { height: H, mods: { maxShield: 2, startShield: 1, powerMul: 1, magnet: 1 } });
     st.level = kind === 'guc' ? 6 : 4;
     // Mantığı ilerlet; ölürse sahne için yeniden "oynuyor" say (yalnız görüntü üretimi)
@@ -63,6 +63,19 @@ function sceneScript(kind, lang, caption) {
       fx: { trail: trail, particles: [], rings: [{ x: 160, y: st.y, life: 0.18, max: 0.35, color: theme.c.edge }], scorePop: 0.4 },
       banner: kind === 'guc' ? { title: I.L('Bölüm {n}', { n: 6 }), sub: I.L('Çift duvarlar geliyor'), a: 1 } : null
     };
+    if (kind === 'oyun') {
+      // Az önce geçilen kapı parlar, tam ortadan geçiş serisi
+      var passed = null;
+      for (var q = 0; q < st.obstacles.length; q++) if (st.obstacles[q].x + 28 < 160 && (!passed || st.obstacles[q].x > passed.x)) passed = st.obstacles[q];
+      if (passed) { passed.passed = true; view.fx.flash = [{ o: passed, life: 0.2, max: 0.3 }]; }
+      view.fx.callout = { text: I.L('MÜKEMMEL x{n}', { n: 3 }), life: 0.65, max: 0.9, y: st.y, big: true };
+    }
+    if (kind === 'gunluk') {
+      // Günlük meydan okuma: aynı parkurda rekorun hayaleti biraz önde/üstte
+      view.daily = { best: 41, newBest: false };
+      view.ghost = st.y - 70;
+      st.score = 33;
+    }
     if (kind === 'son') {
       st.status = 'over'; st.overReason = 'Duvara çarptın'; st.milestones = 0;
       view.phase = 'over'; view.newBest = true; view.canRestart = true; view.coins = 1240; view.earned = 34; view.touch = true;
@@ -102,7 +115,8 @@ function sceneScript(kind, lang, caption) {
     await shot(2, 'oyun', async function (p) { await p.evaluate(sceneScript(), { kind: 'oyun', lang: lang, caption: CAPTIONS[lang][0] }); });
     await shot(3, 'gucler', async function (p) { await p.evaluate(sceneScript(), { kind: 'guc', lang: lang, caption: CAPTIONS[lang][1] }); });
     await shot(4, 'rekor', async function (p) { await p.evaluate(sceneScript(), { kind: 'son', lang: lang, caption: CAPTIONS[lang][2] }); });
-    await shot(5, 'magaza', async function (p) {
+    await shot(5, 'gunluk', async function (p) { await p.evaluate(sceneScript(), { kind: 'gunluk', lang: lang, caption: CAPTIONS[lang][3] }); });
+    await shot(6, 'magaza', async function (p) {
       await p.evaluate(function () { document.getElementById('magazaBtn').click(); });
       await p.waitForTimeout(250);
     });
