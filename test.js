@@ -632,6 +632,30 @@ var pending = [];
     'tohum=' + seedOk + ' parkur girdiden bağımsız=' + sameCourse + ' (' + a.obstacles.length + ' duvar, kapı ' + a.score + '/' + b.score + ', ' + a.status + '/' + b.status + ') kayıt=' + storeOk + ' hayalet=' + ghostOk);
 })();
 
+// T43 — başarımlar: tek koşu ve birikimli hedefler bir kez kazanılır, ödülleri doğru; günlük gün sayısı aynı
+// günde artmaz; bozuk/kurcalanmış kayıt güvenli; toplam ödül ekonomiyi hızlandırmayacak kadar küçük
+(function t43() {
+  var Q = require('./quests.js');
+  var a = Q.loadAch({ getItem: function () { return null; } });
+  var g1 = Q.applyAch(a, { score: 27, milestones: 0, shieldUsed: 1 }, { combo: 5, daily: true, day: '2026-10-05', balls: 2 });
+  var ids1 = g1.map(function (x) { return x.id; }).sort().join(',');
+  var g2 = Q.applyAch(a, { score: 27, milestones: 0, shieldUsed: 0 }, { combo: 5, daily: true, day: '2026-10-05', balls: 2 });
+  var once = ids1 === 'ilk_kapi,kapi_25,seri_5' && g2.length === 0 && a.dailyDays === 1 && a.gates === 54;
+  for (var i = 0; i < 18; i++) Q.applyAch(a, { score: 27 }, {});
+  var total = a.done.indexOf('toplam_500') >= 0 && a.done.indexOf('toplam_2000') < 0;
+  var store = {}, st = { getItem: function (k) { return k in store ? store[k] : null; }, setItem: function (k, v) { store[k] = String(v); } };
+  Q.saveAch(st, a);
+  var back = Q.loadAch(st);
+  store[Q.ACH_KEY] = JSON.stringify({ done: ['yok', 'ilk_kapi', 'ilk_kapi'], gates: -5, bestCombo: 'x', lastDaily: 'dün' });
+  var hacked = Q.loadAch(st);
+  store[Q.ACH_KEY] = '{bozuk';
+  var safe = back.done.length === a.done.length && back.gates === a.gates && hacked.done.join() === 'ilk_kapi' &&
+    hacked.gates === 0 && hacked.bestCombo === 0 && hacked.lastDaily === '' && Q.loadAch(st).done.length === 0;
+  var sum = Q.ACHIEVEMENTS.reduce(function (s, d) { return s + d.reward; }, 0);
+  report('T43 başarımlar', once && total && safe && sum <= 150 && Q.ACHIEVEMENTS.length === 12,
+    'bir kez=' + once + ' (' + ids1 + ') birikimli=' + total + ' kayıt=' + safe + ' toplam ödül ★' + sum);
+})();
+
 // --- Dikey ekran (uzun alan) ---------------------------------------------------
 // T16 — ölçek eşdeğerliği: uzun alanda top, kare alandakiyle normalize edildiğinde birebir aynı hareket eder
 (function t16() {
