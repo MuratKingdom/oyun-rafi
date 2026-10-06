@@ -140,8 +140,10 @@ Telefona kurma (Windows, PowerShell; `gh` ve `platform-tools` kurulu):
   - GitHub Secrets'a 4 imza sırrı (`BOPGATE_KEYSTORE_BASE64`, `_KEYSTORE_PASSWORD`, `_KEY_ALIAS`,
     `_KEY_PASSWORD`) → CI imzalı AAB üretir.
   - ✅ (6 Ekim) AdMob hesabı onaylandı; uygulama `bopgate` ve ödüllü birim `odullu-devam` açıldı,
-    kimlikler koda yazıldı (oyun dalı PR #48, `testModu: true`). Kalan: AdMob → Gizlilik ve
-    mesajlaşma → GDPR mesajı (gizlilik adresiyle) ve Play yayınından sonra `app-ads.txt`.
+    kimlikler koda yazıldı (oyun dalı PR #48, `testModu: true`). GDPR mesajı yayınlandı (6 Ekim;
+    İngilizce, "İzin ver / İzin verme / Seçenekleri yönet", tüm bölgelerde; gizlilik adresi bağlı).
+    Kalan: Play yayınından sonra geliştirici sitesinin kökünde `app-ads.txt`; yayın sürümünde
+    `testModu: false`.
   - Play Games proje ve liderlik kimlikleri;
     Play Console'da 7 ürünün girilmesi (`magaza/play-formlari.md` §7). Kimlikler `android-paket/bridge.js`
     YAPILANDIRMA bölümüne girilir (kimlik sır değildir, ama şifre/anahtar asla).
