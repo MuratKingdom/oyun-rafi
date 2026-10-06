@@ -1,6 +1,6 @@
 # Oyun Rafı — devam notu (handoff)
 
-Hazırlanma: 3 Ekim 2026 · son güncelleme: 5 Ekim 2026. Bu dosya rafla ilgili işi yeni bir sohbet/oturumda kaldığı yerden sürdürmek
+Hazırlanma: 3 Ekim 2026 · son güncelleme: 6 Ekim 2026. Bu dosya rafla ilgili işi yeni bir sohbet/oturumda kaldığı yerden sürdürmek
 içindir. Önce bunu, sonra `README.md`'yi oku.
 
 ## Depo nasıl çalışıyor (kısa)
@@ -109,6 +109,16 @@ Oyun özeti (2 Ekim itibarıyla, oyun-rafi #5–#19):
     eklendi, T44 köprü/oyun ürün listesi eşitliğini korur. **Play Console'da artık 7 ürün.**
   - `localStorage` yeni anahtarlar: `bopgate-kolay`, `bopgate-kolay-best`, `bopgate-rehber`, `bopgate-hafif`,
     `bopgate-gunluk-meydan`, `bopgate-basarim`, `bopgate-buyuk-yazi`, `bopgate-titresim`, `bopgate-teklif`.
+- **6 Ekim — oyuncu geri bildirimi ve AdMob (#47–#51):**
+  - #47 zorluk yumuşatıldı ("çok çabuk zorlaşıyor"): zaman sabiti 75 → 140 sn, kapı 180/130, en yüksek hız
+    330; hareketli kapı 4., nefes alan 6., çift duvar 8., diken 9. bölümde. Bot (800, kalkansız): 10. bölüm
+    5/8 → 8/8.
+  - #48 gerçek AdMob kimlikleri (uygulama `~4355649106`, ödüllü birim `odullu-devam` `/6384889952`);
+    `testModu: true` iken köprü Google test birimini ister. T45.
+  - #49 görevler: günde 4 görev, 14 tür; 🎁 hepsini bitirme ★10; başarımlar 12 → 20 (toplam ★252). T46.
+  - #50/#51 iletişim `bopgate.destek@gmail.com`; GitHub Pages açıldı.
+  - Telefondaki eski sürüm farklı imzalıydı → bir kez `adb uninstall com.cozulur.bopgate`; bundan sonraki
+    bütün APK'ler aynı anahtarla (`baacb2ae…`), `install -r` ilerlemeyi korur.
 
 Doğrulama sınırı: debug APK telefonda açıldı, ekrana sığdığı görüldü; uzun süreli elle oynanış ve
 denge insanla ayarlanmadı. Reklam/satın alma yalnız test kimlikleriyle, gerçek cihazda denenmedi.
