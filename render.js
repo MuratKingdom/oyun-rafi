@@ -587,8 +587,15 @@ function drawWall(ctx, o, tc, light, flash) {
 function questLines(view) {
   var q = view.questDone || [];
   var out = [];
-  for (var i = 0; i < q.length && i < 3; i++) {
-    out.push({ text: L('✓ {t}  +{r} ★', { t: q[i].text, r: q[i].reward }), font: font(600, 15), color: '#46d39a', h: 24 });
+  // En çok 3 satır: fazlası tek özet satırında toplanır (ödüller zaten cüzdana eklendi)
+  var shown = q.length > 3 ? 2 : q.length;
+  for (var i = 0; i < shown; i++) {
+    out.push({ text: L('✓ {t}  +{r} ★', { t: q[i].text, r: q[i].reward }), font: font(600, 15), color: q[i].bonus ? '#ffd166' : '#46d39a', h: 24 });
+  }
+  if (q.length > shown) {
+    var rest = 0;
+    for (var j = shown; j < q.length; j++) rest += q[j].reward;
+    out.push({ text: L('✓ ve {n} hedef daha  +{r} ★', { n: q.length - shown, r: rest }), font: font(600, 15), color: '#46d39a', h: 24 });
   }
   return out;
 }

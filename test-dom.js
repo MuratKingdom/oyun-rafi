@@ -300,7 +300,7 @@ function firePointer(type) {
   var hasRunQuest = after.quests.some(function (q) { return q.kind === 'day_runs'; });
   var runQ = after.quests.filter(function (q) { return q.kind === 'day_runs' || q.kind === 'reach_level'; });
   var progressed = runQ.length === 0 || runQ.some(function (q) { return q.progress >= 1; });
-  report('T5h günlük ödül bir kez, görev ilerlemesi kaydedilir', c1 === 3 && c2 === 3 && dly.quests.length === 3 && dly.streak === 1 && over && progressed,
+  report('T5h günlük ödül bir kez, görev ilerlemesi kaydedilir', c1 === 3 && c2 === 3 && dly.quests.length === 4 && dly.streak === 1 && over && progressed,
     'ilk açılış=' + c1 + ' ikinci açılış=' + c2 + ' seri=' + dly.streak + ' ilerleme ' + runsBefore + ' → ' + after.quests.map(function (q) { return q.kind + ':' + q.progress; }).join(',') + (hasRunQuest ? '' : ' (bugün day_runs yok)'));
 })();
 
