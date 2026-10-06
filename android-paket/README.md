@@ -76,21 +76,24 @@ Simgeleri yeniden üretmek için: `node ikon-uret.js` (Playwright + Chromium ger
 `PLAYWRIGHT_CORE` ve `CHROMIUM_YOLU` ortam değişkenleriyle değiştirilebilir). Hem `kaynak/`
 hem de `android/app/src/main/res/` (mipmap-*, drawable-*/splash.png) güncellenir.
 
-## Gerçek AdMob kimlikleri nereye yazılır
+## AdMob kimlikleri
 
-Şu an yalnızca Google'ın resmi **test** kimlikleri var (gerçek reklam gösterilmez, hesap riski yok):
+Gerçek kimlikler yazıldı (6 Ekim 2026). Kimlikler gizli değildir, APK içinde zaten görünür:
 
 1. **Uygulama kimliği** → `android/app/src/main/res/values/strings.xml` → `admob_app_id`
-   (test: `ca-app-pub-3940256099942544~3347511713`). AdMob > Uygulamalar > Uygulama ayarları'ndaki
-   `ca-app-pub-…~…` değeriyle değiştirin.
-2. **Ödüllü reklam birimi** → `bridge.js` başındaki `YAPILANDIRMA.admob.odulluReklamBirimi`
-   (test: `ca-app-pub-3940256099942544/5224354917`). İsterseniz yerleşime göre ayrı birim:
+   = `ca-app-pub-7204682533252308~4355649106`
+2. **Ödüllü reklam birimi** (`odullu-devam`) → `bridge.js` → `YAPILANDIRMA.admob.odulluReklamBirimi`
+   = `ca-app-pub-7204682533252308/6384889952`. İsterseniz yerleşime göre ayrı birim:
    `yerlesimBirimleri.devam` / `yerlesimBirimleri.iki_kat`.
-3. Aynı yerde `testModu: false` yapın.
+3. `testModu: true` iken köprü gerçek birimi **kullanmaz**, Google'ın test birimini
+   (`ca-app-pub-3940256099942544/5224354917`) ister. Yalnızca Play'e giden yayın sürümünde
+   `testModu: false` yapın.
 4. AdMob'da "Gizlilik ve mesajlaşma" bölümünden GDPR (AB) onay mesajını oluşturun; köprü açılışta
    Google UMP onay formunu gerekirse gösterir (`onayFormu: true`).
-5. Geliştirme sırasında kendi cihazınızda gerçek birim denerken cihazı test cihazı yapın
+5. `testModu: false` sürümü kendi cihazınızda denerken cihazı test cihazı yapın
    (`testCihazlari`), aksi halde kendi reklamınıza tıklamak hesabı riske atar.
+6. **app-ads.txt** — Play'deki geliştirici web sitesinin KÖK dizininde şu satır olmalı:
+   `google.com, pub-7204682533252308, DIRECT, f08c47fec0942fa0`
 
 ## Play Console: uygulama içi ürünler
 

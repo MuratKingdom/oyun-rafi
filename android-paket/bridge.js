@@ -34,13 +34,12 @@
   // ===================================================================================
   var YAPILANDIRMA = {
     admob: {
-      // >>> GERÇEK KİMLİKLERİ BURAYA YAZIN <<<
-      // Şu an Google'ın resmi TEST ödüllü reklam birimi kullanılıyor.
-      // Yayın öncesi: AdMob'daki gerçek ödüllü reklam birimi kimliğini yazın ve
-      // testModu'nu false yapın. (Uygulama kimliği ayrıca
-      // android/app/src/main/res/values/strings.xml -> admob_app_id içinde değişir.)
+      // Gerçek AdMob kimlikleri (gizli değildir; APK içinde zaten görünür).
+      // testModu: true iken gerçek birim KULLANILMAZ, Google'ın test birimi istenir
+      // (kendi reklamına tıklama riski yok). Yayın sürümünde false yapın.
+      // (Uygulama kimliği android/app/src/main/res/values/strings.xml -> admob_app_id içinde.)
       testModu: true,
-      odulluReklamBirimi: 'ca-app-pub-3940256099942544/5224354917', // Google TEST birimi
+      odulluReklamBirimi: 'ca-app-pub-7204682533252308/6384889952', // odullu-devam
       // Yerleşime göre ayrı birim isterseniz doldurun; null ise odulluReklamBirimi kullanılır.
       yerlesimBirimleri: {
         devam: null,
@@ -313,7 +312,11 @@
     return reklam.baslatSozu;
   }
 
+  // Google'ın resmi TEST ödüllü reklam birimi; testModu açıkken her yerleşimde bu kullanılır.
+  var TEST_ODULLU_BIRIM = 'ca-app-pub-3940256099942544/5224354917';
+
   function birimSec(yerlesim) {
+    if (YAPILANDIRMA.admob.testModu) return TEST_ODULLU_BIRIM;
     var b = YAPILANDIRMA.admob.yerlesimBirimleri || {};
     return b[yerlesim] || YAPILANDIRMA.admob.odulluReklamBirimi;
   }
@@ -498,7 +501,7 @@
   // mağaza bağlantısı. Oyunun açılışını bekletmez.
   setTimeout(function () {
     if (eklenti('AdMob')) {
-      reklamBaslat().then(function (ok) { if (ok) reklamYukle(YAPILANDIRMA.admob.odulluReklamBirimi); });
+      reklamBaslat().then(function (ok) { if (ok) reklamYukle(birimSec('devam')); });
     }
     if (window.cordova) magazaHazir(null);
   }, 1500);

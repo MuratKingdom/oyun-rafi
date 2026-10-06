@@ -668,6 +668,21 @@ var pending = [];
   report('T44 köprü ve oyun ürün listesi aynı', ok, 'köprü=' + bridgeIds.length + ' oyun=' + gameIds.length + (ok ? '' : ' fark: ' + bridgeIds.join(',') + ' / ' + gameIds.join(',')));
 })();
 
+// T45 — AdMob: uygulama kimliği ile ödüllü birim aynı yayıncıya ait, test modu açık ve
+// test modunda köprü gerçek birimi değil Google'ın test birimini ister
+(function t45() {
+  var fs = require('fs'), path = require('path');
+  var src = fs.readFileSync(path.join(__dirname, 'android-paket', 'bridge.js'), 'utf8');
+  var xml = fs.readFileSync(path.join(__dirname, 'android-paket', 'android', 'app', 'src', 'main', 'res', 'values', 'strings.xml'), 'utf8');
+  var app = (xml.match(/name="admob_app_id"[^>]*>ca-app-pub-(\d+)~\d+</) || [])[1];
+  var unit = (src.match(/odulluReklamBirimi:\s*'ca-app-pub-(\d+)\/\d+'/) || [])[1];
+  var testOn = /testModu:\s*true/.test(src);
+  var guard = /if \(YAPILANDIRMA\.admob\.testModu\) return TEST_ODULLU_BIRIM;/.test(src);
+  var GOOGLE_TEST = '3940256099942544';
+  var ok = !!app && app === unit && app !== GOOGLE_TEST && testOn && guard;
+  report('T45 AdMob kimlikleri tutarlı, test modu korumalı', ok, 'uygulama=' + app + ' birim=' + unit + ' testModu=' + testOn + ' koruma=' + guard);
+})();
+
 // --- Dikey ekran (uzun alan) ---------------------------------------------------
 // T16 — ölçek eşdeğerliği: uzun alanda top, kare alandakiyle normalize edildiğinde birebir aynı hareket eder
 (function t16() {
