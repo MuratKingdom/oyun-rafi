@@ -124,12 +124,15 @@ Telefona kurma (Windows, PowerShell; `gh` ve `platform-tools` kurulu):
 - **Para kazanma — karar verildi ve uygulandı (4 Ekim):** ücretli toplar/harita/özellikler, reklamı kapatan
   paket, yalnız ödüllü reklam. Kod hazır; gerçek kimlikler bekleniyor (aşağıda).
 - **Murat'tan beklenenler (yayın için):**
-  - Gizlilik sayfası için herkese açık iletişim e-postası (`gizlilik/bopgate.html` ve
-    `magaza/gizlilik.html`'deki `ILETISIM_EPOSTA` yer tutucusu) ve depo için GitHub Pages
-    (Ayarlar → Pages → `main` / kök) → adres `https://muratkingdom.github.io/oyun-rafi/gizlilik/bopgate.html`.
+  - ✅ (6 Ekim) İletişim e-postası `bopgate.destek@gmail.com` gizlilik sayfalarına yazıldı;
+    GitHub Pages açıldı (`main` / kök) → `https://muratkingdom.github.io/oyun-rafi/gizlilik/bopgate.html`.
+    Play Console → Mağaza ayarları → İletişim bilgileri'ne aynı adres girilecek.
   - GitHub Secrets'a 4 imza sırrı (`BOPGATE_KEYSTORE_BASE64`, `_KEYSTORE_PASSWORD`, `_KEY_ALIAS`,
     `_KEY_PASSWORD`) → CI imzalı AAB üretir.
-  - AdMob uygulama + ödüllü reklam birimi kimlikleri; Play Games proje ve liderlik kimlikleri;
+  - ✅ (6 Ekim) AdMob hesabı onaylandı; uygulama `bopgate` ve ödüllü birim `odullu-devam` açıldı,
+    kimlikler koda yazıldı (oyun dalı PR #48, `testModu: true`). Kalan: AdMob → Gizlilik ve
+    mesajlaşma → GDPR mesajı (gizlilik adresiyle) ve Play yayınından sonra `app-ads.txt`.
+  - Play Games proje ve liderlik kimlikleri;
     Play Console'da 7 ürünün girilmesi (`magaza/play-formlari.md` §7). Kimlikler `android-paket/bridge.js`
     YAPILANDIRMA bölümüne girilir (kimlik sır değildir, ama şifre/anahtar asla).
 
