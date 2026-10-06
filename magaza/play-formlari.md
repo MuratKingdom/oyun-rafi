@@ -11,8 +11,8 @@ ifadesi zamanla değişebiliyor ve SDK'ların veri beyanını Google kendi belge
 - Adres: `https://muratkingdom.github.io/oyun-rafi/gizlilik/bopgate.html`
   (raf PR'ıyla `main`'e konacak; depo için GitHub Pages açık olmalı — açık değilse
   Ayarlar → Pages → Branch: `main` / kök).
-- Sayfadaki `ILETISIM_EPOSTA` yer tutucusu yayından önce gerçek bir iletişim adresiyle değiştirilmeli
-  (Play bunu zorunlu tutar; adres sayfada herkese açık görünür).
+- İletişim adresi: `bopgate.destek@gmail.com` (sayfada ve Play Console → Mağaza ayarları → İletişim bilgileri'nde
+  aynı adres; herkese açık görünür).
 
 ## 2. Reklamlar
 - "Uygulamanız reklam içeriyor mu?" → **Evet** (AdMob ödüllü reklam).

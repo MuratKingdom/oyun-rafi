@@ -106,4 +106,4 @@ ADİL TASARIM
 Not: öne çıkan görseldeki alt yazı Türkçe ("Bas · sek · kapıdan geç"); İngilizce mağaza için ayrı bir
 öne çıkan görsel gerekirse `android-paket/ikon-uret.js` İngilizce metinle yeniden çalıştırılmalı.
 
-**Kategori:** Oyun → Arcade · **Etiketler:** Arcade, Tek dokunuş, Gündelik · **İletişim e-postası:** (Murat belirleyecek)
+**Kategori:** Oyun → Arcade · **Etiketler:** Arcade, Tek dokunuş, Gündelik · **İletişim e-postası:** bopgate.destek@gmail.com

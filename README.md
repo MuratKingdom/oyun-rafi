@@ -226,7 +226,7 @@ aynı olduğunu denetler; eksik çeviri `GameI18n.missing`'de birikir (tarayıc�
 
 ## Play Store hazırlığı (4 Ekim 2026)
 `magaza/` klasörü: mağaza metinleri (EN/TR, `magaza-metinleri.md`), gizlilik politikası (`gizlilik.html`,
-EN+TR; yayından önce `ILETISIM_EPOSTA` doldurulmalı), Play Console form cevapları (`play-formlari.md`:
+EN+TR; iletişim: `bopgate.destek@gmail.com`), Play Console form cevapları (`play-formlari.md`:
 içerik derecelendirme, hedef kitle, veri güvenliği, ürün listesi, yayın sırası) ve 1080×1920 ekran görüntüleri
 (`ekran/`, TR ve EN 5'er). Görüntüler gerçek oyun kodundan üretilir:
 `PLAYWRIGHT=… CHROMIUM=… node magaza/ekran-goruntusu-uret.js`.
