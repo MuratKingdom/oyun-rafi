@@ -30,15 +30,21 @@ duvarın kapısını topun mevcut yüksekliğine denk getirip çarpmadan geçmek
 duvara çarparsan ya da tuşu çok uzun süre basılı tutup tavana çarparsan oyun biter. Skor
 (**Kapı**) geçtiğin kapı sayısıdır; en yüksek skor (**Rekor**) tarayıcıda saklanır.
 
+**Zorluk yumuşatıldı (6 Ekim 2026, oyuncu geri bildirimi "çok çabuk zorlaşıyor, ilerlemek zor"):**
+zorluk zaman sabiti 75 → 140 sn (60. saniyede hız 277 → 245, kapı 142 → 163), kapı 170 → 180 / en dar
+120 → 130, en yüksek hız 340 → 330, duvar aralığı 1,9 → 2,0 sn ve daralması yarı hızda; yeni engeller
+daha geç: hareketli kapı 3 → 4, nefes alan 4 → 6, çift duvar 6 → 8, diken 7 → 9. bölüm. Bot (telefon
+yüksekliği 800, kalkansız): 10. bölümü bitiren 5/8 → 8/8; 20. bölüm hedefinde 18–20. bölüme çıkıyor.
+
 **Bölümler ve sonsuz mod (2 Ekim 2026):** Her bölüm 8 kapı. Oyun **sonsuzdur**; bitiş yok,
 yalnız ölünce biter. Her 10 bölümde bir **eşik** geçilir (kutlama + ödülde ★ 5). İlk eşikten
-(10. bölüm) sonra zorluk 20 bölüm boyunca yavaşça bir tavana çıkar: hız 340 → 380, en dar kapı
-120 → 105, duvar aralığı en az 1,3 → 1,15 sn; 30. bölümden sonra sabit kalır. Asıl hedef rekor.
+(10. bölüm) sonra zorluk 20 bölüm boyunca yavaşça bir tavana çıkar: hız 330 → 370, en dar kapı
+130 → 115, duvar aralığı en az 1,3 → 1,15 sn; 30. bölümden sonra sabit kalır. Asıl hedef rekor.
 Yeni öğeler bölümle açılır:
 - **Bölüm 2+ · Yıldız:** kapının ortasında durur; toplayınca topun çevresinde bir **kalkan**
   belirir (en fazla 1). Kalkan bir duvar çarpmasını affeder; tavanı affetmez.
-- **Bölüm 3+ · Hareketli kapı (mor):** boşluk yukarı-aşağı salınır; genlik bölümle büyür.
-- **Bölüm 6+ · Çift duvar:** art arda iki duvar, boşlukları birbirine kaydırılmış.
+- **Bölüm 4+ · Hareketli kapı (mor):** boşluk yukarı-aşağı salınır; genlik bölümle büyür.
+- **Bölüm 8+ · Çift duvar:** art arda iki duvar, boşlukları birbirine kaydırılmış.
 
 Adalet kuralları: art arda iki kapının yükseklik farkı en fazla 150 px'tir (top yalnız
 zeminden sekerek yükselir); çift duvardan sonraki duvar normal aralıkla gelir. Zaman
@@ -83,10 +89,10 @@ Tercih `localStorage`'da (`sekmeguc-ses`).
 ## Yeni güçler ve engeller (2 Ekim 2026)
 | Bölüm | Öğe | Ne yapar |
 |---|---|---|
-| 4+ | **Nefes alan kapı** (yeşil ağız) | Ağız ortası sabit kalır, boyu %72'ye kadar daralıp genişler; hareketli kapıyla birleşmez |
+| 6+ | **Nefes alan kapı** (yeşil ağız) | Ağız ortası sabit kalır, boyu %72'ye kadar daralıp genişler; hareketli kapıyla birleşmez |
 | 5+ | **⏱ Yavaşlatma** (mavi saat) | 4 sn boyunca duvarlar %65 hızla akar; topun düşüşü değişmez |
 | 5+ | **Küçülme** (pembe halka) | 6 sn boyunca top %60 boyuta iner, dar ağızlardan geçer |
-| 7+ | **Zemin dikeni** (kırmızı) | Duvarın ardında zeminde şerit; üstüne sekmek öldürür, basılı tutup havada kalarak geçilir |
+| 9+ | **Zemin dikeni** (kırmızı) | Duvarın ardında zeminde şerit; üstüne sekmek öldürür, basılı tutup havada kalarak geçilir |
 
 Güçler kapının ortasında yıldızın yerine çıkar; tekrar alınca süre baştan başlar. Kalkan bir
 diken çarpmasını da yutar. Etkin güçler ve kalan süreleri zeminin altında, sağda görünür.

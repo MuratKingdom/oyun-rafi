@@ -40,7 +40,7 @@ function sceneScript(kind, lang, caption) {
     var theme = S.find('map', kind === 'guc' ? 'nebula' : kind === 'son' ? 'neon' : kind === 'gunluk' ? 'gunbatimi' : 'gece');
     var skin = S.find('ball', kind === 'guc' ? 'kristal' : kind === 'son' ? 'alev' : kind === 'gunluk' ? 'gezegen' : 'klasik');
     var st = L.createState(kind === 'guc' ? 11 : kind === 'son' ? 5 : 3, { height: H, mods: { maxShield: 2, startShield: 1, powerMul: 1, magnet: 1 } });
-    st.level = kind === 'guc' ? 6 : 4;
+    st.level = kind === 'guc' ? 8 : 4;
     // Mantığı ilerlet; ölürse sahne için yeniden "oynuyor" say (yalnız görüntü üretimi)
     for (var i = 0; i < (kind === 'guc' ? 420 : 300); i++) {
       L.step(st, { action: (i % 34) < 12 }, 1 / 60);
@@ -61,7 +61,7 @@ function sceneScript(kind, lang, caption) {
     var view = {
       phase: 'playing', best: kind === 'son' ? 87 : 64, theme: theme, skin: skin, time: 1.4,
       fx: { trail: trail, particles: [], rings: [{ x: 160, y: st.y, life: 0.18, max: 0.35, color: theme.c.edge }], scorePop: 0.4 },
-      banner: kind === 'guc' ? { title: I.L('Bölüm {n}', { n: 6 }), sub: I.L('Çift duvarlar geliyor'), a: 1 } : null
+      banner: kind === 'guc' ? { title: I.L('Bölüm {n}', { n: 8 }), sub: I.L('Çift duvarlar geliyor'), a: 1 } : null
     };
     if (kind === 'oyun') {
       // Az önce geçilen kapı parlar, tam ortadan geçiş serisi

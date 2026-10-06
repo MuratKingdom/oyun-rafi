@@ -512,18 +512,18 @@ var THRUST = -700;
 var BOUNCE_V = -480;
 var MAX_VY = 900;
 var SPEED0 = 200;
-var SPEED_MAX = 340;
-var GAP_H0 = 170;
-var GAP_MIN = 120;
+var SPEED_MAX = 330;
+var GAP_H0 = 180;
+var GAP_MIN = 130;
 // Zorluk eğrisi: doğrusal değil, doygunluğa giden üstel yaklaşım.
 // İlk dakikada hızlı sertleşir, sonra yavaşlar ve bir tavanda durur;
 // böylece uzun koşular adil kalır, "sonsuz hızlanma" ile zorla bitmez.
-var DIFF_TAU = 75;
+var DIFF_TAU = 140; // 6 Ekim: oyuncu geri bildirimi "çok çabuk zorlaşıyor" → 75'ten yumuşatıldı
 var WALL_W = 28;
 var SPAWN_GRACE = 2.2;
 var SPAWN_INTERVAL_MIN = 1.3;
-var SPAWN_INTERVAL_MAX = 1.9;
-var SPAWN_RAMP = 0.01;
+var SPAWN_INTERVAL_MAX = 2.0;
+var SPAWN_RAMP = 0.005;
 
 function nextRand(state) {
   state.rngA = (state.rngA + 0x6D2B79F5) | 0;
@@ -551,12 +551,12 @@ function endless(level) {
 // Tavanda bile her dizilim geçilebilir kalır (MAX_JUMP, bot ölçümü: README).
 // Yeni öğeler bölümle açılır:
 //   2+  yıldız: kapının ortasında durur; toplanınca bir kalkan verir (en çok 1)
-//   3+  hareketli kapı: boşluk yukarı-aşağı salınır, genliği bölümle büyür
-//   4+  nefes alan kapı: ağız ortası sabit kalır, boyu daralıp genişler (hareketliyle birleşmez)
+//   4+  hareketli kapı: boşluk yukarı-aşağı salınır, genliği bölümle büyür
+//   6+  nefes alan kapı: ağız ortası sabit kalır, boyu daralıp genişler (hareketliyle birleşmez)
 //   5+  güç: kapının ortasında yıldız yerine çıkabilir —
 //         ⏱ yavaşlatma (dünya POWER_SLOW_F hızında akar) ya da küçülme (top yarıçapı POWER_SMALL_F)
-//   6+  çift duvar: art arda iki duvar, boşlukları birbirine kaydırılmış
-//   7+  zemin dikeni: duvarın hemen ardında zeminde dikenli şerit; üstüne sekmek öldürür,
+//   8+  çift duvar: art arda iki duvar, boşlukları birbirine kaydırılmış
+//   9+  zemin dikeni: duvarın hemen ardında zeminde dikenli şerit; üstüne sekmek öldürür,
 //       basılı tutup havada kalarak geçilir
 // Kalkan, bir duvar ya da diken çarpmasını yutar (tavanı değil).
 var LEVEL_COUNT = 10; // eşik uzunluğu (bölüm)
@@ -566,11 +566,11 @@ var ENDLESS_GAP = 15;
 var ENDLESS_SPAWN_MIN = 1.15;
 var GATES_PER_LEVEL = 8;
 var STAR_FROM = 2;
-var MOVE_FROM = 3;
-var DOUBLE_FROM = 6;
-var PULSE_FROM = 4;
+var MOVE_FROM = 4;
+var DOUBLE_FROM = 8;
+var PULSE_FROM = 6;
 var POWER_FROM = 5;
-var SPIKE_FROM = 7;
+var SPIKE_FROM = 9;
 var POWER_SLOW_F = 0.65;
 var POWER_SLOW_T = 4;
 var POWER_SMALL_F = 0.6;
