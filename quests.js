@@ -17,7 +17,8 @@ function tx(s, p) {
 }
 
 var DAILY_KEY = 'sekmeguc-gunluk';
-var QUESTS_PER_DAY = 3;
+var QUESTS_PER_DAY = 4;
+var ALL_DONE_BONUS = 10; // günün bütün görevleri bitince bir kez
 
 // kind: run_* tek koşuda, day_* gün boyunca birikir
 var TEMPLATES = [
@@ -28,6 +29,12 @@ var TEMPLATES = [
   { kind: 'day_runs', targets: [3, 5], rewards: [3, 5], text: 'Bugün {n} oyun oyna' },
   { kind: 'day_shield', targets: [1, 2], rewards: [4, 6], text: 'Kalkanla {n} çarpmadan kurtul' },
   { kind: 'day_moving', targets: [3, 6], rewards: [4, 6], text: '{n} hareketli (mor) kapıdan geç' },
+  { kind: 'run_powers', targets: [1], rewards: [6], text: 'Bir koşuda {n} güç topla' }, // güçler 5. bölümden
+  { kind: 'run_time', targets: [30, 60, 90], rewards: [4, 6, 9], text: 'Bir koşuda {n} saniye dayan' },
+  { kind: 'run_combo', targets: [2, 3, 4], rewards: [5, 7, 9], text: 'Bir koşuda {n} kez üst üste MÜKEMMEL geç' },
+  { kind: 'day_stars', targets: [10, 20], rewards: [5, 8], text: 'Bugün toplam {n} yıldız topla' },
+  { kind: 'day_perfect', targets: [5, 10], rewards: [5, 8], text: 'Bugün {n} kez MÜKEMMEL geç' },
+  { kind: 'day_daily', targets: [1], rewards: [5], text: 'Günün meydan okumasını (📅) oyna' },
   // 'win' adı eski kayıtlarla uyum için kaldı: oyun sonsuz, görev ilk eşiği (10. bölüm) geçmek
   { kind: 'win', targets: [1], rewards: [15], text: '10. bölümü geç (ilk eşik)' }
 ];
@@ -56,7 +63,7 @@ function describe(q) {
   return tpl ? tx(tpl.text, { n: q.target }) : q.kind;
 }
 
-// Günün 3 görevi: farklı türlerden, tarihten deterministik
+// Günün 4 görevi: farklı türlerden, tarihten deterministik
 function generate(key) {
   var h = hash('sekmeguc:' + key);
   var pool = TEMPLATES.slice();
@@ -72,7 +79,7 @@ function generate(key) {
 }
 
 function fresh() {
-  return { day: '', streak: 0, lastLogin: '', quests: [] };
+  return { day: '', streak: 0, lastLogin: '', quests: [], bonus: false };
 }
 
 function sanitize(raw) {
@@ -94,8 +101,16 @@ function sanitize(raw) {
         d.quests[i].done = !!s.done && d.quests[i].progress >= d.quests[i].target;
       }
     }
+    // Hepsini bitirme ödülü yalnız görevlerin hepsi gerçekten bittiyse alınmış sayılır
+    d.bonus = !!raw.bonus && allDone(d);
   }
   return d;
+}
+
+function allDone(d) {
+  if (!d.quests.length) return false;
+  for (var i = 0; i < d.quests.length; i++) if (!d.quests[i].done) return false;
+  return true;
 }
 
 function load(storage) {
@@ -118,6 +133,7 @@ function ensureDay(d, key) {
   if (d.day !== key) {
     d.day = key;
     d.quests = generate(key);
+    d.bonus = false;
   }
   if (d.lastLogin !== key) {
     var gap = d.lastLogin ? dayDiff(d.lastLogin, key) : 99;
@@ -129,9 +145,11 @@ function ensureDay(d, key) {
   return res;
 }
 
-// Bir koşu bitti: ilerlemeyi işle. run: { stars, score, level, shieldUsed, movingPassed, status }
-// Dönen: yeni tamamlanan görevler [{ text, reward }]; ödüller toplamı çağıran tarafından cüzdana eklenir
-function applyRun(d, run) {
+// Bir koşu bitti: ilerlemeyi işle. run: { stars, score, level, shieldUsed, movingPassed, powers, t, status }
+// extra: { combo (koşudaki en uzun MÜKEMMEL serisi), perfect (koşudaki MÜKEMMEL sayısı), daily (📅 modu mu) }
+// Dönen: yeni tamamlanan görevler [{ text, reward, bonus? }]; ödüller toplamı çağıran tarafından cüzdana eklenir
+function applyRun(d, run, extra) {
+  extra = extra || {};
   var done = [];
   for (var i = 0; i < d.quests.length; i++) {
     var q = d.quests[i];
@@ -145,6 +163,12 @@ function applyRun(d, run) {
       case 'day_runs': v = q.progress + 1; break;
       case 'day_shield': v = q.progress + (run.shieldUsed || 0); break;
       case 'day_moving': v = q.progress + (run.movingPassed || 0); break;
+      case 'run_powers': v = Math.max(q.progress, run.powers || 0); break;
+      case 'run_time': v = Math.max(q.progress, Math.floor(run.t || 0)); break;
+      case 'run_combo': v = Math.max(q.progress, extra.combo || 0); break;
+      case 'day_stars': v = q.progress + (run.stars || 0); break;
+      case 'day_perfect': v = q.progress + (extra.perfect || 0); break;
+      case 'day_daily': v = extra.daily ? 1 : q.progress; break;
       case 'win': v = (run.level || 1) > 10 || run.status === 'won' ? 1 : q.progress; break;
       default: v = q.progress;
     }
@@ -153,6 +177,10 @@ function applyRun(d, run) {
       q.done = true;
       done.push({ text: describe(q), reward: q.reward });
     }
+  }
+  if (!d.bonus && allDone(d)) {
+    d.bonus = true;
+    done.push({ text: tx('Günün bütün görevleri'), reward: ALL_DONE_BONUS, bonus: true });
   }
   return done;
 }
@@ -215,9 +243,20 @@ var ACHIEVEMENTS = [
   { id: 'toplam_2000', kind: 'total_gates', target: 2000, reward: 25, text: 'Toplam {n} kapı geç' },
   { id: 'kalkan_10', kind: 'total_shield', target: 10, reward: 8, text: 'Kalkanla {n} çarpmadan kurtul' },
   { id: 'gunluk_7', kind: 'daily_days', target: 7, reward: 10, text: '{n} farklı gün günlük meydan okuma oyna' },
-  { id: 'koleksiyon_5', kind: 'balls', target: 5, reward: 10, text: '{n} topa sahip ol' }
+  { id: 'koleksiyon_5', kind: 'balls', target: 5, reward: 10, text: '{n} topa sahip ol' },
+  { id: 'esik_5', kind: 'milestone', target: 5, reward: 40, text: '50. bölümü geç' },
+  { id: 'seri_10', kind: 'combo', target: 10, reward: 15, text: '{n} kez üst üste MÜKEMMEL geç' },
+  { id: 'sure_120', kind: 'run_time', target: 120, reward: 10, text: 'Bir koşuda {n} saniye dayan' },
+  { id: 'yildiz_100', kind: 'total_stars', target: 100, reward: 8, text: 'Toplam {n} yıldız topla' },
+  { id: 'guc_10', kind: 'total_powers', target: 10, reward: 8, text: 'Toplam {n} güç topla' },
+  { id: 'diken_10', kind: 'total_spikes', target: 10, reward: 8, text: '{n} zemin dikeninin üstünden geç' },
+  { id: 'gorev_10', kind: 'total_quests', target: 10, reward: 10, text: 'Toplam {n} günlük görev bitir' },
+  { id: 'giris_7', kind: 'streak', target: 7, reward: 10, text: '{n} gün üst üste oyna' }
 ];
-function achFresh() { return { done: [], gates: 0, shields: 0, dailyDays: 0, lastDaily: '', bestCombo: 0, bestGates: 0, bestMs: 0 }; }
+function achFresh() {
+  return { done: [], gates: 0, shields: 0, dailyDays: 0, lastDaily: '', bestCombo: 0, bestGates: 0, bestMs: 0,
+    stars: 0, powers: 0, spikes: 0, quests: 0, bestTime: 0, bestStreak: 0 };
+}
 function achNum(v, max) { var n = Math.floor(Number(v)); return isFinite(n) && n > 0 ? Math.min(n, max) : 0; }
 function loadAch(storage) {
   try {
@@ -228,7 +267,9 @@ function loadAch(storage) {
       done: Array.isArray(d.done) ? d.done.filter(function (x, i, arr) { return ids.indexOf(x) >= 0 && arr.indexOf(x) === i; }) : [],
       gates: achNum(d.gates, 1e9), shields: achNum(d.shields, 1e6), dailyDays: achNum(d.dailyDays, 1e5),
       lastDaily: validKey(d.lastDaily) ? d.lastDaily : '', bestCombo: achNum(d.bestCombo, 1e5),
-      bestGates: achNum(d.bestGates, 1e6), bestMs: achNum(d.bestMs, 1e5)
+      bestGates: achNum(d.bestGates, 1e6), bestMs: achNum(d.bestMs, 1e5),
+      stars: achNum(d.stars, 1e9), powers: achNum(d.powers, 1e7), spikes: achNum(d.spikes, 1e7),
+      quests: achNum(d.quests, 1e6), bestTime: achNum(d.bestTime, 1e6), bestStreak: achNum(d.bestStreak, 3650)
     };
   } catch (e) {
     return achFresh();
@@ -244,11 +285,18 @@ function achProgress(a, def, extra) {
     case 'total_shield': return a.shields;
     case 'daily_days': return a.dailyDays;
     case 'balls': return (extra && extra.balls) || 0;
+    case 'run_time': return a.bestTime;
+    case 'total_stars': return a.stars;
+    case 'total_powers': return a.powers;
+    case 'total_spikes': return a.spikes;
+    case 'total_quests': return a.quests;
+    case 'streak': return a.bestStreak;
     default: return 0;
   }
 }
 function describeAch(def) { return tx(def.text, { n: def.target }); }
-// run: bitmiş koşunun durumu; extra: { combo (koşudaki en uzun seri), daily (günlük mod mu), day, balls }
+// run: bitmiş koşunun durumu; extra: { combo (koşudaki en uzun seri), daily (günlük mod mu), day, balls,
+//   quests (bu koşuda biten günlük görev sayısı), streak (giriş serisi) }
 // Döner: bu koşuda yeni kazanılanlar [{ id, text, reward }]
 function applyAch(a, run, extra) {
   extra = extra || {};
@@ -257,6 +305,12 @@ function applyAch(a, run, extra) {
   a.bestGates = Math.max(a.bestGates, run.score || 0);
   a.bestMs = Math.max(a.bestMs, run.milestones || 0);
   a.bestCombo = Math.max(a.bestCombo, extra.combo || 0);
+  a.stars += run.stars || 0;
+  a.powers += run.powers || 0;
+  a.spikes += run.spikesPassed || 0;
+  a.quests += extra.quests || 0;
+  a.bestTime = Math.max(a.bestTime, Math.floor(run.t || 0));
+  a.bestStreak = Math.max(a.bestStreak, extra.streak || 0);
   if (extra.daily && validKey(extra.day) && extra.day !== a.lastDaily) { a.dailyDays++; a.lastDaily = extra.day; }
   var got = [];
   ACHIEVEMENTS.forEach(function (def) {
@@ -274,7 +328,7 @@ var Quests = {
   achProgress: achProgress, describeAch: describeAch,
   CHALLENGE_KEY: CHALLENGE_KEY, GHOST_STEP: GHOST_STEP, GHOST_MAX: GHOST_MAX,
   dailySeed: dailySeed, loadChallenge: loadChallenge, saveChallenge: saveChallenge, ghostAt: ghostAt,
-  DAILY_KEY: DAILY_KEY, TEMPLATES: TEMPLATES, dayKey: dayKey, dayDiff: dayDiff,
+  DAILY_KEY: DAILY_KEY, TEMPLATES: TEMPLATES, QUESTS_PER_DAY: QUESTS_PER_DAY, ALL_DONE_BONUS: ALL_DONE_BONUS, allDone: allDone, dayKey: dayKey, dayDiff: dayDiff,
   generate: generate, describe: describe, fresh: fresh, sanitize: sanitize,
   load: load, save: save, ensureDay: ensureDay, applyRun: applyRun, loginRewardFor: loginRewardFor
 };

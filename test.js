@@ -652,7 +652,7 @@ var pending = [];
   var safe = back.done.length === a.done.length && back.gates === a.gates && hacked.done.join() === 'ilk_kapi' &&
     hacked.gates === 0 && hacked.bestCombo === 0 && hacked.lastDaily === '' && Q.loadAch(st).done.length === 0;
   var sum = Q.ACHIEVEMENTS.reduce(function (s, d) { return s + d.reward; }, 0);
-  report('T43 başarımlar', once && total && safe && sum <= 150 && Q.ACHIEVEMENTS.length === 12,
+  report('T43 başarımlar', once && total && safe && sum <= 260 && Q.ACHIEVEMENTS.length === 20,
     'bir kez=' + once + ' (' + ids1 + ') birikimli=' + total + ' kayıt=' + safe + ' toplam ödül ★' + sum);
 })();
 
@@ -730,17 +730,17 @@ var pending = [];
 // --- Günlük görevler ----------------------------------------------------------
 var Q = require('./quests.js');
 
-// T18 — günün görevleri deterministik, 3 farklı tür, günden güne değişir
+// T18 — günün görevleri deterministik, 4 farklı tür, günden güne değişir
 (function t18() {
   var a = Q.generate('2026-10-02'), b = Q.generate('2026-10-02'), c = Q.generate('2026-10-03');
   var kinds = a.map(function (q) { return q.kind; });
-  var distinct = kinds.filter(function (k, i) { return kinds.indexOf(k) === i; }).length === 3;
+  var distinct = kinds.filter(function (k, i) { return kinds.indexOf(k) === i; }).length === Q.QUESTS_PER_DAY;
   var same = JSON.stringify(a) === JSON.stringify(b);
   // 30 gün içinde en az 5 farklı görev seti
   var sets = {};
   for (var d = 1; d <= 30; d++) sets[JSON.stringify(Q.generate('2026-11-' + (d < 10 ? '0' : '') + d).map(function (q) { return q.kind + q.target; }))] = 1;
   var variety = Object.keys(sets).length;
-  report('T18 günlük görev seçimi', a.length === 3 && distinct && same && variety >= 5 && JSON.stringify(a) !== JSON.stringify(c),
+  report('T18 günlük görev seçimi', a.length === 4 && distinct && same && variety >= 5 && JSON.stringify(a) !== JSON.stringify(c),
     'bugün=' + kinds.join(',') + ' 30 günde ' + variety + ' farklı set');
 })();
 
@@ -754,7 +754,8 @@ var Q = require('./quests.js');
   report('T19 giriş serisi', ok && monthEdge, 'ödüller=' + got.join(',') + ' seri=' + d.streak + ' ay/yıl geçişi=' + monthEdge);
 })();
 
-// T20 — ilerleme: tek koşu görevleri en iyiyi tutar, günlükler birikir, tamamlanınca bir kez ödül verir
+// T20 — ilerleme: tek koşu görevleri en iyiyi tutar, günlükler birikir, tamamlanınca bir kez ödül verir;
+// son görev bitince "günün bütün görevleri" ödülü de bir kez gelir
 (function t20() {
   var d = Q.fresh();
   Q.ensureDay(d, '2026-10-02');
@@ -770,7 +771,7 @@ var Q = require('./quests.js');
   var r4 = Q.applyRun(d, { stars: 9, score: 81, level: 11, status: 'over' });
   var ok = r1.length === 0 && p1 === '3,25,0' &&
     r2.length === 2 && r2[0].reward === 12 && r2[1].reward === 12 &&
-    r3.length === 1 && r3[0].reward === 25 && r4.length === 0;
+    r3.length === 2 && r3[0].reward === 25 && r3[1].bonus === true && r4.length === 0;
   report('T20 görev ilerlemesi ve tek seferlik ödül', ok,
     'koşu1=' + r1.length + ' koşu2=' + r2.map(function (x) { return x.text; }).join(' | ') + ' koşu3=' + r3.length + ' tekrar=' + r4.length);
 })();
@@ -785,6 +786,48 @@ var Q = require('./quests.js');
   var ok = a.day === '' && a.quests.length === 0 && b.streak === 0 && b.lastLogin === '' &&
     b.quests.every(function (q, i) { return q.reward === real[i].reward && q.target === real[i].target && q.progress === q.target; });
   report('T21 günlük kayıt doğrulama', ok, 'bozuk→boş, kurcalanmış ödül=' + b.quests.map(function (q) { return q.reward; }).join('/') + ' (gerçek ' + real.map(function (q) { return q.reward; }).join('/') + ')');
+})();
+
+// T46 — görevler genişledi: günde 4 farklı görev, yeni türler doğru ilerler, hepsini bitirme ödülü
+// bir kez verilir ve kurcalanamaz; yeni başarım sayaçları birikir ve bozuk kayıtta sıfırlanır
+(function t46() {
+  var gen = Q.generate('2026-10-06');
+  var kinds = gen.map(function (q) { return q.kind; });
+  var four = gen.length === 4 && kinds.filter(function (k, i) { return kinds.indexOf(k) === i; }).length === 4;
+  var d = Q.fresh();
+  Q.ensureDay(d, '2026-10-06');
+  d.quests = [
+    { kind: 'run_combo', target: 3, reward: 7, progress: 0, done: false },
+    { kind: 'day_perfect', target: 5, reward: 5, progress: 0, done: false },
+    { kind: 'day_stars', target: 10, reward: 5, progress: 0, done: false },
+    { kind: 'day_daily', target: 1, reward: 5, progress: 0, done: false }
+  ];
+  var r1 = Q.applyRun(d, { stars: 6, t: 40 }, { combo: 2, perfect: 3, daily: false });
+  var p1 = d.quests.map(function (q) { return q.progress; }).join(',');
+  var r2 = Q.applyRun(d, { stars: 6, t: 20 }, { combo: 3, perfect: 2, daily: true });
+  var r3 = Q.applyRun(d, { stars: 6 }, { combo: 9, perfect: 9, daily: true });
+  var bonusOnce = r1.length === 0 && p1 === '2,3,6,0' && r2.length === 5 && r2[4].bonus === true &&
+    r2[4].reward === Q.ALL_DONE_BONUS && d.bonus === true && r3.length === 0;
+  var e = Q.fresh();
+  Q.ensureDay(e, '2026-10-06');
+  e.quests = [{ kind: 'run_powers', target: 1, reward: 6, progress: 0, done: false }, { kind: 'run_time', target: 30, reward: 4, progress: 0, done: false }];
+  var r4 = Q.applyRun(e, { powers: 1, t: 31.7 });
+  var runKinds = r4.length === 3 && e.quests[1].progress === 30;
+  function mem(v) { var x = { 'sekmeguc-gunluk': v }; return { getItem: function (k) { return x[k] === undefined ? null : x[k]; } }; }
+  var fake = Q.load(mem(JSON.stringify({ day: '2026-10-06', streak: 1, lastLogin: '2026-10-06', bonus: true, quests: [] })));
+  var next = Q.fresh(); next.day = '2026-10-05'; next.bonus = true; Q.ensureDay(next, '2026-10-06');
+  var bonusSafe = fake.bonus === false && next.bonus === false && next.quests.length === 4;
+  var a = Q.loadAch({ getItem: function () { return null; } });
+  Q.applyAch(a, { score: 5, stars: 60, powers: 6, spikesPassed: 4, t: 70 }, { quests: 6, streak: 3 });
+  var got = Q.applyAch(a, { score: 5, stars: 60, powers: 6, spikesPassed: 7, t: 130 }, { quests: 4, streak: 7 });
+  var gotIds = got.map(function (x) { return x.id; }).sort().join(',');
+  var counters = a.stars === 120 && a.powers === 12 && a.spikes === 11 && a.quests === 10 && a.bestTime === 130 && a.bestStreak === 7 &&
+    gotIds === 'diken_10,giris_7,gorev_10,guc_10,sure_120,yildiz_100';
+  var bad = Q.loadAch({ getItem: function () { return JSON.stringify({ stars: -3, powers: 'x', bestStreak: 99999 }); } });
+  var achSafe = bad.stars === 0 && bad.powers === 0 && bad.bestStreak === 3650;
+  report('T46 genişletilmiş görevler ve başarımlar', four && bonusOnce && runKinds && bonusSafe && counters && achSafe,
+    'günde 4 farklı=' + four + ' (' + kinds.join(',') + ') bonus bir kez=' + bonusOnce + ' tek koşu=' + runKinds +
+    ' bonus kurcalanamaz=' + bonusSafe + ' sayaçlar=' + counters + ' (' + gotIds + ') kayıt=' + achSafe);
 })();
 
 // --- Ses ve müzik ---------------------------------------------------------------

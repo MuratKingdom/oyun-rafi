@@ -412,6 +412,7 @@ function bootstrap() {
   var dailyMode = false;
   var ach = Quests ? Quests.loadAch(window.localStorage) : null;
   var runCombo = 0; // bu koşudaki en uzun MÜKEMMEL serisi (başarım için)
+  var runPerfect = 0; // bu koşudaki MÜKEMMEL geçiş sayısı (günlük görev için)
   var challenge = { day: '', best: 0, path: [] };
   var ghostRec = [];
   var newDaily = false;
@@ -424,6 +425,7 @@ function bootstrap() {
     ghostRec = [];
     newDaily = false;
     runCombo = 0;
+    runPerfect = 0;
     viewX0 = desiredCrop();
     var st = window.GameLogic.createState(seed, { height: desiredHeight(viewX0), mods: profile ? Shop.mods(profile) : null,
       easy: easy && !dailyMode, tutorial: tutorialDone || dailyMode ? 0 : TUTORIAL_GATES });
@@ -633,12 +635,14 @@ function bootstrap() {
     earned = Shop.reward(state);
     runReward = earned;
     if (daily) {
-      questDone = Quests.applyRun(daily, state);
+      questDone = Quests.applyRun(daily, state, { combo: runCombo, perfect: runPerfect, daily: dailyMode });
       for (var qi = 0; qi < questDone.length; qi++) earned += questDone[qi].reward;
       Quests.save(window.localStorage, daily);
     }
     if (ach) {
-      var gotAch = Quests.applyAch(ach, state, { combo: runCombo, daily: dailyMode, day: todayKey(), balls: profile.owned.ball.length });
+      var questsFinished = questDone.filter(function (x) { return !x.bonus; }).length;
+      var gotAch = Quests.applyAch(ach, state, { combo: runCombo, daily: dailyMode, day: todayKey(), balls: profile.owned.ball.length,
+        quests: questsFinished, streak: daily ? daily.streak : 0 });
       for (var ai = 0; ai < gotAch.length; ai++) {
         earned += gotAch[ai].reward;
         questDone.push({ text: '🏅 ' + gotAch[ai].text, reward: gotAch[ai].reward });
@@ -697,6 +701,22 @@ function bootstrap() {
       row.appendChild(name); row.appendChild(meta); row.appendChild(bar);
       list.appendChild(row);
     });
+    var doneN = daily.quests.filter(function (q) { return q.done; }).length;
+    var bRow = document.createElement('div');
+    bRow.className = 'gorev bonus' + (daily.bonus ? ' bitti' : '');
+    var bName = document.createElement('span');
+    bName.className = 'ad';
+    bName.textContent = (daily.bonus ? '✓ ' : '🎁 ') + L('Günün bütün görevleri');
+    var bMeta = document.createElement('span');
+    bMeta.className = 'odul';
+    bMeta.textContent = doneN + '/' + daily.quests.length + ' · ★ ' + Quests.ALL_DONE_BONUS;
+    var bBar = document.createElement('div');
+    bBar.className = 'cubuk';
+    var bFill = document.createElement('i');
+    bFill.style.width = Math.round(100 * doneN / Math.max(1, daily.quests.length)) + '%';
+    bBar.appendChild(bFill);
+    bRow.appendChild(bName); bRow.appendChild(bMeta); bRow.appendChild(bBar);
+    list.appendChild(bRow);
     var foot = document.createElement('p');
     foot.className = 'not';
     foot.textContent = L('Görevler her gece yarısı yenilenir. Ödül görev bitince kendiliğinden eklenir.');
@@ -1004,6 +1024,7 @@ function bootstrap() {
             fx.flash.push({ o: gate, life: FLASH_S, max: FLASH_S });
             if (Math.abs(state.y - (gate.gapY + gate.gapH / 2)) <= gate.gapH * PERFECT_F) {
               fx.combo++;
+              runPerfect++;
               if (fx.combo > runCombo) runCombo = fx.combo;
               fx.callout = { text: fx.combo > 1 ? L('MÜKEMMEL x{n}', { n: fx.combo }) : L('MÜKEMMEL'), life: CALLOUT_S, max: CALLOUT_S, y: state.y, big: fx.combo >= 3 };
               fx.rings.push({ x: C.BALL_X, y: state.y, life: RING_S * 1.4, max: RING_S * 1.4, color: '#ffd166' });

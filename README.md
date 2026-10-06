@@ -112,7 +112,7 @@ Cüzdan ve görünümler tarayıcıda (`localStorage`, `sekmeguc-profil`) saklan
 elle değiştirilmiş kayıt güvenli varsayılana döner. Katalog `shop.js`'te.
 
 ## Günlük görev ve giriş ödülü (2 Ekim 2026)
-**📋 Görevler** düğmesi (ya da mağazadaki *Görevler* sekmesi) o günün 3 görevini gösterir.
+**📋 Görevler** düğmesi (ya da mağazadaki *Görevler* sekmesi) o günün görevlerini gösterir.
 Görevler her gece yarısı (cihaz saati) yenilenir; gün tarihinden belirlenimli seçilir, 8 türden
 3 farklısı: bir koşuda yıldız / kapı, bölüme ulaş, gün içinde toplam kapı / oyun / kalkan
 kullanımı / hareketli kapı, ilk eşiği (10. bölüm) geç. Biten görevin ödülü (★ 3–15) oyun sonunda kendiliğinden
@@ -120,6 +120,13 @@ cüzdana eklenir ve oyun sonu ekranında gösterilir. **Giriş ödülü:** gün�
 ★ (2 + seri), en çok ★ 7; bir gün atlanırsa seri 1'e döner. Kayıt `localStorage`
 (`sekmeguc-gunluk`); kurcalanmış kayıtta görevler ve ödüller tarihten yeniden üretilir,
 ilerleme sınırlanır. Mantık `quests.js`'te.
+
+**Genişletme (6 Ekim 2026):** günde **4** görev, **14** türden seçilir. Yeni türler: bir koşuda
+güç topla / saniye dayan / üst üste MÜKEMMEL, bugün toplam yıldız / MÜKEMMEL geçiş, günün meydan
+okumasını (📅) oyna. Dördü de bitince **🎁 Günün bütün görevleri: ★ 10** (bir kez; kayıtta görevler
+gerçekten bitmemişse geçersiz). Başarımlar **12 → 20**: 50. bölüm, 10'lu MÜKEMMEL serisi, 120 saniye,
+toplam 100 yıldız / 10 güç / 10 diken / 10 günlük görev, 7 gün üst üste giriş (toplam ★ 252).
+Oyun sonu kartında 3'ten fazla kazanım varsa ilk ikisi ve "ve N hedef daha" özeti gösterilir.
 
 ## Ekonomi hızı (3 Ekim 2026)
 İlk sürümde mağaza birkaç günde bitiyordu (orta oyuncu her şeye 6, usta oyuncu 2 günde
