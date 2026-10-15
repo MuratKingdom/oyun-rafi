@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sarkaç Atlayışı</title>
+<style>
+  html, body { margin: 0; background: #0b0e14; color: #e6eaf2; font-family: system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+  canvas { max-width: 100vw; height: auto; background: #10151f; touch-action: none; }
+  p { margin: 8px; color: #8b94a8; font-size: 14px; }
+</style>
+</head>
+<body>
+<canvas id="c" width="800" height="500"></canvas>
+<p>Boşluk / tık: sarkaçtan bırak — yeşil platforma in. R: yeniden başla, M: ses.</p>
+<script>
+'use strict';
+// Sarkaç Atlayışı — saf oyun mantığı (DOM yok, canvas yok).
+var W = 800, H = 500;
+var G = 900;            // yerçekimi (px/s^2)
+var L = 130;            // ip uzunluğu
+var PIVOT = { x: 200, y: 90 };
+var R = 10;             // top yarıçapı
+var START_ANGLE = -1.1; // başlangıç sapması (rad)
+var LEVEL_TIME = 8;     // her seviyede süre (sn)
+var PLAT_H = 14;
+
+function mulberry32(a) {
+  a = (a + 0x6D2B79F5) | 0;
+  var t = Math.imul(a ^ (a >>> 15), 1 | a);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return { v: ((t ^ (t >>> 14)) >>> 0) / 4294967296, next: a };
+}
+
+function rand(s) {
+  var r = mulberry32(s.rs);
+  s.rs = r.next;
+  return r.v;
+}
+
+function genPlatform(s) {
+  var lvl = s.score;
+  var w = Math.max(44, 120 - lvl * 5);
+  var x = 270 + rand(s) * (110 + Math.min(lvl, 12) * 8);
+  var y = 270 + rand(s) * 130;
+  s.plat = { x: x, y: y, w: w, h: PLAT_H };
+}
+
+function attach(s) {
+  s.mode = 'swing';
+  s.theta = START_ANGLE;
+  s.omega = 0;
+  s.timeLeft = LEVEL_TIME;
+  s.ball.x = PIVOT.x + L * Math.sin(s.theta);
+  s.ball.y = PIVOT.y + L * Math.cos(s.theta);
+  s.ball.vx = 0;
+  s.ball.vy = 0;
+}
+
+function createState(seed) {
+  var s = {
+    seed: seed,
+    rs: seed | 0,
+    status: 'playing',
+    overReason: '',
+    score: 0,
+    time: 0,
+    mode: 'swing',
+    theta: START_ANGLE,
+    omega: 0,
+    timeLeft: LEVEL_TIME,
+    prevAction: false,
+    ball: { x: 0, y: 0, vx: 0, vy: 0 },
+    plat: null,
+    events: []
+  };
+  genPlatform(s);
+  attach(s);
+  return s;
+}
+
+function lose(s, reason) {
+  s.status = 'over';
+  s.overReason = reason;
+  s.events.push('lose');
+}
+
+function land(s) {
+  var p = s.plat;
+  var center = p.x + p.w / 2;
+  var off = Math.abs(s.ball.x - center) / (p.w / 2);
+  var gain = off < 0.3 ? 2 : 1;
+  s.score += gain;
+  s.events.push(gain === 2 ? 'perfect' : 'land');
+  genPlatform(s);
+  attach(s);
+}
+
+function step(s, input, dt) {
+  if (s.status !== 'playing') return s;
+  s.time += dt;
+  var press = !!input.action && !s.prevAction;
+  s.prevAction = !!input.action;
+  var b = s.ball;
+  if (s.mode === 'swing') {
+    s.timeLeft -= dt;
+    var sub = 2, h = dt / sub;
+    for (var i = 0; i < sub; i++) {
+      s.omega += (-(G / L) * Math.sin(s.theta)) * h;
+      s.theta += s.omega * h;
+    }
+    b.x = PIVOT.x + L * Math.sin(s.theta);
+    b.y = PIVOT.y + L * Math.cos(s.theta);
+    if (press) {
+      b.vx = L * s.omega * Math.cos(s.theta);
+      b.vy = -L * s.omega * Math.sin(s.theta);
+      s.mode = 'fly';
+      s.events.push('release');
+    } else if (s.timeLeft <= 0) {
+      lose(s, 'Süre doldu');
+    }
+    return s;
+  }
+  // uçuş
+  var py = b.y;
+  b.vy += G * dt;
+  b.x += b.vx * dt;
+  b.y += b.vy * dt;
+  var p = s.plat;
+  var left = p.x - R * 0.5, right = p.x + p.w + R * 0.5;
+  if (b.vy > 0 && py + R <= p.y && b.y + R >= p.y && b.x >= left && b.x <= right) {
+    b.y = p.y - R;
+    land(s);
+    return s;
+  }
+  if (b.y + R > p.y && b.y - R < p.y + p.h && b.x + R > p.x && b.x - R < p.x + p.w) {
+    lose(s, 'Platforma yandan çarptın');
+    return s;
+  }
+  if (b.y - R > H + 20) lose(s, 'Boşluğa düştün');
+  else if (b.x > W + 40 || b.x < -40) lose(s, 'Alanın dışına çıktın');
+  return s;
+}
+
+if (typeof module !== 'undefined') module.exports = { createState: createState, step: step };
+if (typeof window !== 'undefined') window.GameLogic = { createState: createState, step: step };
+
+</script>
+<script>
+'use strict';
+// Sarkaç Atlayışı — yalnızca çizim.
+function draw(ctx, s, view) {
+  view = view || {};
+  var sh = view.shake || 0;
+  ctx.save();
+  ctx.clearRect(0, 0, 800, 500);
+  ctx.fillStyle = '#10151f';
+  ctx.fillRect(0, 0, 800, 500);
+  if (sh > 0) ctx.translate((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh);
+  // boşluk
+  ctx.fillStyle = '#1a0f14';
+  ctx.fillRect(0, 470, 800, 30);
+  // platform
+  var p = s.plat;
+  if (p) {
+    ctx.fillStyle = '#4ac27a';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.fillStyle = '#8af0b0';
+    ctx.fillRect(p.x + p.w * 0.35, p.y, p.w * 0.3, 3);
+  }
+  // iplik ve mil
+  ctx.strokeStyle = '#8b94a8';
+  ctx.lineWidth = 2;
+  if (s.mode === 'swing') {
+    ctx.beginPath();
+    ctx.moveTo(200, 90);
+    ctx.lineTo(s.ball.x, s.ball.y);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#c9d1e3';
+  ctx.beginPath();
+  ctx.arc(200, 90, 6, 0, Math.PI * 2);
+  ctx.fill();
+  // parçacıklar
+  var ps = view.particles || [];
+  for (var i = 0; i < ps.length; i++) {
+    ctx.globalAlpha = Math.max(0, ps[i].life * 2);
+    ctx.fillStyle = ps[i].color;
+    ctx.fillRect(ps[i].x, ps[i].y, 3, 3);
+  }
+  ctx.globalAlpha = 1;
+  // top
+  ctx.fillStyle = s.status === 'over' ? '#e5484d' : '#f5b942';
+  ctx.beginPath();
+  ctx.arc(s.ball.x, s.ball.y, 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  // HUD
+  ctx.font = '20px system-ui, sans-serif';
+  ctx.fillStyle = '#e6eaf2';
+  ctx.textAlign = 'left';
+  ctx.fillText('Skor: ' + s.score, 16, 30);
+  ctx.fillText('En yüksek: ' + (view.best || 0), 16, 56);
+  ctx.textAlign = 'right';
+  ctx.fillText(view.muted ? 'Ses kapalı (M)' : 'Ses açık (M)', 784, 30);
+  if (s.status === 'playing') {
+    var f = Math.max(0, s.timeLeft) / 8;
+    ctx.fillStyle = f < 0.3 ? '#e5484d' : '#3b82f6';
+    ctx.fillRect(300, 14, 200 * f, 8);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#8b94a8';
+    ctx.font = '16px system-ui, sans-serif';
+    ctx.fillText(view.started ? 'Boşluk / tık: bırak' : 'Başlamak için bir tuşa bas — sonra boşlukla bırak', 400, 490);
+  } else {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 180, 800, 140);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ff7b80';
+    ctx.font = '32px system-ui, sans-serif';
+    ctx.fillText(s.overReason, 400, 240);
+    ctx.fillStyle = '#e6eaf2';
+    ctx.font = '18px system-ui, sans-serif';
+    ctx.fillText('Skor ' + s.score + ' — R / boşluk / tık: yeniden başla', 400, 285);
+  }
+}
+if (typeof module !== 'undefined') module.exports = { draw: draw };
+if (typeof window !== 'undefined') window.GameRender = { draw: draw };
+
+</script>
+<script>
+'use strict';
+// Sarkaç Atlayışı — döngü, girdi, ses.
+function bootstrap() {
+  var Logic = window.GameLogic, Render = window.GameRender;
+  var canvas = document.getElementById('c');
+  var ctx = canvas.getContext('2d');
+  var DT = 1 / 60;
+  var input = { action: false, restart: false };
+  var seed = (Date.now() & 0xffff) + 1;
+  var state = Logic.createState(seed);
+  var best = 0, muted = false, started = false, overAt = 0;
+  var particles = [], shake = 0, audio = null, acc = 0, last = 0;
+  try { best = parseInt(localStorage.getItem('sarkac-best'), 10) || 0; } catch (e) { best = 0; }
+
+  function ensureAudio() {
+    if (audio) return;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audio = new AC();
+    } catch (e) { audio = null; }
+  }
+  function beep(freq, dur, type) {
+    if (muted || !audio) return;
+    try {
+      var o = audio.createOscillator(), g = audio.createGain();
+      o.type = type || 'square';
+      o.frequency.value = freq;
+      g.gain.value = 0.06;
+      o.connect(g); g.connect(audio.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
+      o.stop(audio.currentTime + dur);
+    } catch (e) { /* sessiz devam */ }
+  }
+  function burst(x, y, color, n) {
+    for (var i = 0; i < n; i++) {
+      var a = (i / n) * Math.PI * 2;
+      particles.push({ x: x, y: y, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, life: 0.5, color: color });
+    }
+  }
+  function restart() {
+    seed += 1;
+    state = Logic.createState(seed);
+    input.action = false;
+    input.restart = false;
+  }
+  function onKeyDown(e) {
+    var k = e.key;
+    ensureAudio();
+    started = true;
+    if (k === 'm' || k === 'M') { muted = !muted; return; }
+    if (k === 'r' || k === 'R') {
+      if (state.status === 'over') restart();
+      if (e.preventDefault) e.preventDefault();
+      return;
+    }
+    if (k === ' ' || k === 'ArrowUp' || k === 'Enter') {
+      if (e.preventDefault) e.preventDefault();
+      if (state.status === 'over') { if (performance.now() - overAt > 400) restart(); return; }
+      input.action = true;
+    }
+  }
+  function onKeyUp(e) {
+    if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'Enter') input.action = false;
+  }
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  canvas.addEventListener('pointerdown', function () {
+    ensureAudio();
+    started = true;
+    if (state.status === 'over') { if (performance.now() - overAt > 400) restart(); return; }
+    input.action = true;
+  });
+  canvas.addEventListener('pointerup', function () { input.action = false; });
+
+  function handleEvents() {
+    var ev = state.events;
+    for (var i = 0; i < ev.length; i++) {
+      if (ev[i] === 'release') beep(440, 0.08, 'triangle');
+      else if (ev[i] === 'land') { beep(660, 0.12); burst(state.plat.x, state.plat.y, '#8af0b0', 10); }
+      else if (ev[i] === 'perfect') { beep(880, 0.18); beep(1100, 0.12); burst(state.plat.x, state.plat.y, '#f5b942', 16); }
+      else if (ev[i] === 'lose') {
+        beep(120, 0.3, 'sawtooth'); shake = 8; overAt = performance.now();
+        burst(state.ball.x, state.ball.y, '#e5484d', 14);
+        if (state.score > best) {
+          best = state.score;
+          try { localStorage.setItem('sarkac-best', String(best)); } catch (e) { /* kayıt yok */ }
+        }
+      }
+    }
+    state.events.length = 0;
+  }
+  function tick() {
+    Logic.step(state, input, DT);
+    handleEvents();
+    // tek basışlık girdi: basılı kalsa da yalnızca kenar sayılır (logic.prevAction)
+    for (var i = particles.length - 1; i >= 0; i--) {
+      var p = particles[i];
+      p.x += p.vx * DT; p.y += p.vy * DT; p.life -= DT;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    if (shake > 0) shake = Math.max(0, shake - 40 * DT);
+  }
+  function frame(t) {
+    var dt = last ? (t - last) / 1000 : DT;
+    last = t;
+    acc += Math.min(dt, 0.25);
+    var n = 0;
+    while (acc >= DT && n < 5) { tick(); acc -= DT; n++; }
+    if (n === 5) acc = 0;
+    Render.draw(ctx, state, { best: best, muted: muted, started: started, particles: particles, shake: shake });
+    window.requestAnimationFrame(frame);
+  }
+  window.__sarkacState = function () { return state; };
+  window.__sarkacSetState = function (s) { state = s; };
+  window.requestAnimationFrame(frame);
+}
+if (typeof window !== 'undefined') {
+  window.GameMain = { bootstrap: bootstrap };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrap); else bootstrap();
+}
+if (typeof module !== 'undefined') module.exports = { bootstrap: bootstrap };
+
+</script>
+</body>
+</html>
