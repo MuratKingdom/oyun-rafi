@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yığın Dengesi</title>
+<style>
+  html,body{margin:0;background:#020617;color:#cbd5e1;font-family:system-ui,sans-serif;text-align:center}
+  canvas{display:block;margin:8px auto 0;max-width:100%;height:auto;touch-action:manipulation}
+  p{margin:6px 0;font-size:14px}
+</style>
+</head>
+<body>
+<canvas id="game" width="480" height="640"></canvas>
+<p>Boşluk / tık: bloğu bırak · R: yeniden · M: ses</p>
+<script>
+(function () {
+  var W = 480, BH = 22, GAP = 150, G = 2600, BASE_W = 220;
+
+  function rnd(s) {
+    s.rng = (s.rng + 0x6D2B79F5) | 0;
+    var t = s.rng;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  function speed(s) { return Math.min(130 + 9 * s.score, 380); }
+
+  function nextBlock(s) {
+    var wmax = Math.max(70, 120 - 1.5 * s.score);
+    var wmin = Math.max(46, 60 - 0.5 * s.score);
+    var w = Math.round(wmin + rnd(s) * (wmax - wmin));
+    var dir = rnd(s) < 0.5 ? 1 : -1;
+    s.cur = {
+      x: dir > 0 ? w / 2 : W - w / 2,
+      y: s.stack.length * BH + GAP,
+      w: w, dir: dir, vy: 0
+    };
+    s.phase = 'swing';
+  }
+
+  function createState(seed) {
+    var s = {
+      seed: seed, rng: seed | 0, status: 'playing', overReason: '',
+      score: 0, perfect: 0, time: 0, phase: 'swing',
+      stack: [{ x: W / 2, w: BASE_W }], cur: null, prevAction: false,
+      overT: 0, failIdx: -1, topple: 0, missFall: false, margin: 1, events: []
+    };
+    nextBlock(s);
+    return s;
+  }
+
+  function fail(s, reason) {
+    s.status = 'over';
+    s.overReason = reason;
+    s.events.push('over');
+  }
+
+  function land(s) {
+    var top = s.stack[s.stack.length - 1], c = s.cur;
+    var lo = Math.max(c.x - c.w / 2, top.x - top.w / 2);
+    var hi = Math.min(c.x + c.w / 2, top.x + top.w / 2);
+    if (hi - lo <= 2) {
+      s.missFall = true;
+      fail(s, 'Blok kuleyi ıskaladı');
+      return;
+    }
+    var isPerfect = Math.abs(c.x - top.x) <= 5;
+    if (isPerfect) c.x = top.x;
+    s.stack.push({ x: c.x, w: c.w });
+
+    var sumM = 0, sumMX = 0, minMargin = 999;
+    for (var i = s.stack.length - 1; i >= 1; i--) {
+      var b = s.stack[i], p = s.stack[i - 1];
+      sumM += b.w;
+      sumMX += b.w * b.x;
+      var com = sumMX / sumM;
+      var a = Math.max(b.x - b.w / 2, p.x - p.w / 2);
+      var e = Math.min(b.x + b.w / 2, p.x + p.w / 2);
+      if (com < a || com > e) {
+        s.failIdx = i;
+        s.topple = com < a ? -1 : 1;
+        fail(s, 'Kule devrildi: ağırlık merkezi dayanağın dışında');
+        return;
+      }
+      minMargin = Math.min(minMargin, com - a, e - com);
+    }
+    s.margin = minMargin;
+    if (isPerfect) {
+      s.score += 2;
+      s.perfect += 1;
+      s.events.push('perfect');
+    } else {
+      s.score += 1;
+      s.perfect = 0;
+      s.events.push('land');
+    }
+    nextBlock(s);
+  }
+
+  function step(s, input, dt) {
+    s.events = [];
+    var press = !!input.action && !s.prevAction;
+    s.prevAction = !!input.action;
+    if (s.status !== 'playing') {
+      s.overT += dt;
+      if (s.missFall) { s.cur.vy += G * dt; s.cur.y -= s.cur.vy * dt; }
+      return;
+    }
+    s.time += dt;
+    var c = s.cur;
+    if (s.phase === 'swing') {
+      c.x += c.dir * speed(s) * dt;
+      if (c.x < c.w / 2) { c.x = c.w / 2; c.dir = 1; }
+      else if (c.x > W - c.w / 2) { c.x = W - c.w / 2; c.dir = -1; }
+      if (press) { s.phase = 'fall'; c.vy = 0; s.events.push('drop'); }
+    } else {
+      c.vy += G * dt;
+      c.y -= c.vy * dt;
+      var topY = s.stack.length * BH;
+      if (c.y <= topY) { c.y = topY; land(s); }
+    }
+  }
+
+  var api = { createState: createState, step: step, W: W, BH: BH };
+  if (typeof module !== 'undefined') module.exports = { createState: createState, step: step, W: W, BH: BH };
+  if (typeof window !== 'undefined') window.GameLogic = api;
+})();
+
+</script>
+<script>
+(function () {
+  var H = 640, GROUND = 600;
+
+  function color(i) { return 'hsl(' + ((i * 37 + 190) % 360) + ',55%,52%)'; }
+
+  function block(ctx, b, y, i, camY) {
+    var sy = GROUND - (y - camY) - 22;
+    ctx.fillStyle = color(i);
+    ctx.fillRect(b.x - b.w / 2, sy, b.w, 22);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(b.x - b.w / 2, sy, b.w, 4);
+  }
+
+  function draw(ctx, state, view) {
+    view = view || {};
+    var n = state.stack.length;
+    var camY = Math.max(0, n * 22 - 260);
+    var sh = view.shake > 0 ? Math.sin(view.shake * 90) * 6 * Math.min(1, view.shake / 0.2) : 0;
+    ctx.save();
+    ctx.translate(sh, 0);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-10, 0, 500, H);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(-10, GROUND, 500, H - GROUND);
+
+    var tilt = state.status === 'over' && state.failIdx >= 0 ? Math.min(1, state.overT / 0.4) * 0.6 * state.topple : 0;
+    for (var i = 0; i < n; i++) {
+      var b = state.stack[i];
+      if (state.failIdx >= 0 && i >= state.failIdx) {
+        var pv = state.stack[state.failIdx - 1];
+        var px = state.topple < 0 ? pv.x - pv.w / 2 : pv.x + pv.w / 2;
+        var py = GROUND - (state.failIdx * 22 - camY);
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(tilt);
+        ctx.translate(-px, -py);
+        block(ctx, b, i * 22, i, camY);
+        ctx.restore();
+      } else {
+        block(ctx, b, i * 22, i, camY);
+      }
+    }
+    if (state.cur && !(state.status === 'over' && state.failIdx >= 0)) {
+      block(ctx, state.cur, state.cur.y, n, camY);
+      if (state.phase === 'swing' && state.status === 'playing') {
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.fillRect(state.cur.x - 1, 0, 2, GROUND);
+      }
+    }
+    ctx.restore();
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 28px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Skor ' + state.score, 14, 36);
+    ctx.font = '14px system-ui, sans-serif';
+    ctx.fillText('Rekor ' + (view.best || 0) + (view.muted ? '  (ses kapalı)' : ''), 14, 58);
+    var m = Math.max(0, Math.min(1, state.margin / 40));
+    ctx.textAlign = 'right';
+    ctx.fillText('Denge payı', 466, 24);
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(366, 32, 100, 10);
+    ctx.fillStyle = m > 0.4 ? '#4ade80' : (m > 0.15 ? '#facc15' : '#f87171');
+    ctx.fillRect(366, 32, 100 * m, 10);
+
+    ctx.textAlign = 'center';
+    if (state.status === 'over') {
+      ctx.fillStyle = 'rgba(15,23,42,0.72)';
+      ctx.fillRect(40, 220, 400, 150);
+      ctx.fillStyle = '#fca5a5';
+      ctx.font = 'bold 20px system-ui, sans-serif';
+      ctx.fillText(state.overReason, 240, 262);
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '16px system-ui, sans-serif';
+      ctx.fillText('Skor ' + state.score + '  ·  R / boşluk / tıkla: yeniden', 240, 300);
+    } else if (state.score === 0 && state.phase === 'swing') {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '16px system-ui, sans-serif';
+      ctx.fillText('Boşluk / tık: bloğu bırak — ağırlık merkezini dayanakta tut', 240, 96);
+    }
+  }
+
+  if (typeof module !== 'undefined') module.exports = { draw: draw };
+  if (typeof window !== 'undefined') window.GameRender = { draw: draw };
+})();
+
+</script>
+<script>
+(function () {
+  var DT = 1 / 60;
+  var current = null;
+
+  function bootstrap() {
+    var canvas = document.getElementById('game');
+    var ctx = canvas.getContext('2d');
+    var input = { action: false, restart: false };
+    var held = false, pending = false;
+    var best = 0, muted = false, audio = null, shake = 0;
+    try { best = +(localStorage.getItem('yigindenge_best') || 0) || 0; } catch (e) { best = 0; }
+
+    function newSeed() { return (Date.now() & 0x7fffffff) || 1; }
+    var state = GameLogic.createState(newSeed());
+    current = state;
+
+    function initAudio() {
+      if (audio) return;
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) audio = new AC();
+      } catch (e) { audio = null; }
+    }
+    function tone(f, d, type, v) {
+      if (!audio || muted) return;
+      try {
+        var o = audio.createOscillator(), g = audio.createGain();
+        o.type = type || 'square';
+        o.frequency.value = f;
+        g.gain.value = v || 0.06;
+        o.connect(g);
+        g.connect(audio.destination);
+        o.start();
+        g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + d);
+        o.stop(audio.currentTime + d);
+      } catch (e) { }
+    }
+    function sound(ev) {
+      if (ev === 'drop') tone(320, 0.06, 'square');
+      else if (ev === 'land') { tone(160, 0.1, 'triangle', 0.1); shake = 0.08; }
+      else if (ev === 'perfect') { tone(660, 0.12, 'sine', 0.1); tone(880, 0.16, 'sine', 0.08); }
+      else if (ev === 'over') { tone(90, 0.35, 'sawtooth', 0.1); shake = 0.2; }
+    }
+
+    function restart() {
+      state = GameLogic.createState(newSeed());
+      current = state;
+      held = false;
+      pending = false;
+    }
+    function press() {
+      initAudio();
+      if (state.status === 'over') {
+        if (state.overT > 0.3) restart();
+        return;
+      }
+      pending = true;
+    }
+
+    window.addEventListener('keydown', function (e) {
+      var k = e.key;
+      if (k === ' ' || k === 'ArrowUp' || k === 'Enter') {
+        e.preventDefault();
+        if (!held) press();
+        held = true;
+      } else if (k === 'r' || k === 'R') {
+        initAudio();
+        restart();
+      } else if (k === 'm' || k === 'M') {
+        muted = !muted;
+      }
+    });
+    window.addEventListener('keyup', function (e) {
+      var k = e.key;
+      if (k === ' ' || k === 'ArrowUp' || k === 'Enter') held = false;
+    });
+    canvas.addEventListener('pointerdown', function (e) {
+      if (e && e.preventDefault) e.preventDefault();
+      press();
+    });
+
+    var last = null, acc = 0;
+    function frame(ts) {
+      if (last === null) last = ts;
+      acc += Math.min(0.25, (ts - last) / 1000);
+      last = ts;
+      var n = 0;
+      while (acc >= DT && n < 5) {
+        input.action = held || pending;
+        pending = false;
+        GameLogic.step(state, input, DT);
+        for (var i = 0; i < state.events.length; i++) sound(state.events[i]);
+        if (state.status === 'over' && state.score > best) {
+          best = state.score;
+          try { localStorage.setItem('yigindenge_best', String(best)); } catch (e) { }
+        }
+        acc -= DT;
+        n++;
+      }
+      if (n === 5) acc = 0;
+      if (shake > 0) shake = Math.max(0, shake - (n || 1) * DT);
+      GameRender.draw(ctx, state, { best: best, muted: muted, shake: shake });
+      window.requestAnimationFrame(frame);
+    }
+    window.requestAnimationFrame(frame);
+  }
+
+  function getState() { return current; }
+  function setState(s) { current = s; }
+
+  if (typeof module !== 'undefined') module.exports = { bootstrap: bootstrap, getState: getState };
+  if (typeof window !== 'undefined') {
+    window.GameMain = { bootstrap: bootstrap, getState: getState };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrap);
+    else bootstrap();
+  }
+})();
+
+</script>
+</body>
+</html>
