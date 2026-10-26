@@ -24,7 +24,7 @@ internet bağlantısı gerekmez.
 ## Ana mekanik, amaç ve kurallar
 Gündüz 20 sn sürer; tek toplayıcın aynı anda yalnızca bir yerde çalışır, yer değiştirmek 1 sn yürüme
 kaybettirir. Stok en fazla 30'dur. Gece 12 sn sürer: ateş sürekli odun yakır (üstteki çizgi gecenin
-gereksinimi; gece soğuğuna göre x1.00 / 1.15 / 1.30 gündüzden belliidir), odun biterse ateş söner.
+gereksinimi; gece soğuğuna göre x1.00 / 1.15 / 1.30 gündüzden bellidir), odun biterse ateş söner.
 Sabah yiyecek payı düşülür; yetmezse köy aç kalır. Gece sonunda ihtiyaç her gece artar.
 Sekiz geceyi atlatırsan kazanırsın. Skor = tamamlanan gece × 10; rekor tarayıcıda saklanır.
 

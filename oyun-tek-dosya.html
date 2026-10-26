@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nöbet Ocağı</title>
+<style>
+  html,body{margin:0;background:#020617;color:#cbd5e1;font-family:system-ui,sans-serif;text-align:center}
+  canvas{display:block;margin:8px auto 0;max-width:100%;height:auto;touch-action:manipulation}
+  p{margin:6px 0;font-size:14px}
+</style>
+</head>
+<body>
+<canvas id="game" width="640" height="400"></canvas>
+<p>Sol / Sağ (veya A / D, dokunuş): odun mu yiyecek mi topla · Boşluk: değiştir · R: yeniden · M: ses</p>
+<script>
+'use strict';
+(function () {
+  var C = {
+    DAY: 20, NIGHT: 12, TRAVEL: 1.0, WOOD_RATE: 2.2, FOOD_RATE: 1.6,
+    CAP: 30, WIN: 8, START_WOOD: 12, START_FOOD: 8
+  };
+
+  function rnd(s) {
+    s.rng = (s.rng + 0x6D2B79F5) | 0;
+    var t = s.rng;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  function nightWood(night, sev) { return (5 + 1.5 * night) * sev; }
+  function nightFood(night) { return Math.ceil(3 + night); }
+
+  function emit(s, name) {
+    s.events.push(name);
+    if (s.events.length > 50) s.events.shift();
+  }
+
+  function rollSeverity(s) {
+    return 1 + Math.floor(rnd(s) * 3) * 0.15;
+  }
+
+  function createState(seed) {
+    var s = {
+      seed: seed, rng: seed | 0, status: 'playing', overReason: '',
+      score: 0, night: 1, phase: 'day', t: 0,
+      wood: C.START_WOOD, food: C.START_FOOD,
+      target: 'wood', at: 'wood', travel: 0, pulse: 0,
+      severity: 1, events: []
+    };
+    s.severity = rollSeverity(s);
+    return s;
+  }
+
+  function lose(s, reason) {
+    s.status = 'over';
+    s.overReason = reason;
+    emit(s, 'over');
+  }
+
+  function step(s, input, dt) {
+    if (s.status !== 'playing') return s;
+    var want = s.target;
+    if (input.choice === 'wood' || input.choice === 'food') want = input.choice;
+    if (input.action) want = s.target === 'wood' ? 'food' : 'wood';
+    if (want !== s.target) { s.target = want; emit(s, 'switch'); }
+
+    if (s.phase === 'day') {
+      if (s.at === s.target) s.travel = 0;
+      else if (s.travel <= 0) s.travel = C.TRAVEL;
+      if (s.travel > 0) {
+        s.travel -= dt;
+        if (s.travel <= 0) { s.travel = 0; s.at = s.target; }
+      } else {
+        var rate = s.at === 'wood' ? C.WOOD_RATE : C.FOOD_RATE;
+        var key = s.at;
+        s[key] = Math.min(C.CAP, s[key] + rate * dt);
+        s.pulse += rate * dt;
+        if (s.pulse >= 1) { s.pulse -= 1; emit(s, 'gather'); }
+      }
+      s.t += dt;
+      if (s.t >= C.DAY) { s.phase = 'night'; s.t = 0; s.travel = 0; emit(s, 'dusk'); }
+    } else {
+      s.wood -= nightWood(s.night, s.severity) / C.NIGHT * dt;
+      if (s.wood < -1e-9) { s.wood = 0; lose(s, 'Ateş söndü: odun bitti'); return s; }
+      s.t += dt;
+      if (s.t >= C.NIGHT) {
+        var need = nightFood(s.night);
+        if (s.food + 1e-9 < need) { s.food = 0; lose(s, 'Yiyecek yetmedi: sabah aç kalındı'); return s; }
+        s.food -= need;
+        s.score = s.night * 10;
+        if (s.night >= C.WIN) { s.status = 'won'; emit(s, 'won'); return s; }
+        s.night += 1; s.phase = 'day'; s.t = 0;
+        s.severity = rollSeverity(s);
+        emit(s, 'dawn');
+      }
+    }
+    return s;
+  }
+
+  var api = { createState: createState, step: step, C: C, nightWood: nightWood, nightFood: nightFood };
+  if (typeof module !== 'undefined') module.exports = api;
+  if (typeof window !== 'undefined') window.GameLogic = api;
+})();
+
+</script>
+<script>
+'use strict';
+(function () {
+  var W = 640, H = 400;
+  var ZX = { wood: 110, food: 530 }, HOME = 320, GY = 300;
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  function bar(ctx, x, y, w, label, val, cap, need, color) {
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(x, y, w, 16);
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w * Math.min(1, val / cap), 16);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(x + w * Math.min(1, need / cap) - 1, y - 3, 2, 22);
+    ctx.font = '13px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(label + ' ' + Math.floor(val) + ' / gece ' + Math.ceil(need), x, y - 6);
+  }
+
+  function draw(ctx, s, view) {
+    var L = view.logic;
+    var night = s.phase === 'night';
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, night ? '#0b1026' : '#7dd3fc');
+    g.addColorStop(1, night ? '#1e1b4b' : '#e0f2fe');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = night ? '#14532d' : '#4ade80';
+    ctx.fillRect(0, GY + 20, W, H - GY - 20);
+
+    // orman
+    ctx.fillStyle = s.target === 'wood' ? 'rgba(250,204,21,0.25)' : 'rgba(0,0,0,0)';
+    ctx.fillRect(ZX.wood - 90, GY - 90, 180, 130);
+    for (var i = 0; i < 3; i++) {
+      ctx.fillStyle = '#713f12';
+      ctx.fillRect(ZX.wood - 60 + i * 55, GY - 20, 10, 40);
+      ctx.fillStyle = night ? '#166534' : '#15803d';
+      ctx.beginPath(); ctx.arc(ZX.wood - 55 + i * 55, GY - 35, 26, 0, 6.283); ctx.fill();
+    }
+    // tarla
+    ctx.fillStyle = s.target === 'food' ? 'rgba(250,204,21,0.25)' : 'rgba(0,0,0,0)';
+    ctx.fillRect(ZX.food - 90, GY - 90, 180, 130);
+    for (var j = 0; j < 5; j++) {
+      ctx.fillStyle = night ? '#a16207' : '#facc15';
+      ctx.fillRect(ZX.food - 70 + j * 32, GY - 10, 8, 30);
+      ctx.fillRect(ZX.food - 74 + j * 32, GY - 16, 16, 8);
+    }
+
+    // ateş
+    var frac = Math.min(1, s.wood / 30);
+    var fh = 14 + 40 * frac * (night ? 1 : 0.5);
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(HOME - 22, GY + 12, 44, 8);
+    ctx.fillStyle = '#f97316';
+    ctx.beginPath(); ctx.moveTo(HOME - 16, GY + 12); ctx.lineTo(HOME, GY + 12 - fh); ctx.lineTo(HOME + 16, GY + 12); ctx.fill();
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath(); ctx.moveTo(HOME - 8, GY + 12); ctx.lineTo(HOME, GY + 12 - fh * 0.6); ctx.lineTo(HOME + 8, GY + 12); ctx.fill();
+
+    // toplayıcı
+    var px = HOME - 40;
+    if (!night) {
+      px = s.travel > 0 ? lerp(ZX[s.at], ZX[s.target], 1 - s.travel / L.C.TRAVEL) : ZX[s.at];
+    }
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath(); ctx.arc(px, GY + 4, 11, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(px - 5, GY, 3, 3); ctx.fillRect(px + 2, GY, 3, 3);
+
+    // göstergeler
+    var need = L.nightWood(s.night, s.severity), nf = L.nightFood(s.night);
+    bar(ctx, 20, 30, 260, 'Odun', s.wood, L.C.CAP, need, '#b45309');
+    bar(ctx, 360, 30, 260, 'Yiyecek', s.food, L.C.CAP, nf, '#ca8a04');
+    ctx.fillStyle = night ? '#e2e8f0' : '#0f172a';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 18px system-ui, sans-serif';
+    var total = night ? L.C.NIGHT : L.C.DAY;
+    ctx.fillText((night ? 'Gece ' : 'Gündüz ') + s.night + '/' + L.C.WIN + ' — ' + Math.ceil(total - s.t) + ' sn', W / 2, 78);
+    ctx.font = '13px system-ui, sans-serif';
+    var sevTxt = s.severity > 1.2 ? 'çok soğuk' : (s.severity > 1.1 ? 'soğuk' : 'ılık');
+    ctx.fillText('Bu gece: ' + sevTxt + ' (odun x' + s.severity.toFixed(2) + ')', W / 2, 98);
+    ctx.textAlign = 'left';
+    ctx.fillText('Skor ' + s.score + '   Rekor ' + (view.best || 0) + (view.muted ? '   [ses kapalı]' : ''), 20, H - 14);
+
+    if (s.status !== 'playing') {
+      ctx.fillStyle = 'rgba(2,6,23,0.8)';
+      ctx.fillRect(0, 130, W, 130);
+      ctx.fillStyle = '#f8fafc';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 26px system-ui, sans-serif';
+      ctx.fillText(s.status === 'won' ? 'Sekiz geceyi atlattın' : s.overReason, W / 2, 185);
+      ctx.font = '15px system-ui, sans-serif';
+      ctx.fillText('Skor ' + s.score + ' — yeniden başlamak için R / Boşluk / tıkla', W / 2, 225);
+    }
+  }
+
+  var api = { draw: draw };
+  if (typeof module !== 'undefined') module.exports = api;
+  if (typeof window !== 'undefined') window.GameRender = api;
+})();
+
+</script>
+<script>
+'use strict';
+function bootstrap() {
+  var Logic = window.GameLogic, Render = window.GameRender;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var DT = 1 / 60;
+  var state = Logic.createState(newSeed());
+  var input = { choice: null, action: false };
+  var best = 0, muted = false, audio = null, overAt = 0;
+  try { best = parseInt(localStorage.getItem('nobetocagi-best'), 10) || 0; } catch (e) { best = 0; }
+
+  function newSeed() { return (Math.floor(Math.random() * 1e9)) | 0; }
+
+  function tone(freq, dur, type, vol) {
+    if (muted) return;
+    try {
+      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      var o = audio.createOscillator(), g = audio.createGain();
+      o.type = type || 'square'; o.frequency.value = freq;
+      g.gain.value = vol || 0.05;
+      g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
+      o.connect(g); g.connect(audio.destination);
+      o.start(); o.stop(audio.currentTime + dur);
+    } catch (e) { audio = null; }
+  }
+
+  function restart() { state = Logic.createState(newSeed()); overAt = 0; }
+
+  function onKey(e) {
+    var k = e.key;
+    if (k === ' ' || k === 'ArrowLeft' || k === 'ArrowRight' || k === 'Enter') e.preventDefault();
+    if (k === 'm' || k === 'M') { muted = !muted; return; }
+    if (state.status !== 'playing') {
+      if (k === 'r' || k === 'R' || ((k === ' ' || k === 'Enter') && Date.now() - overAt > 300)) restart();
+      return;
+    }
+    if (k === 'r' || k === 'R') { restart(); return; }
+    tone(300, 0.04);
+    if (k === 'ArrowLeft' || k === 'a' || k === 'A' || k === '1') input.choice = 'wood';
+    else if (k === 'ArrowRight' || k === 'd' || k === 'D' || k === '2') input.choice = 'food';
+    else if (k === ' ' || k === 'Enter') input.action = true;
+  }
+  window.addEventListener('keydown', onKey);
+
+  canvas.addEventListener('pointerdown', function (e) {
+    if (state.status !== 'playing') { if (Date.now() - overAt > 300) restart(); return; }
+    var r = canvas.getBoundingClientRect();
+    var x = e.clientX - r.left;
+    input.choice = x < r.width / 2 ? 'wood' : 'food';
+    tone(300, 0.04);
+  });
+
+  function sound(ev) {
+    if (ev === 'gather') tone(520, 0.05, 'triangle');
+    else if (ev === 'switch') tone(260, 0.08);
+    else if (ev === 'dusk') tone(180, 0.4, 'sine', 0.08);
+    else if (ev === 'dawn') tone(660, 0.3, 'sine', 0.08);
+    else if (ev === 'won') tone(880, 0.6, 'sine', 0.08);
+    else if (ev === 'over') tone(90, 0.5, 'sawtooth', 0.08);
+  }
+
+  var acc = 0, last = null;
+  function frame(ts) {
+    if (last === null) last = ts;
+    acc += Math.min(0.25, (ts - last) / 1000);
+    last = ts;
+    var n = 0;
+    while (acc >= DT && n < 5) {
+      var wasPlaying = state.status === 'playing';
+      Logic.step(state, input, DT);
+      input.choice = null; input.action = false;
+      acc -= DT; n++;
+      if (wasPlaying && state.status !== 'playing') {
+        overAt = Date.now();
+        if (state.score > best) {
+          best = state.score;
+          try { localStorage.setItem('nobetocagi-best', String(best)); } catch (e) { /* kayıt yok */ }
+        }
+      }
+    }
+    if (n === 5) acc = 0;
+    var ev = state.events.splice(0);
+    for (var i = 0; i < ev.length; i++) sound(ev[i]);
+    Render.draw(ctx, state, { logic: Logic, best: best, muted: muted });
+    window.requestAnimationFrame(frame);
+  }
+  window.requestAnimationFrame(frame);
+  return { getState: function () { return state; } };
+}
+
+if (typeof window !== 'undefined') {
+  window.GameMain = { bootstrap: bootstrap };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrap);
+  else bootstrap();
+}
+if (typeof module !== 'undefined') module.exports = { bootstrap: bootstrap };
+
+</script>
+</body>
+</html>
