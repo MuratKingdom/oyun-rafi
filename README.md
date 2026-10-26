@@ -1,58 +1,58 @@
-# 🕹️ Oyun Rafı
+# Nöbet Ocağı
 
-Gamer rutininin ürettiği küçük ama **bitmiş** tarayıcı oyunlarının rafı.
-Haftada iki oyun (pazartesi ve perşembe); her biri kurulumsuz, sunucusuz, derlemesiz — tek dosya HTML.
+**Kanat:** sandbox/inşa
+**Tek cümle:** Gündüz odun ve yiyecek toplayıp, geceleri tükenen stokla ateşi ve köyü sekiz gece boyunca ayakta tutuyorsun.
 
-**→ [Rafı aç: `index.html`](index.html)**
+## Nasıl oynanır
+**Tarayıcıda oyna (kurulumsuz):**
+https://htmlpreview.github.io/?https://github.com/MuratKingdom/oyun-rafi/blob/oyun/nobetocagi/index.html
+Bu, üçüncü taraf bir görüntüleyicidir; kurulum gerektirmez ama garanti edilmez ve bu link
+tarayıcada elle denenmemiştir.
 
-GitHub Pages açıksa raf doğrudan `https://muratkingdom.github.io/oyun-rafi/`
-adresinde oynanır. Açık değilse: depoyu klonla, `index.html`'i tarayıcıda aç.
+**Yerelde oynamak istersen:** `oyun-rafi` deposunda `oyun/nobetocagi` dalını seç → Code →
+Download ZIP (veya dalı klonla), `index.html` dosyasını herhangi bir modern tarayıcıda aç.
+Tek dosya isteyen için `oyun-tek-dosya.html` tek başına çalışır. Kurulum, derleme, sunucu,
+internet bağlantısı gerekmez.
 
-## Oyunlar
+## Kontroller
+- Sol ok / A / 1 → toplayıcı ormana gider (odun)
+- Sağ ok / D / 2 → toplayıcı tarlaya gider (yiyecek)
+- Boşluk / Enter → hedefi değiştir (bitiş ekranında 0,3 sn sonra yeniden başlat)
+- Canvas'ın sol yarısına dokun → odun, sağ yarısına → yiyecek (bitiş ekranında yeniden başlat)
+- R → yeniden başla · M → sesi aç/kapat
 
-| Oyun | Kanat | Ne | Oyna | Kaynak |
-|---|---|---|---|---|
-| Yerçekimi Tüneli | arcade/fizik | Tek tuşla yerçekimini ters çevirip dar bir tünelde engellerden kaçıyorsun. | [`oyunlar/gravtunel/`](oyunlar/gravtunel/index.html) | [`oyun/gravtunel`](../../tree/oyun/gravtunel) |
-| Son Kuyu | sandbox/inşa | 5×5 karede kolektör kurup kuyu inşa ederek tükenen suyu dengeliyorsun. | [`oyunlar/sonkuyu/`](oyunlar/sonkuyu/index.html) | [`oyun/sonkuyu`](../../tree/oyun/sonkuyu) |
-| Sekme Gücü (Bopgate) | arcade/fizik | Zıplayan topu tek tuşla havada tutup dar kapılardan geçiriyorsun; sonsuz mod, mağaza, günlük görevler, neon görünüm. | [`oyunlar/sekmeguc/`](oyunlar/sekmeguc/index.html) | [`oyun/sekmeguc`](../../tree/oyun/sekmeguc) |
-| Tohum Payı | sandbox/inşa | Altı tarlada tohum ayırıp her akşam artan yemek payını karşılıyorsun. | [`oyunlar/tohumpayi/`](oyunlar/tohumpayi/index.html) | [`oyun/tohumpayi`](../../tree/oyun/tohumpayi) |
+## Ana mekanik, amaç ve kurallar
+Gündüz 20 sn sürer; tek toplayıcın aynı anda yalnızca bir yerde çalışır, yer değiştirmek 1 sn yürüme
+kaybettirir. Stok en fazla 30'dur. Gece 12 sn sürer: ateş sürekli odun yakır (üstteki çizgi gecenin
+gereksinimi; gece soğuğuna göre x1.00 / 1.15 / 1.30 gündüzden belliidir), odun biterse ateş söner.
+Sabah yiyecek payı düşülür; yetmezse köy aç kalır. Gece sonunda ihtiyaç her gece artar.
+Sekiz geceyi atlatırsan kazanırsın. Skor = tamamlanan gece × 10; rekor tarayıcıda saklanır.
 
-Her oyunun ayrıntılı kaydı — ana mekanik, ne çalışıyor / ne eksik,
-geliştirmek için ilk adım, doğrulama durumu — katalog issue'sundadır.
+## NE ÇALIŞIYOR
+- Toplama, hedef değiştirme/yürüme gecikmesi, stok sınırı (kanıt: T1, T5c)
+- Odun/yiyecek bitince iki ayrı kayıp sebebi ekranda: "Ateş söndü: odun bitti", "Yiyecek yetmedi: sabah aç kalındı" (kanıt: T2, T2b)
+- Gereksinimi bilen bot 3 seed'de sekiz geceyi bitiriyor, yani kazanç erişilebilir (kanıt: T3)
+- Tek tuşla temiz yeniden başlatma (kanıt: T4, T5d)
+- Canvas çizimi, skor/rekor, stok çubukları, `M` ile ses kapatma (kanıt: T5b, grep W3, Chromium'da `file://` açılışı, konsol hatası 0)
 
-## Bu depo nasıl düzenlenmiş
+## NE EKSİK / İSKELE
+- İnsan oynanışına göre zorluk dengesi ayarlanmadı; bot payı 1 yiyecek farkla kazanıyor
+- Ayrı mobil buton düzeni yok; sol/sağ yarı dokunuşu denenmedi
+- Tek toplayıcı, tek bina; yükseltme veya yeni kaynak yok
+- Görsel çeşitlilik minimal
 
-- **`main`** — rafın kendisi. `index.html` (vitrin), `oyunlar/<ad>/index.html`
-  (oynanabilir kopyalar), `tools/`, `.github/`.
-- **`oyun/<ad>`** — her oyunun kendi dalı: kaynak dosyalar, testler, kendi
-  README'si, LICENSE ve `oyun-tek-dosya.html` (tek dosya derlemesi).
-- **[issue #2 — 🕹️ Katalog](../../issues/2)** — rutinin okuduğu kalıcı katalog.
-  Aynı fikri iki kez kurmamak ve üst üste aynı türden oyun yapmamak için var.
-- **[issue #1 — 🎮 Koşu raporları](../../issues/1)** — her koşunun arşivi.
+## Doğrulama durumu
+`node --check` tüm JS dosyalarında çıkış 0. `node test.js`: T1–T4 + T2b PASS (çıkış 0). `node test-dom.js`: T5a–T5d PASS (çıkış 0).
+Ağ/`file://` ve telif taramaları: 0 eşleşme. Headless Chromium ile `file://` açıldı, ok tuşuyla hedef değişti, konsol hatası 0.
+Oynanabilirliği tarayıcada elle doğrulanmadı; headless mantık ve yükleme testleri geçti.
 
-`main`'deki oynanabilir kopyalar, oyun dallarındaki `oyun-tek-dosya.html`
-dosyalarının birebir kopyalarıdır. Rutin yalnız dallara ve issue'lara yazar,
-`main`'i hiç bilmez — bu yüzden kopyaların eskimesi gerçek bir risk.
-`tools/raf-tazelik.sh` bunu denetler ve `.github/workflows/raf-tazelik.yml`
-her `main` push'unda, ayrıca rutin koşularının ertesi günü (salı ve cuma)
-otomatik çalıştırır. Eskime sessiz kalmaz, CI'ı kırar.
+## Varlıklar ve telif
+Tüm görseller Canvas ile, sesler WebAudio ile kod içinde üretilmiştir. Dış varlık, dış font,
+CDN bağımlılığı yoktur. Bu oyun hiçbir tescilli oyunun klonu değildir; gece-gündüz döngüsünde
+stok tüketen üs fikrinden genel düzeyde esinlenilmiştir.
 
-Yeni bir oyun dalı eklendiğinde rafı güncellemek için:
+## Bilinen sınır
+`file://` altında en yüksek skor kaydı bazı tarayıcılarda çalışmayabilir; oyun yine oynanır.
 
-```bash
-git fetch origin '+refs/heads/oyun/*:refs/remotes/origin/oyun/*'
-git show origin/oyun/<ad>:oyun-tek-dosya.html > oyunlar/<ad>/index.html
-# sonra index.html'e oyunun kartını ekle
-./tools/raf-tazelik.sh   # yeşil olmalı
-```
-
-## Dürüstlük notu
-
-Oyunların hiçbiri bir insan tarafından uzun süre elle oynanarak test
-edilmedi. Doğrulama, her oyunun kendi dalındaki mantık ve DOM testleriyle
-(hepsi PASS, çıkış kodu 0) ve headless tarayıcıda açılış + girdi + ekran
-görüntüsü kontrolleriyle yapıldı. Her oyunun README'si ve katalog satırı
-"NE ÇALIŞIYOR" ile "NE EKSİK" bölümlerini ayrı ayrı listeler.
-
-Tüm görseller Canvas ile, sesler WebAudio ile kod içinde üretilir. Dış varlık,
-dış font, dış kütüphane yoktur.
+## Geliştirmek isteyen için ilk adım
+`logic.js` içindeki `nightWood()` / `nightFood()` formüllerini ve `C` sabitlerini insan oynanışına göre dengele veya `step()`'e ikinci bir toplayıcı ekle.
