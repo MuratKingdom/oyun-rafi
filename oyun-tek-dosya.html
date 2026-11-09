@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bant Hattı</title>
+<style>
+  html, body { margin: 0; background: #020617; color: #cbd5e1; font-family: system-ui, sans-serif; text-align: center; }
+  canvas { display: block; margin: 8px auto 0; max-width: 100%; height: auto; touch-action: none; }
+</style>
+</head>
+<body>
+<canvas id="game" width="576" height="532"></canvas>
+<script>
+'use strict';
+// Bant Hatti — saf oyun mantigi (DOM yok, canvas yok).
+(function () {
+  var W = 9, H = 7, MAXT = 22, WIN = 30, MISS_MAX = 3, GRACE = 12;
+  // tile: 0 bos, 1..4 ok (sag, asagi, sol, yukari), 5 ayirici, 9 kaya, 10 kaynak, 11 kirmizi kutu, 12 mavi kutu
+  var DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+
+  function rnd(s) {
+    s.rs = (s.rs + 0x6D2B79F5) >>> 0;
+    var t = s.rs;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  function createState(seed) {
+    var s = {
+      seed: seed, rs: (seed >>> 0) || 1, w: W, h: H, maxT: MAXT, win: WIN, missMax: MISS_MAX,
+      grid: [], items: [], used: 0, misses: 0, score: 0, tickN: 0, acc: 0, time: 0, grace: GRACE,
+      status: 'playing', overReason: '', msg: '', lastMiss: '', cx: 1, cy: 0, evtN: 0, evtType: '', flash: 0
+    };
+    var i;
+    for (i = 0; i < W * H; i++) s.grid.push(0);
+    s.sy = 1 + Math.floor(rnd(s) * (H - 2));
+    s.ry = Math.floor(rnd(s) * s.sy);
+    s.by = s.sy + 1 + Math.floor(rnd(s) * (H - 1 - s.sy));
+    s.grid[s.sy * W] = 10;
+    s.grid[s.ry * W + W - 1] = 11;
+    s.grid[s.by * W + W - 1] = 12;
+    var k, x, y;
+    for (k = 0; k < 6; k++) {
+      x = 2 + Math.floor(rnd(s) * (W - 3));
+      y = Math.floor(rnd(s) * H);
+      if (y !== s.sy && y !== s.ry && y !== s.by) s.grid[y * W + x] = 9;
+    }
+    s.cx = 1; s.cy = s.sy;
+    return s;
+  }
+
+  function evt(s, type) { s.evtN++; s.evtType = type; }
+
+  function interval(s) { return Math.max(0.3, 0.6 - 0.01 * s.score); }
+
+  function cycle(s, x, y) {
+    if (x < 0 || y < 0 || x >= W || y >= H) return;
+    var i = y * W + x, k = s.grid[i];
+    if (k >= 9) { s.msg = 'Burası değiştirilemez'; evt(s, 'deny'); return; }
+    if (k === 0 && s.used >= MAXT) { s.msg = 'Parça hakkı bitti: bir parçayı boşa çevir'; evt(s, 'deny'); return; }
+    var n = k === 5 ? 0 : k + 1;
+    if (k === 0) s.used++;
+    if (n === 0) s.used--;
+    s.grid[i] = n;
+    s.msg = '';
+    evt(s, 'place');
+  }
+
+  function miss(s, reason) {
+    s.misses++;
+    s.lastMiss = reason;
+    s.flash = 0.2;
+    evt(s, 'miss');
+    if (s.misses >= MISS_MAX) {
+      s.status = 'over';
+      s.overReason = MISS_MAX + ' parça kayboldu: ' + reason;
+      evt(s, 'over');
+    }
+  }
+
+  function tick(s) {
+    var keep = [], j, it, k, d, nx, ny, nk;
+    for (j = 0; j < s.items.length; j++) {
+      it = s.items[j];
+      if (s.status !== 'playing') { keep.push(it); continue; }
+      k = s.grid[it.y * W + it.x];
+      if (k === 10) d = 0;
+      else if (k >= 1 && k <= 4) d = k - 1;
+      else if (k === 5) d = it.c === 0 ? (it.d + 3) % 4 : (it.d + 1) % 4;
+      else d = it.d;
+      it.px = it.x; it.py = it.y; it.d = d;
+      nx = it.x + DIRS[d][0]; ny = it.y + DIRS[d][1];
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H) { miss(s, 'Parça bantın dışına düştü'); continue; }
+      nk = s.grid[ny * W + nx];
+      if (nk === 0 || nk === 9) { miss(s, 'Parça boşluğa düştü'); continue; }
+      if (nk === 11 || nk === 12) {
+        if ((nk === 11 && it.c === 0) || (nk === 12 && it.c === 1)) {
+          s.score++;
+          evt(s, 'score');
+          if (s.score >= WIN) { s.status = 'won'; evt(s, 'won'); }
+        } else {
+          miss(s, 'Yanlış kutu: ' + (it.c === 0 ? 'kırmızı' : 'mavi') + ' parça ' + (nk === 11 ? 'kırmızı' : 'mavi') + ' kutuya girdi');
+        }
+        continue;
+      }
+      it.x = nx; it.y = ny;
+      keep.push(it);
+    }
+    s.items = keep;
+    s.tickN++;
+    var every = s.score >= 15 ? 2 : 3;
+    if (s.status === 'playing' && s.tickN % every === 0) {
+      s.items.push({ x: 0, y: s.sy, px: 0, py: s.sy, d: 0, c: rnd(s) < 0.5 ? 0 : 1 });
+    }
+  }
+
+  function step(s, input, dt) {
+    if (s.status !== 'playing') return;
+    input = input || {};
+    s.flash = Math.max(0, s.flash - dt);
+    if (input.left) s.cx = Math.max(0, s.cx - 1);
+    if (input.right) s.cx = Math.min(W - 1, s.cx + 1);
+    if (input.up) s.cy = Math.max(0, s.cy - 1);
+    if (input.down) s.cy = Math.min(H - 1, s.cy + 1);
+    if (input.click) { s.cx = input.click.x; s.cy = input.click.y; cycle(s, s.cx, s.cy); }
+    if (input.action) cycle(s, s.cx, s.cy);
+    if (input.start) s.grace = 0;
+    if (s.grace > 0) { s.grace = Math.max(0, s.grace - dt); return; }
+    s.time += dt;
+    s.acc += dt;
+    var iv = interval(s);
+    while (s.acc >= iv && s.status === 'playing') {
+      s.acc -= iv;
+      tick(s);
+      iv = interval(s);
+    }
+  }
+
+  var api = { createState: createState, step: step, interval: interval, W: W, H: H };
+  if (typeof module !== 'undefined') module.exports = { createState: createState, step: step, interval: interval, W: W, H: H };
+  if (typeof window !== 'undefined') window.GameLogic = api;
+})();
+
+</script>
+<script>
+'use strict';
+// Bant Hatti — sadece cizim.
+(function () {
+  var CELL = 64, OY = 56, CW = 576, CH = 56 + 448 + 28;
+  var COL = ['#ef4444', '#3b82f6'];
+  var DIRV = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+
+  function arrow(ctx, cx, cy, d, color) {
+    var v = DIRV[d], px = -v[1], py = v[0];
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(cx + v[0] * 20, cy + v[1] * 20);
+    ctx.lineTo(cx - v[0] * 14 + px * 16, cy - v[1] * 14 + py * 16);
+    ctx.lineTo(cx - v[0] * 14 - px * 16, cy - v[1] * 14 - py * 16);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function draw(ctx, s, view) {
+    view = view || {};
+    var W = s.w, H = s.h, x, y, k, i, t = 0;
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, CW, CH);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 20px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Teslim ' + s.score + '/' + s.win, 12, 24);
+    ctx.fillText('Kayıp ' + s.misses + '/' + s.missMax, 190, 24);
+    ctx.fillText('Parça ' + (s.maxT - s.used), 340, 24);
+    ctx.font = '14px system-ui, sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('Rekor ' + (view.best || 0), 480, 24);
+    ctx.fillStyle = s.flash > 0 ? '#fca5a5' : '#cbd5e1';
+    ctx.fillText(s.grace > 0 ? 'Hazırlık: ' + Math.ceil(s.grace) + ' sn (Enter: başlat)' : (s.msg || s.lastMiss || 'Kırmızı parça kırmızı kutuya, mavi parça mavi kutuya'), 12, 46);
+    for (y = 0; y < H; y++) {
+      for (x = 0; x < W; x++) {
+        k = s.grid[y * W + x];
+        ctx.fillStyle = (x + y) % 2 ? '#1e293b' : '#172033';
+        ctx.fillRect(x * CELL, OY + y * CELL, CELL, CELL);
+        var cx = x * CELL + CELL / 2, cy = OY + y * CELL + CELL / 2;
+        if (k >= 1 && k <= 4) { ctx.fillStyle = '#334155'; ctx.fillRect(x * CELL + 6, OY + y * CELL + 6, CELL - 12, CELL - 12); arrow(ctx, cx, cy, k - 1, '#e2e8f0'); }
+        else if (k === 5) {
+          ctx.fillStyle = '#334155'; ctx.fillRect(x * CELL + 6, OY + y * CELL + 6, CELL - 12, CELL - 12);
+          ctx.fillStyle = COL[0]; ctx.beginPath(); ctx.arc(cx, cy, 20, Math.PI, 2 * Math.PI); ctx.fill();
+          ctx.fillStyle = COL[1]; ctx.beginPath(); ctx.arc(cx, cy, 20, 0, Math.PI); ctx.fill();
+        }
+        else if (k === 9) { ctx.fillStyle = '#475569'; ctx.fillRect(x * CELL + 10, OY + y * CELL + 10, CELL - 20, CELL - 20); }
+        else if (k === 10) { ctx.fillStyle = '#16a34a'; ctx.fillRect(x * CELL + 4, OY + y * CELL + 4, CELL - 8, CELL - 8); arrow(ctx, cx, cy, 0, '#052e16'); }
+        else if (k === 11 || k === 12) { ctx.fillStyle = COL[k - 11]; ctx.fillRect(x * CELL + 4, OY + y * CELL + 4, CELL - 8, CELL - 8); ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 3; ctx.strokeRect(x * CELL + 8, OY + y * CELL + 8, CELL - 16, CELL - 16); }
+      }
+    }
+    var iv = 0.6;
+    if (view.interval) iv = view.interval;
+    t = s.grace > 0 ? 1 : Math.min(1, s.acc / iv);
+    for (i = 0; i < s.items.length; i++) {
+      var it = s.items[i];
+      var ix = it.px + (it.x - it.px) * t, iy = it.py + (it.y - it.py) * t;
+      ctx.fillStyle = COL[it.c];
+      ctx.beginPath(); ctx.arc(ix * CELL + CELL / 2, OY + iy * CELL + CELL / 2, 13, 0, 2 * Math.PI); ctx.fill();
+      ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 2; ctx.stroke();
+    }
+    ctx.strokeStyle = '#facc15'; ctx.lineWidth = 3;
+    ctx.strokeRect(s.cx * CELL + 2, OY + s.cy * CELL + 2, CELL - 4, CELL - 4);
+    ctx.fillStyle = '#94a3b8'; ctx.font = '13px system-ui, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('Ok tuşları: imleç · Boşluk/tık: parça döndür · Enter: başlat · R: yeniden · M: ses', 8, CH - 8);
+    if (s.status !== 'playing') {
+      ctx.fillStyle = 'rgba(2,6,23,0.8)'; ctx.fillRect(0, OY, CW, H * CELL);
+      ctx.textAlign = 'center'; ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 34px system-ui, sans-serif';
+      ctx.fillText(s.status === 'won' ? 'Hat tamamlandı' : 'Oyun bitti', CW / 2, OY + 150);
+      ctx.font = '18px system-ui, sans-serif';
+      ctx.fillText(s.status === 'won' ? s.win + ' parça doğru kutuya ulaştı' : s.overReason, CW / 2, OY + 190);
+      ctx.fillText('Teslim: ' + s.score + ' · Rekor: ' + (view.best || 0), CW / 2, OY + 224);
+      ctx.fillText('R / Boşluk / tık: yeniden başla', CW / 2, OY + 258);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  if (typeof module !== 'undefined') module.exports = { draw: draw };
+  if (typeof window !== 'undefined') window.GameRender = { draw: draw };
+})();
+
+</script>
+<script>
+'use strict';
+// Bant Hatti — dongu, girdi, ses.
+(function () {
+  var DT = 1 / 60, CELL = 64, OY = 56;
+  var state = null, best = 0, muted = false, actx = null, seedN = 0, lastEvt = 0;
+  var input = {};
+  var canvas, ctx;
+
+  function loadBest() { try { best = parseInt(localStorage.getItem('banthatti-best'), 10) || 0; } catch (e) { best = 0; } }
+  function saveBest() { try { localStorage.setItem('banthatti-best', String(best)); } catch (e) {} }
+
+  function newGame() {
+    seedN++;
+    var seed = ((typeof Date !== 'undefined' ? Date.now() : 1) + seedN * 7919) >>> 0;
+    state = window.GameLogic.createState(seed);
+    lastEvt = state.evtN;
+  }
+
+  function tone(f, d, type, v) {
+    if (muted || !actx) return;
+    try {
+      var o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square'; o.frequency.value = f;
+      g.gain.value = v || 0.05;
+      o.connect(g); g.connect(actx.destination);
+      var t = actx.currentTime;
+      g.gain.setValueAtTime(v || 0.05, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.start(t); o.stop(t + d);
+    } catch (e) {}
+  }
+
+  function initAudio() {
+    if (actx) return;
+    try { var C = window.AudioContext || window.webkitAudioContext; if (C) actx = new C(); } catch (e) { actx = null; }
+  }
+
+  function playEvents() {
+    if (state.evtN === lastEvt) return;
+    lastEvt = state.evtN;
+    var t = state.evtType;
+    if (t === 'place') tone(440, 0.05, 'square');
+    else if (t === 'score') tone(660, 0.08, 'triangle', 0.07);
+    else if (t === 'miss') tone(140, 0.2, 'sawtooth', 0.07);
+    else if (t === 'deny') tone(110, 0.08, 'square');
+    else if (t === 'won') tone(880, 0.4, 'triangle', 0.08);
+    else if (t === 'over') tone(90, 0.4, 'sawtooth', 0.08);
+  }
+
+  function restart() { newGame(); }
+
+  function keyName(e) { return e.code || e.key; }
+
+  function onKeyDown(e) {
+    initAudio();
+    var k = keyName(e), used = true;
+    if (k === 'ArrowLeft' || k === 'KeyA') input.left = true;
+    else if (k === 'ArrowRight' || k === 'KeyD') input.right = true;
+    else if (k === 'ArrowUp' || k === 'KeyW') input.up = true;
+    else if (k === 'ArrowDown' || k === 'KeyS') input.down = true;
+    else if (k === 'Space') { if (state.status !== 'playing') restart(); else input.action = true; }
+    else if (k === 'Enter') { if (state.status !== 'playing') restart(); else input.start = true; }
+    else if (k === 'KeyR' || k === 'r' || k === 'R') restart();
+    else if (k === 'KeyM' || k === 'm' || k === 'M') muted = !muted;
+    else used = false;
+    if (used && e.preventDefault) e.preventDefault();
+  }
+
+  function onPointer(e) {
+    initAudio();
+    if (state.status !== 'playing') { restart(); return; }
+    var r = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: canvas.width, height: canvas.height };
+    var sx = canvas.width / (r.width || canvas.width), sy = canvas.height / (r.height || canvas.height);
+    var x = Math.floor(((e.clientX - r.left) * sx) / CELL), y = Math.floor(((e.clientY - r.top) * sy - OY) / CELL);
+    if (x >= 0 && y >= 0 && x < state.w && y < state.h) input.click = { x: x, y: y };
+  }
+
+  var accT = 0, lastT = null;
+  function frame(ts) {
+    if (lastT === null) lastT = ts;
+    accT += Math.min(0.25, Math.max(0, (ts - lastT) / 1000));
+    lastT = ts;
+    var n = 0;
+    while (accT >= DT && n < 5) {
+      window.GameLogic.step(state, input, DT);
+      input = {};
+      accT -= DT; n++;
+    }
+    if (n === 5) accT = 0;
+    if (state.status !== 'playing' && state.score > best) { best = state.score; saveBest(); }
+    playEvents();
+    window.GameRender.draw(ctx, state, { best: best, interval: window.GameLogic.interval(state) });
+    window.requestAnimationFrame(frame);
+  }
+
+  function bootstrap() {
+    canvas = document.getElementById('game');
+    ctx = canvas.getContext('2d');
+    loadBest();
+    newGame();
+    window.addEventListener('keydown', onKeyDown);
+    canvas.addEventListener('pointerdown', onPointer);
+    window.requestAnimationFrame(frame);
+  }
+
+  var api = { bootstrap: bootstrap, getState: function () { return state; }, setState: function (s) { state = s; lastEvt = s.evtN; } };
+  if (typeof window !== 'undefined') {
+    window.GameMain = api;
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrap); else bootstrap();
+  }
+  if (typeof module !== 'undefined') module.exports = { bootstrap: bootstrap };
+})();
+
+</script>
+</body>
+</html>
