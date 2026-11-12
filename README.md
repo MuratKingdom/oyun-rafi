@@ -1,58 +1,62 @@
-# 🕹️ Oyun Rafı
+# Kıvılcım Zinciri
 
-Gamer rutininin ürettiği küçük ama **bitmiş** tarayıcı oyunlarının rafı.
-Haftada iki oyun (pazartesi ve perşembe); her biri kurulumsuz, sunucusuz, derlemesiz — tek dosya HTML.
+**Kanat:** arcade/fizik
+**Tek cümle:** Duvarlardan seken kürelerin arasına tek bir kıvılcım atıp, patlamaların birbirine değerek zincirlenmesiyle seviyenin kotasını tutturuyorsun.
 
-**→ [Rafı aç: `index.html`](index.html)**
+## Nasıl oynanır
+**Tarayıcıda oyna (kurulumsuz):**
+https://htmlpreview.github.io/?https://github.com/MuratKingdom/oyun-rafi/blob/oyun/kivilcimzincir/index.html
+Bu, üçüncü taraf bir görüntüleyicidir; kurulum gerektirmez ama garanti edilmez ve bu link
+tarayıcıda elle denenmemiştir.
 
-GitHub Pages açıksa raf doğrudan `https://muratkingdom.github.io/oyun-rafi/`
-adresinde oynanır. Açık değilse: depoyu klonla, `index.html`'i tarayıcıda aç.
+**Yerelde oynamak istersen:** `oyun-rafi` deposunda `oyun/kivilcimzincir` dalını seç → Code →
+Download ZIP (veya dalı klonla), `index.html` dosyasını herhangi bir modern tarayıcıda aç.
+Tek dosya isteyen için `oyun-tek-dosya.html` tek başına çalışır. Kurulum, derleme, sunucu,
+internet bağlantısı gerekmez.
 
-## Oyunlar
+## Kontroller
+- Ok tuşları (veya WASD): nişan imlecini taşı
+- Boşluk / Enter: kıvılcımı imlecin olduğu yere at (seviye başına bir kez)
+- Fare / dokunuş: imleç parmağı/fareyi izler; tıklama/dokunuş o noktaya kıvılcım atar
+- R: yeniden başla (bitiş ekranında Boşluk, Enter veya tıklama da başlatır)
+- M: ses aç/kapat
 
-| Oyun | Kanat | Ne | Oyna | Kaynak |
-|---|---|---|---|---|
-| Yerçekimi Tüneli | arcade/fizik | Tek tuşla yerçekimini ters çevirip dar bir tünelde engellerden kaçıyorsun. | [`oyunlar/gravtunel/`](oyunlar/gravtunel/index.html) | [`oyun/gravtunel`](../../tree/oyun/gravtunel) |
-| Son Kuyu | sandbox/inşa | 5×5 karede kolektör kurup kuyu inşa ederek tükenen suyu dengeliyorsun. | [`oyunlar/sonkuyu/`](oyunlar/sonkuyu/index.html) | [`oyun/sonkuyu`](../../tree/oyun/sonkuyu) |
-| Sekme Gücü (Bopgate) | arcade/fizik | Zıplayan topu tek tuşla havada tutup dar kapılardan geçiriyorsun; sonsuz mod, mağaza, günlük görevler, neon görünüm. | [`oyunlar/sekmeguc/`](oyunlar/sekmeguc/index.html) | [`oyun/sekmeguc`](../../tree/oyun/sekmeguc) |
-| Tohum Payı | sandbox/inşa | Altı tarlada tohum ayırıp her akşam artan yemek payını karşılıyorsun. | [`oyunlar/tohumpayi/`](oyunlar/tohumpayi/index.html) | [`oyun/tohumpayi`](../../tree/oyun/tohumpayi) |
+## Ana mekanik, amaç ve kurallar
+Alanda sabit hızla hareket edip duvarlardan seken küreler var. Seviye başına **tek** kıvılcım hakkın var:
+attığın yerde 40 px yarıçaplı bir patlama büyür, ~0,8 sn durur ve söner. Patlamaya değen her küre de
+kendi yerinde patlar; böylece zincir yayılır. Zincir sönünce yakalanan küre sayısı seviyenin kotasına
+(ekrandaki `Zincir x/y`) ulaştıysa sonraki seviyeye geçersin; ulaşmadıysa oyun biter ("Zincir kısa kaldı").
+Atış yapmadan 9 sn geçerse de oyun biter ("Süre doldu"). Her yakalanan küre zincirdeki derinliği kadar puan
+verir (ilk halka 1, onun tetiklediği 2, …), geçilen seviye ek 5×seviye puan verir. Küre sayısı (14'ten 40'a)
+ve kota oranı (%25'ten yukarı) her seviyede artar; 10. seviyeyi geçen kazanır. Rekor `localStorage`'da tutulur.
 
-Her oyunun ayrıntılı kaydı — ana mekanik, ne çalışıyor / ne eksik,
-geliştirmek için ilk adım, doğrulama durumu — katalog issue'sundadır.
+## NE ÇALIŞIYOR
+- Kürelerin hareketi/duvar sekmesi, nişan, kıvılcım ve patlama zinciri (kanıt: T1, T5c, tarayıcı)
+- İki kayıp sebebi ekranda: "Zincir kısa kaldı: x/y küre", "Süre doldu: kıvılcım atılmadı" (kanıt: T2, T2b, W4, tarayıcı)
+- Atış yerini ileri simülasyonla seçen bot 3 seed'in 2'sinde 10 seviyeyi bitirip kazanıyor, 3'ünde de 10. seviyeye ulaşıyor (kanıt: T3)
+- Tek tuşla temiz yeniden başlatma (kanıt: T4, T4b, T5d, tarayıcı)
+- Canvas çizimi + skor/seviye/zincir/süre/rekor göstergesi (kanıt: T5b, W3, headless Chromium ekran görüntüsü)
 
-## Bu depo nasıl düzenlenmiş
+## NE EKSİK / İSKELE
+- İnsan oynanışına göre denge ayarlanmadı; bot ızgarada tarama yapıp en iyi anı bekliyor, insanın 10 seviyeyi geçip geçemeyeceği bilinmiyor
+- Dokunmatik: dokunuş/tıklama ile atış kodda var, gerçek dokunmatik cihazda denenmedi; ayrı mobil buton düzeni yok
+- Küreler birbirine çarpmıyor, yalnızca duvarlardan sekiyor; patlayan küre yerinde duruyor
+- Görsel çeşitlilik minimal (düz renk daireler)
 
-- **`main`** — rafın kendisi. `index.html` (vitrin), `oyunlar/<ad>/index.html`
-  (oynanabilir kopyalar), `tools/`, `.github/`.
-- **`oyun/<ad>`** — her oyunun kendi dalı: kaynak dosyalar, testler, kendi
-  README'si, LICENSE ve `oyun-tek-dosya.html` (tek dosya derlemesi).
-- **[issue #2 — 🕹️ Katalog](../../issues/2)** — rutinin okuduğu kalıcı katalog.
-  Aynı fikri iki kez kurmamak ve üst üste aynı türden oyun yapmamak için var.
-- **[issue #1 — 🎮 Koşu raporları](../../issues/1)** — her koşunun arşivi.
+## Doğrulama durumu
+Koşulan kontroller: `node --check` (tüm JS, çıkış 0), `node test.js` (T1–T4, T2b, T4b PASS, çıkış 0),
+`node test-dom.js` (T5a–T5d PASS, çıkış 0), ağ/`file://` taraması, telif taraması, referans bütünlüğü,
+`node build-single.js`. Ayrıca headless Chromium ile `index.html` ve `oyun-tek-dosya.html` `file://` üzerinden
+açıldı; otomatik girdiyle imleç taşındı, Boşluk ile kıvılcım atıldı, kayıp sebebi oluştu, R ile yeniden başladı,
+konsol hatası 0. Oynanabilirliği tarayıcıda elle doğrulanmadı; headless mantık ve yükleme testleri geçti.
 
-`main`'deki oynanabilir kopyalar, oyun dallarındaki `oyun-tek-dosya.html`
-dosyalarının birebir kopyalarıdır. Rutin yalnız dallara ve issue'lara yazar,
-`main`'i hiç bilmez — bu yüzden kopyaların eskimesi gerçek bir risk.
-`tools/raf-tazelik.sh` bunu denetler ve `.github/workflows/raf-tazelik.yml`
-her `main` push'unda, ayrıca rutin koşularının ertesi günü (salı ve cuma)
-otomatik çalıştırır. Eskime sessiz kalmaz, CI'ı kırar.
+## Varlıklar ve telif
+Tüm görseller Canvas ile, sesler WebAudio ile kod içinde üretilmiştir. Dış varlık, dış font,
+CDN bağımlılığı yoktur. Bu oyun hiçbir tescilli oyunun klonu değildir; genel "zincirleme patlama"
+mekaniğinden esinlenilmiştir.
 
-Yeni bir oyun dalı eklendiğinde rafı güncellemek için:
+## Bilinen sınır
+`file://` altında en yüksek skor kaydı bazı tarayıcılarda çalışmayabilir; oyun yine oynanır.
 
-```bash
-git fetch origin '+refs/heads/oyun/*:refs/remotes/origin/oyun/*'
-git show origin/oyun/<ad>:oyun-tek-dosya.html > oyunlar/<ad>/index.html
-# sonra index.html'e oyunun kartını ekle
-./tools/raf-tazelik.sh   # yeşil olmalı
-```
-
-## Dürüstlük notu
-
-Oyunların hiçbiri bir insan tarafından uzun süre elle oynanarak test
-edilmedi. Doğrulama, her oyunun kendi dalındaki mantık ve DOM testleriyle
-(hepsi PASS, çıkış kodu 0) ve headless tarayıcıda açılış + girdi + ekran
-görüntüsü kontrolleriyle yapıldı. Her oyunun README'si ve katalog satırı
-"NE ÇALIŞIYOR" ile "NE EKSİK" bölümlerini ayrı ayrı listeler.
-
-Tüm görseller Canvas ile, sesler WebAudio ile kod içinde üretilir. Dış varlık,
-dış font, dış kütüphane yoktur.
+## Geliştirmek isteyen için ilk adım
+`logic.js` içindeki `quotaFor()` ve `C.BURST_R`/`C.HOLD` değerlerini insan oynanışına göre dengele, ya da `step()`'teki küre döngüsüne küre-küre esnek çarpışması ekle.
