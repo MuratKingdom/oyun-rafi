@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kıvılcım Zinciri</title>
+<style>
+  html, body { margin: 0; background: #0d1020; color: #c8d0ff; font-family: system-ui, sans-serif; }
+  main { display: flex; flex-direction: column; align-items: center; padding: 12px; }
+  canvas { width: min(96vw, 720px); height: auto; touch-action: none; border-radius: 6px; }
+  p { margin: 8px 0 0; font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <canvas id="game" width="480" height="400"></canvas>
+  <p>Oklar/fare: nişan · Boşluk/tık: kıvılcım · R: yeniden · M: ses</p>
+</main>
+<script>/* logic.js */
+// Kıvılcım Zinciri — saf oyun mantığı (DOM yok)
+var C = {
+  W: 480, H: 360,
+  ORB_R: 7,
+  CURSOR_SPEED: 320,
+  GROW: 0.22, HOLD: 0.8, SHRINK: 0.22,
+  BURST_R: 40,
+  AIM_TIME: 9,
+  LEVELS: 10,
+  SPEED_MIN: 45, SPEED_MAX: 95
+};
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// PRNG durumu state.rng içinde sayı olarak tutulur (JSON ile kopyalanabilir)
+function rnd(s) {
+  var r = mulberry32(s.rng)();
+  s.rng = (s.rng + 0x6D2B79F5) | 0;
+  return r;
+}
+
+function orbCount(level) { return Math.min(40, 14 + 3 * (level - 1)); }
+function quotaFor(level, n) { return Math.ceil(n * Math.min(0.75, 0.25 + 0.04 * (level - 1))); }
+
+function spawnLevel(s) {
+  var n = orbCount(s.level);
+  s.orbs = [];
+  for (var i = 0; i < n; i++) {
+    var a = rnd(s) * Math.PI * 2;
+    var sp = C.SPEED_MIN + rnd(s) * (C.SPEED_MAX - C.SPEED_MIN);
+    s.orbs.push({
+      x: C.ORB_R + rnd(s) * (C.W - 2 * C.ORB_R),
+      y: C.ORB_R + rnd(s) * (C.H - 2 * C.ORB_R),
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp
+    });
+  }
+  s.bursts = [];
+  s.fired = false;
+  s.caught = 0;
+  s.quota = quotaFor(s.level, n);
+  s.aimLeft = C.AIM_TIME;
+  s.chainMax = 0;
+}
+
+function createState(seed) {
+  seed = (seed >>> 0) || 1;
+  var s = {
+    seed: seed, rng: seed,
+    status: 'playing', overReason: '',
+    level: 1, score: 0, progress: 0,
+    cursor: { x: C.W / 2, y: C.H / 2 },
+    orbs: [], bursts: [], fired: false, caught: 0, quota: 0,
+    aimLeft: C.AIM_TIME, chainMax: 0, started: false,
+    time: 0, levelPause: 0, events: [], prevAction: false
+  };
+  spawnLevel(s);
+  return s;
+}
+
+function burstRadius(b) {
+  if (b.t < C.GROW) return C.BURST_R * (b.t / C.GROW);
+  if (b.t < C.GROW + C.HOLD) return C.BURST_R;
+  var k = (b.t - C.GROW - C.HOLD) / C.SHRINK;
+  return C.BURST_R * Math.max(0, 1 - k);
+}
+
+function burstAlive(b) { return b.t < C.GROW + C.HOLD + C.SHRINK; }
+
+function fire(s, x, y) {
+  s.fired = true;
+  s.bursts.push({ x: x, y: y, t: 0, depth: 0 });
+  s.events.push({ type: 'fire', x: x, y: y });
+}
+
+function step(s, input, dt) {
+  input = input || {};
+  s.events = [];
+  var actionEdge = !!input.action && !s.prevAction;
+  s.prevAction = !!input.action;
+
+  if (input.restart) {
+    var ns = createState(((s.seed * 1664525 + 1013904223) >>> 0) || 7);
+    for (var k in ns) s[k] = ns[k];
+    s.started = true;
+    s.events = [{ type: 'restart' }];
+    s.prevAction = !!input.action;
+    return s;
+  }
+  if (s.status !== 'playing') return s;
+  s.time += dt;
+
+  if (input.left || input.right || input.up || input.down || input.action || input.px != null) s.started = true;
+
+  // imleç
+  if (typeof input.px === 'number' && typeof input.py === 'number') {
+    s.cursor.x = input.px; s.cursor.y = input.py;
+  }
+  var dx = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+  var dy = (input.down ? 1 : 0) - (input.up ? 1 : 0);
+  s.cursor.x = Math.max(0, Math.min(C.W, s.cursor.x + dx * C.CURSOR_SPEED * dt));
+  s.cursor.y = Math.max(0, Math.min(C.H, s.cursor.y + dy * C.CURSOR_SPEED * dt));
+
+  // seviye arası kısa bekleme
+  if (s.levelPause > 0) {
+    s.levelPause -= dt;
+    if (s.levelPause <= 0) { s.levelPause = 0; spawnLevel(s); }
+    return s;
+  }
+
+  // küreler hareket eder, duvarlardan seker
+  var r = C.ORB_R, i, o;
+  for (i = 0; i < s.orbs.length; i++) {
+    o = s.orbs[i];
+    o.x += o.vx * dt; o.y += o.vy * dt;
+    if (o.x < r) { o.x = r; o.vx = Math.abs(o.vx); }
+    if (o.x > C.W - r) { o.x = C.W - r; o.vx = -Math.abs(o.vx); }
+    if (o.y < r) { o.y = r; o.vy = Math.abs(o.vy); }
+    if (o.y > C.H - r) { o.y = C.H - r; o.vy = -Math.abs(o.vy); }
+  }
+
+  if (!s.fired) {
+    if (s.started) s.aimLeft -= dt;
+    if (actionEdge) fire(s, s.cursor.x, s.cursor.y);
+    else if (s.aimLeft <= 0) {
+      s.status = 'over';
+      s.overReason = 'Süre doldu: kıvılcım atılmadı';
+      s.events.push({ type: 'over' });
+      return s;
+    }
+  }
+
+  // patlamalar büyür; değdiği küre zincire katılır
+  var nb = [];
+  for (var b = 0; b < s.bursts.length; b++) {
+    var B = s.bursts[b];
+    B.t += dt;
+    var br = burstRadius(B);
+    for (i = s.orbs.length - 1; i >= 0; i--) {
+      o = s.orbs[i];
+      var ddx = o.x - B.x, ddy = o.y - B.y, rr = br + r;
+      if (ddx * ddx + ddy * ddy <= rr * rr) {
+        s.orbs.splice(i, 1);
+        var depth = B.depth + 1;
+        nb.push({ x: o.x, y: o.y, t: 0, depth: depth });
+        s.caught++;
+        s.score += depth;
+        if (depth > s.chainMax) s.chainMax = depth;
+        s.events.push({ type: 'catch', x: o.x, y: o.y, depth: depth, n: s.caught });
+      }
+    }
+  }
+  s.bursts = s.bursts.filter(burstAlive).concat(nb);
+  s.progress = s.score;
+
+  // zincir bitti mi?
+  if (s.fired && s.bursts.length === 0) {
+    if (s.caught >= s.quota) {
+      s.score += 5 * s.level;
+      s.progress = s.score;
+      s.events.push({ type: 'level', level: s.level });
+      if (s.level >= C.LEVELS) {
+        s.status = 'won';
+        s.overReason = '';
+        s.events.push({ type: 'won' });
+      } else {
+        s.level++;
+        s.levelPause = 0.6;
+        s.fired = true;
+      }
+    } else {
+      s.status = 'over';
+      s.overReason = 'Zincir kısa kaldı: ' + s.caught + '/' + s.quota + ' küre';
+      s.events.push({ type: 'over' });
+    }
+  }
+  return s;
+}
+
+if (typeof module !== 'undefined') module.exports = { createState, step, C, burstRadius };
+if (typeof window !== 'undefined') window.GameLogic = { createState, step, C, burstRadius };
+
+</script>
+<script>/* render.js */
+// Kıvılcım Zinciri — çizim (state'i değiştirmez)
+var DEPTH_COLORS = ['#ffd166', '#ff9f43', '#ff6b6b', '#e056fd', '#7d5fff', '#48dbfb'];
+
+function draw(ctx, state, view) {
+  view = view || {};
+  var L = (typeof window !== 'undefined' && window.GameLogic) ? window.GameLogic : require('./logic.js');
+  var C = L.C;
+  var shake = view.shake || 0;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#0d1020';
+  ctx.fillRect(0, 0, C.W, C.H + 40);
+  if (shake > 0) ctx.translate((view.jx || 0) * shake, (view.jy || 0) * shake);
+
+  // alan
+  ctx.strokeStyle = '#2a2f55';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1, 1, C.W - 2, C.H - 2);
+
+  // küreler
+  var i;
+  for (i = 0; i < state.orbs.length; i++) {
+    var o = state.orbs[i];
+    ctx.fillStyle = '#9fb4ff';
+    ctx.beginPath();
+    ctx.arc(o.x, o.y, C.ORB_R, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // patlamalar
+  for (i = 0; i < state.bursts.length; i++) {
+    var b = state.bursts[i];
+    var r = L.burstRadius(b);
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = DEPTH_COLORS[b.depth % DEPTH_COLORS.length];
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = DEPTH_COLORS[b.depth % DEPTH_COLORS.length];
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // imleç (atış yapılmadıysa)
+  if (!state.fired && state.status === 'playing') {
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.arc(state.cursor.x, state.cursor.y, C.BURST_R, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(state.cursor.x - 6, state.cursor.y); ctx.lineTo(state.cursor.x + 6, state.cursor.y);
+    ctx.moveTo(state.cursor.x, state.cursor.y - 6); ctx.lineTo(state.cursor.x, state.cursor.y + 6);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // gösterge çubuğu: skor / seviye / zincir / süre / rekor
+  ctx.fillStyle = '#151a33';
+  ctx.fillRect(0, C.H, C.W, 40);
+  ctx.font = '14px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('Skor ' + state.score + '   Seviye ' + state.level + '/' + C.LEVELS, 10, C.H + 25);
+  ctx.fillStyle = state.caught >= state.quota ? '#7bed9f' : '#ffd166';
+  ctx.fillText('Zincir ' + state.caught + '/' + state.quota, 200, C.H + 25);
+  if (!state.fired && state.status === 'playing') {
+    ctx.fillStyle = state.aimLeft < 3 ? '#ff6b6b' : '#c8d0ff';
+    ctx.fillText('Süre ' + Math.max(0, state.aimLeft).toFixed(1), 300, C.H + 25);
+  }
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#c8d0ff';
+  ctx.fillText('Rekor ' + (view.best || 0) + (view.muted ? '  [ses kapalı]' : ''), C.W - 10, C.H + 25);
+
+  // ipucu / bitiş ekranı
+  ctx.textAlign = 'center';
+  if (state.status === 'playing' && !state.started) {
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.font = '15px system-ui, sans-serif';
+    ctx.fillText('Oklar/fare ile nişan al, Boşluk/tık ile kıvılcımı at', C.W / 2, 24);
+  }
+  if (state.levelPause > 0) {
+    ctx.fillStyle = '#7bed9f';
+    ctx.font = 'bold 22px system-ui, sans-serif';
+    ctx.fillText('Seviye ' + state.level, C.W / 2, C.H / 2);
+  }
+  if (state.status === 'over' || state.status === 'won') {
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(0, C.H / 2 - 60, C.W, 120);
+    ctx.font = 'bold 24px system-ui, sans-serif';
+    if (state.status === 'over') {
+      ctx.fillStyle = '#ff6b6b';
+      ctx.fillText(state.overReason, C.W / 2, C.H / 2 - 18);
+    } else {
+      ctx.fillStyle = '#7bed9f';
+      ctx.fillText('Kazandın: 10 seviye tamam', C.W / 2, C.H / 2 - 18);
+    }
+    ctx.font = '15px system-ui, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('Skor ' + state.score + ' — R, Boşluk veya tık: yeniden', C.W / 2, C.H / 2 + 20);
+  }
+}
+
+if (typeof module !== 'undefined') module.exports = { draw };
+if (typeof window !== 'undefined') window.GameRender = { draw };
+
+</script>
+<script>/* main.js */
+// Kıvılcım Zinciri — döngü, girdi, ses
+var KEYMAP = {
+  ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
+  ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
+  Space: 'action', Enter: 'action'
+};
+
+function bootstrap() {
+  var L = window.GameLogic, R = window.GameRender;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var DT = 1 / 60;
+  var input = { left: false, right: false, up: false, down: false, action: false, restart: false, px: null, py: null, tap: false };
+  var view = { shake: 0, jx: 0, jy: 0, best: 0, muted: false };
+  var audio = null;
+  var state = L.createState((Math.floor(Math.random() * 1e9) >>> 0) || 1);
+
+  try { view.best = parseInt(localStorage.getItem('kivilcim-zinciri-rekor') || '0', 10) || 0; } catch (e) { view.best = 0; }
+
+  function ensureAudio() {
+    if (audio || view.muted) return;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audio = new AC();
+    } catch (e) { audio = null; }
+  }
+
+  function tone(freq, dur, type, vol) {
+    if (!audio || view.muted) return;
+    try {
+      var o = audio.createOscillator(), g = audio.createGain();
+      o.type = type || 'sine';
+      o.frequency.value = freq;
+      g.gain.value = vol || 0.08;
+      o.connect(g); g.connect(audio.destination);
+      var t = audio.currentTime || 0;
+      if (g.gain.exponentialRampToValueAtTime) g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.start(t); o.stop(t + dur);
+    } catch (e) { /* ses yoksa sessiz devam */ }
+  }
+
+  function saveBest() {
+    if (state.score > view.best) {
+      view.best = state.score;
+      try { localStorage.setItem('kivilcim-zinciri-rekor', String(view.best)); } catch (e) { /* kayıt yok */ }
+    }
+  }
+
+  function handleEvents() {
+    for (var i = 0; i < state.events.length; i++) {
+      var ev = state.events[i];
+      if (ev.type === 'fire') { view.shake = 4; tone(220, 0.12, 'triangle', 0.1); }
+      else if (ev.type === 'catch') { tone(330 + Math.min(ev.depth, 12) * 60, 0.09, 'sine', 0.06); }
+      else if (ev.type === 'level') { tone(660, 0.15, 'square', 0.05); }
+      else if (ev.type === 'over') { view.shake = 6; tone(110, 0.3, 'sawtooth', 0.08); saveBest(); }
+      else if (ev.type === 'won') { tone(880, 0.3, 'square', 0.06); saveBest(); }
+    }
+  }
+
+  function isOver() { return state.status === 'over' || state.status === 'won'; }
+
+  window.addEventListener('keydown', function (e) {
+    ensureAudio();
+    if (e.code === 'KeyM') { view.muted = !view.muted; return; }
+    if (e.code === 'KeyR' || e.key === 'r' || e.key === 'R') { input.restart = true; e.preventDefault && e.preventDefault(); return; }
+    var k = KEYMAP[e.code];
+    if (k) {
+      if (e.preventDefault) e.preventDefault();
+      if (isOver() && k === 'action') { input.restart = true; return; }
+      input[k] = true;
+      if (k === 'action') input.tap = true;
+    }
+  });
+  window.addEventListener('keyup', function (e) {
+    var k = KEYMAP[e.code];
+    if (k) input[k] = false;
+  });
+
+  function toGame(e) {
+    var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: canvas.width, height: canvas.height };
+    var sx = canvas.width / (rect.width || canvas.width), sy = canvas.height / (rect.height || canvas.height);
+    return { x: (e.clientX - rect.left) * sx, y: Math.min(L.C.H, (e.clientY - rect.top) * sy) };
+  }
+  canvas.addEventListener('pointermove', function (e) {
+    var p = toGame(e); input.px = p.x; input.py = p.y;
+  });
+  canvas.addEventListener('pointerdown', function (e) {
+    ensureAudio();
+    if (e.preventDefault) e.preventDefault();
+    if (isOver()) { input.restart = true; return; }
+    var p = toGame(e); input.px = p.x; input.py = p.y; input.action = true; input.tap = true;
+  });
+  canvas.addEventListener('pointerup', function () { input.action = false; });
+
+  var acc = 0, last = null;
+  function frame(ts) {
+    if (last === null) last = ts;
+    acc += Math.min(0.25, Math.max(0, (ts - last) / 1000));
+    last = ts;
+    var steps = 0;
+    while (acc >= DT && steps < 5) {
+      // kısa basışlar aynı kare içinde bırakılsa da kaybolmasın: tap mandalı en az bir adım 'action' verir
+      var tapNow = input.tap;
+      var si = { left: input.left, right: input.right, up: input.up, down: input.down,
+        action: input.action || tapNow, restart: input.restart, px: input.px, py: input.py };
+      L.step(state, si, DT);
+      handleEvents();
+      if (tapNow) { input.tap = false; state.prevAction = input.action; }
+      input.restart = false;
+      input.px = null; input.py = null;
+      acc -= DT; steps++;
+    }
+    if (steps === 5) acc = 0;
+    if (view.shake > 0) { view.shake = Math.max(0, view.shake - 0.5); view.jx = Math.random() * 2 - 1; view.jy = Math.random() * 2 - 1; }
+    R.draw(ctx, state, view);
+    window.requestAnimationFrame(frame);
+  }
+  R.draw(ctx, state, view);
+  window.requestAnimationFrame(frame);
+
+  window.__game = { getState: function () { return state; }, setState: function (s) { state = s; }, input: input };
+}
+
+if (typeof window !== 'undefined') {
+  window.GameMain = { bootstrap };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrap);
+  else bootstrap();
+}
+if (typeof module !== 'undefined') module.exports = { bootstrap };
+
+</script>
+</body>
+</html>
