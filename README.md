@@ -1,58 +1,70 @@
-# 🕹️ Oyun Rafı
+# Set Adası
 
-Gamer rutininin ürettiği küçük ama **bitmiş** tarayıcı oyunlarının rafı.
-Haftada iki oyun (pazartesi ve perşembe); her biri kurulumsuz, sunucusuz, derlemesiz — tek dosya HTML.
+**Kanat:** sandbox/inşa
+**Tek cümle:** Her 10 saniyede bir yükselen denize karşı, adadaki kuru karelerin ürettiği kumla kareleri yükseltip köyün çevresine set çekiyorsun.
 
-**→ [Rafı aç: `index.html`](index.html)**
+## Nasıl oynanır
+**Tarayıcıda oyna (kurulumsuz):**
+https://htmlpreview.github.io/?https://github.com/MuratKingdom/oyun-rafi/blob/oyun/setadasi/index.html
+Bu, üçüncü taraf bir görüntüleyicidir; kurulum gerektirmez ama garanti edilmez ve bu link
+tarayıcıda elle denenmemiştir.
 
-GitHub Pages açıksa raf doğrudan `https://muratkingdom.github.io/oyun-rafi/`
-adresinde oynanır. Açık değilse: depoyu klonla, `index.html`'i tarayıcıda aç.
+**Yerelde oynamak istersen:** `oyun-rafi` deposunda `oyun/setadasi` dalını seç → Code →
+Download ZIP (veya dalı klonla), `index.html` dosyasını herhangi bir modern tarayıcıda aç.
+Tek dosya isteyen için `oyun-tek-dosya.html` tek başına çalışır. Kurulum, derleme, sunucu,
+internet bağlantısı gerekmez.
 
-## Oyunlar
+## Kontroller
+- Ok tuşları (veya WASD): seçili kareyi (sarı çerçeve) taşı
+- Boşluk / Enter: seçili kareyi 1 kum harcayarak 1 birim yükselt
+- Fare / dokunuş: tıklanan kareyi seç ve 1 birim yükselt
+- R: yeniden başla (bitiş ekranında Boşluk, Enter veya tıklama da başlatır)
+- M: ses aç/kapat
 
-| Oyun | Kanat | Ne | Oyna | Kaynak |
-|---|---|---|---|---|
-| Yerçekimi Tüneli | arcade/fizik | Tek tuşla yerçekimini ters çevirip dar bir tünelde engellerden kaçıyorsun. | [`oyunlar/gravtunel/`](oyunlar/gravtunel/index.html) | [`oyun/gravtunel`](../../tree/oyun/gravtunel) |
-| Son Kuyu | sandbox/inşa | 5×5 karede kolektör kurup kuyu inşa ederek tükenen suyu dengeliyorsun. | [`oyunlar/sonkuyu/`](oyunlar/sonkuyu/index.html) | [`oyun/sonkuyu`](../../tree/oyun/sonkuyu) |
-| Sekme Gücü (Bopgate) | arcade/fizik | Zıplayan topu tek tuşla havada tutup dar kapılardan geçiriyorsun; sonsuz mod, mağaza, günlük görevler, neon görünüm. | [`oyunlar/sekmeguc/`](oyunlar/sekmeguc/index.html) | [`oyun/sekmeguc`](../../tree/oyun/sekmeguc) |
-| Tohum Payı | sandbox/inşa | Altı tarlada tohum ayırıp her akşam artan yemek payını karşılıyorsun. | [`oyunlar/tohumpayi/`](oyunlar/tohumpayi/index.html) | [`oyun/tohumpayi`](../../tree/oyun/tohumpayi) |
+## Ana mekanik, amaç ve kurallar
+11x11'lik ada ızgarasında her karenin bir yüksekliği var (sayı). Her 10 saniyede bir gelgit gelir
+ve deniz seviyesi 1 artar. Yüksekliği deniz seviyesine eşit veya altında olan kare, denize **dört
+yönden bağlıysa** kalıcı olarak su altında kalır. Yani alçak bir kare, çevresi denizden yüksek bir
+setle kapalıysa kuru kalır. Kırmızı çerçeveli kareler sıradaki gelgitte batacak olanlardır.
 
-Her oyunun ayrıntılı kaydı — ana mekanik, ne çalışıyor / ne eksik,
-geliştirmek için ilk adım, doğrulama durumu — katalog issue'sundadır.
+Her kuru kare saniyede 0,045 kum üretir; ada küçüldükçe gelir azalır. Kare yükseltmek 1 kum,
+yükseklik tavanı 15. Ortadaki köy karesi (ev çizimi, yükseklik 2) yükseltilemez: korumanın tek yolu
+çevresine set çekmektir. Köy su altında kalırsa oyun biter ("Köy sular altında kaldı"). 12 gelgiti
+atlatırsan kazanırsın. Her atlatılan gelgit 10 + o anki kuru kare sayısı kadar puan verir; yani
+geniş bir alanı çevirmek daha çok puan ama daha pahalı set demektir. Rekor `localStorage`'da tutulur.
 
-## Bu depo nasıl düzenlenmiş
+## NE ÇALIŞIYOR
+- Gelgit, denize bağlı kareleri bulan su yayılımı, setle çevrili alanın kuru kalması (kanıt: T1, T3)
+- Kayıp ve sebebi ekranda: "Köy sular altında kaldı (gelgit n)"; boşta bekleyen oyuncu 3. gelgitte kaybediyor (kanıt: T2, W4, tarayıcı)
+- Köy ve su altındaki kare yükseltilemiyor (kanıt: T2b)
+- Köyün çevresine Chebyshev yarıçapı 3 olan halkayı yükselten bot 3 seed'de 12 gelgiti bitirip kazanıyor (kanıt: T3)
+- Tek tuşla temiz yeniden başlatma (kanıt: T4, T5d, tarayıcı)
+- Canvas çizimi, kum/deniz/gelgit/skor/rekor göstergesi, gelgit sayacı çubuğu, sıradaki gelgitte batacak karelerin kırmızı işareti (kanıt: T5b, W3, headless Chromium ekran görüntüsü)
+- Ok tuşu + Boşluk ve fare tıklamasıyla kare yükseltme (kanıt: T5c, headless Chromium otomatik girdi)
 
-- **`main`** — rafın kendisi. `index.html` (vitrin), `oyunlar/<ad>/index.html`
-  (oynanabilir kopyalar), `tools/`, `.github/`.
-- **`oyun/<ad>`** — her oyunun kendi dalı: kaynak dosyalar, testler, kendi
-  README'si, LICENSE ve `oyun-tek-dosya.html` (tek dosya derlemesi).
-- **[issue #2 — 🕹️ Katalog](../../issues/2)** — rutinin okuduğu kalıcı katalog.
-  Aynı fikri iki kez kurmamak ve üst üste aynı türden oyun yapmamak için var.
-- **[issue #1 — 🎮 Koşu raporları](../../issues/1)** — her koşunun arşivi.
+## NE EKSİK / İSKELE
+- İnsan oynanışına göre denge ayarlanmadı; gelir (0,045) ve gelgit aralığı (10 sn) yalnızca bot simülasyonuyla seçildi. Yalnızca köyün hemen çevresini (8 kare) yükselten temkinli strateji de 12 gelgiti bitirebiliyor, düşük puanla.
+- Dokunuşla yükseltme kodda var (`pointerdown`), gerçek dokunmatik cihazda denenmedi; ayrı mobil buton düzeni yok.
+- Yükseltme geri alınamaz, kare alçaltma/yıkma yok.
+- Tek kaynak (kum) ve tek bina (set); olay/hava değişkeni yok.
+- Görsel çeşitlilik minimal (düz renk kareler, sayı ile yükseklik).
 
-`main`'deki oynanabilir kopyalar, oyun dallarındaki `oyun-tek-dosya.html`
-dosyalarının birebir kopyalarıdır. Rutin yalnız dallara ve issue'lara yazar,
-`main`'i hiç bilmez — bu yüzden kopyaların eskimesi gerçek bir risk.
-`tools/raf-tazelik.sh` bunu denetler ve `.github/workflows/raf-tazelik.yml`
-her `main` push'unda, ayrıca rutin koşularının ertesi günü (salı ve cuma)
-otomatik çalıştırır. Eskime sessiz kalmaz, CI'ı kırar.
+## Doğrulama durumu
+Koşulan kontroller: `node --check` (tüm JS, çıkış 0), `node test.js` (T1–T4 + T2b PASS, çıkış 0),
+`node test-dom.js` (T5a–T5d PASS, çıkış 0), ağ/`file://` taraması, telif taraması, referans bütünlüğü,
+`node build-single.js`. Ayrıca headless Chromium (Playwright) ile `index.html` ve `oyun-tek-dosya.html`
+`file://` üzerinden açıldı; otomatik girdiyle ok tuşu imleci taşıdı, fare tıklaması kareyi yükseltti,
+36 sn boşta kalınca kayıp ekranı çıktı, R ile yeniden başladı; konsol hatası 0, dış istek 0.
+Oynanabilirliği tarayıcıda elle doğrulanmadı; headless mantık ve yükleme testleri geçti.
 
-Yeni bir oyun dalı eklendiğinde rafı güncellemek için:
+## Varlıklar ve telif
+Tüm görseller Canvas ile, sesler WebAudio ile kod içinde üretilmiştir. Dış varlık, dış font,
+CDN bağımlılığı yoktur. Bu oyun hiçbir tescilli oyunun klonu değildir; genel "yükselen suya karşı
+set çekme / alan kapatma" mekaniğinden esinlenilmiştir.
 
-```bash
-git fetch origin '+refs/heads/oyun/*:refs/remotes/origin/oyun/*'
-git show origin/oyun/<ad>:oyun-tek-dosya.html > oyunlar/<ad>/index.html
-# sonra index.html'e oyunun kartını ekle
-./tools/raf-tazelik.sh   # yeşil olmalı
-```
+## Bilinen sınır
+`file://` altında en yüksek skor kaydı bazı tarayıcılarda çalışmayabilir; oyun yine oynanır.
 
-## Dürüstlük notu
-
-Oyunların hiçbiri bir insan tarafından uzun süre elle oynanarak test
-edilmedi. Doğrulama, her oyunun kendi dalındaki mantık ve DOM testleriyle
-(hepsi PASS, çıkış kodu 0) ve headless tarayıcıda açılış + girdi + ekran
-görüntüsü kontrolleriyle yapıldı. Her oyunun README'si ve katalog satırı
-"NE ÇALIŞIYOR" ile "NE EKSİK" bölümlerini ayrı ayrı listeler.
-
-Tüm görseller Canvas ile, sesler WebAudio ile kod içinde üretilir. Dış varlık,
-dış font, dış kütüphane yoktur.
+## Geliştirmek isteyen için ilk adım
+`logic.js` içindeki `C.INCOME` ve `C.TIDE_T` değerlerini insan oynanışına göre dengele, ya da `raise()`
+maliyetini yüksekliğe göre artır (ör. `Math.ceil(h / 4)` kum) ki küçük halka stratejisi pahalılaşsın.
