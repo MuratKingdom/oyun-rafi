@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Set Adası</title>
+<style>
+  html, body { margin: 0; background: #071521; color: #cfe0ec; font-family: system-ui, sans-serif; }
+  #wrap { display: flex; flex-direction: column; align-items: center; padding: 10px; }
+  canvas { max-width: 100%; height: auto; touch-action: none; border-radius: 6px; }
+  #hint { margin: 8px 0 0; font-size: 14px; opacity: 0.85; text-align: center; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="528" height="600"></canvas>
+  <p id="hint">Ok tuşları: kare seç · Boşluk: 1 kumla yükselt (veya kareye tıkla) · Kırmızı kareler sıradaki gelgitte batar · R: yeniden · M: ses</p>
+</div>
+<script>
+/* logic.js */
+// Set Adası — saf oyun mantığı (DOM yok)
+'use strict';
+
+var C = {
+  N: 11,            // ızgara kenarı
+  TIDE_T: 10,       // gelgit aralığı (sn)
+  TIDES_TO_WIN: 12, // kazanmak için atlatılacak gelgit
+  INCOME: 0.045,    // kuru kare başına sn'de kum
+  START_SAND: 6,
+  MAX_H: 15,
+  VILLAGE_H: 2
+};
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function rnd(s) {
+  // PRNG durumu state içinde: her çağrıda rngState ilerler
+  var f = mulberry32(s.rngState);
+  var v = f();
+  s.rngState = (s.rngState + 0x6D2B79F5) | 0;
+  return v;
+}
+
+function idx(x, y) { return y * C.N + x; }
+
+function createState(seed) {
+  var s = {
+    seed: seed >>> 0,
+    rngState: (seed >>> 0) || 1,
+    status: 'playing',
+    overReason: '',
+    level: 0,            // deniz seviyesi
+    tide: 0,             // atlatılan gelgit
+    tideTimer: C.TIDE_T,
+    sand: C.START_SAND,
+    score: 0,
+    time: 0,
+    cx: Math.floor(C.N / 2),
+    cy: Math.floor(C.N / 2) + 1,
+    h: [],
+    flooded: [],
+    village: { x: Math.floor(C.N / 2), y: Math.floor(C.N / 2) },
+    events: [],          // render/ses için tek karelik olaylar
+    prevAction: false
+  };
+  var mid = (C.N - 1) / 2;
+  for (var y = 0; y < C.N; y++) {
+    for (var x = 0; x < C.N; x++) {
+      var d = Math.max(Math.abs(x - mid), Math.abs(y - mid)) / mid; // 0..1
+      var e = Math.sqrt((x - mid) * (x - mid) + (y - mid) * (y - mid)) / mid;
+      var base = 5.2 - 5.5 * (0.5 * d + 0.5 * e);
+      var v = Math.round(base + (rnd(s) * 2 - 1) * 1.2);
+      if (x === 0 || y === 0 || x === C.N - 1 || y === C.N - 1) v = Math.min(v, 0);
+      if (v < 0) v = 0;
+      if (v > 6) v = 6;
+      s.h.push(v);
+      s.flooded.push(v <= s.level && (x === 0 || y === 0 || x === C.N - 1 || y === C.N - 1));
+    }
+  }
+  s.h[idx(s.village.x, s.village.y)] = C.VILLAGE_H;
+  // başlangıç seviyesinde (0) bağlantılı suyu yay
+  var f0 = floodSet(s, s.level);
+  for (var i = 0; i < f0.length; i++) if (f0[i]) s.flooded[i] = true;
+  return s;
+}
+
+// Verilen seviyede denize bağlı olarak su altında kalacak kareler
+function floodSet(s, level) {
+  var n = C.N, out = new Array(n * n), q = [];
+  for (var i = 0; i < n * n; i++) out[i] = false;
+  for (var y = 0; y < n; y++) {
+    for (var x = 0; x < n; x++) {
+      var k = idx(x, y);
+      var edge = x === 0 || y === 0 || x === n - 1 || y === n - 1;
+      if ((edge && s.h[k] <= level) || s.flooded[k]) {
+        if (!out[k]) { out[k] = true; q.push(k); }
+      }
+    }
+  }
+  while (q.length) {
+    var c = q.pop(), cx = c % n, cy = (c - cx) / n;
+    var nb = [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]];
+    for (var j = 0; j < 4; j++) {
+      var nx = nb[j][0], ny = nb[j][1];
+      if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+      var nk = idx(nx, ny);
+      if (!out[nk] && s.h[nk] <= level) { out[nk] = true; q.push(nk); }
+    }
+  }
+  return out;
+}
+
+function dryCount(s) {
+  var c = 0;
+  for (var i = 0; i < s.flooded.length; i++) if (!s.flooded[i]) c++;
+  return c;
+}
+
+function isVillage(s, x, y) { return x === s.village.x && y === s.village.y; }
+
+// İmleçteki kareyi 1 yükselt; başarılıysa true
+function raise(s, x, y) {
+  var k = idx(x, y);
+  if (s.flooded[k]) { s.events.push({ t: 'deny', x: x, y: y, why: 'su' }); return false; }
+  if (isVillage(s, x, y)) { s.events.push({ t: 'deny', x: x, y: y, why: 'köy' }); return false; }
+  if (s.h[k] >= C.MAX_H) { s.events.push({ t: 'deny', x: x, y: y, why: 'tavan' }); return false; }
+  if (s.sand < 1) { s.events.push({ t: 'deny', x: x, y: y, why: 'kum' }); return false; }
+  s.sand -= 1;
+  s.h[k] += 1;
+  s.events.push({ t: 'raise', x: x, y: y });
+  return true;
+}
+
+function doTide(s) {
+  s.level += 1;
+  var f = floodSet(s, s.level), lost = 0;
+  for (var i = 0; i < f.length; i++) {
+    if (f[i] && !s.flooded[i]) { s.flooded[i] = true; lost++; }
+  }
+  s.events.push({ t: 'tide', lost: lost });
+  if (s.flooded[idx(s.village.x, s.village.y)]) {
+    s.status = 'over';
+    s.overReason = 'Köy sular altında kaldı (gelgit ' + s.level + ')';
+    s.events.push({ t: 'over' });
+    return;
+  }
+  s.tide += 1;
+  s.score += 10 + dryCount(s);
+  if (s.tide >= C.TIDES_TO_WIN) {
+    s.status = 'won';
+    s.events.push({ t: 'won' });
+  }
+}
+
+function step(s, input, dt) {
+  s.events = [];
+  input = input || {};
+  if (s.status !== 'playing') return s;
+  s.time += dt;
+  // imleç hareketi (input.move: tek seferlik yön)
+  if (input.moveX) s.cx = Math.max(0, Math.min(C.N - 1, s.cx + input.moveX));
+  if (input.moveY) s.cy = Math.max(0, Math.min(C.N - 1, s.cy + input.moveY));
+  if (typeof input.tapX === 'number' && typeof input.tapY === 'number') {
+    s.cx = input.tapX; s.cy = input.tapY;
+    raise(s, s.cx, s.cy);
+  }
+  if (input.action && !s.prevAction) raise(s, s.cx, s.cy);
+  s.prevAction = !!input.action;
+  // gelir
+  s.sand += dryCount(s) * C.INCOME * dt;
+  // gelgit
+  s.tideTimer -= dt;
+  if (s.tideTimer <= 0) {
+    s.tideTimer += C.TIDE_T;
+    doTide(s);
+  }
+  return s;
+}
+
+var GameLogicAPI = { createState: createState, step: step, floodSet: floodSet, dryCount: dryCount, raise: raise, C: C, idx: idx };
+if (typeof module !== 'undefined') module.exports = GameLogicAPI;
+if (typeof window !== 'undefined') window.GameLogic = GameLogicAPI;
+
+</script>
+<script>
+/* render.js */
+// Set Adası — yalnızca çizim
+'use strict';
+var HUD = 72, CELL = 48;
+
+function landColor(h) {
+  if (h >= 7) { var g = Math.min(200, 120 + (h - 7) * 10); return 'rgb(' + g + ',' + g + ',' + (g + 8) + ')'; }
+  var pal = ['#d9c58f', '#c9c078', '#9fbf63', '#7fae4e', '#6a9a3f', '#8a7f52', '#9a8a66'];
+  return pal[Math.max(0, Math.min(6, h))];
+}
+
+function draw(ctx, s, view) {
+  view = view || {};
+  var L = view.logic, N = L.C.N, W = N * CELL, H = HUD + N * CELL;
+  var t = view.now || 0;
+  ctx.save();
+  if (view.shake > 0) ctx.translate((Math.sin(t * 90) * 4) * view.shake, (Math.cos(t * 70) * 3) * view.shake);
+  ctx.fillStyle = '#123049';
+  ctx.fillRect(-10, -10, W + 20, H + 20);
+
+  var next = L.floodSet(s, s.level + 1);
+  for (var y = 0; y < N; y++) {
+    for (var x = 0; x < N; x++) {
+      var k = L.idx(x, y), px = x * CELL, py = HUD + y * CELL;
+      if (s.flooded[k]) {
+        var w = 0.5 + 0.5 * Math.sin(t * 2 + x * 0.7 + y * 0.5);
+        ctx.fillStyle = 'rgb(' + Math.round(30 + 20 * w) + ',' + Math.round(90 + 30 * w) + ',' + Math.round(150 + 30 * w) + ')';
+        ctx.fillRect(px, py, CELL, CELL);
+        continue;
+      }
+      ctx.fillStyle = landColor(s.h[k]);
+      ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
+      if (next[k]) { // bir sonraki gelgitte batacak
+        ctx.fillStyle = 'rgba(220,40,40,' + (0.45 + 0.15 * Math.sin(t * 6)) + ')';
+        ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
+        ctx.strokeStyle = '#ff3b3b'; ctx.lineWidth = 2;
+        ctx.strokeRect(px + 3, py + 3, CELL - 6, CELL - 6);
+      }
+      if (x === s.village.x && y === s.village.y) {
+        ctx.fillStyle = '#b5523b';
+        ctx.beginPath(); ctx.moveTo(px + 10, py + 24); ctx.lineTo(px + 24, py + 10); ctx.lineTo(px + 38, py + 24); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#efe2c4'; ctx.fillRect(px + 14, py + 24, 20, 16);
+        ctx.fillStyle = '#5a3a2a'; ctx.fillRect(px + 21, py + 30, 6, 10);
+      } else {
+        ctx.fillStyle = s.h[k] >= 7 ? '#2b2b33' : 'rgba(30,30,20,0.75)';
+        ctx.font = 'bold 16px system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(String(s.h[k]), px + CELL / 2, py + CELL / 2);
+      }
+    }
+  }
+  // geri bildirim parıltıları
+  var fx = view.fx || [];
+  for (var i = 0; i < fx.length; i++) {
+    var f = fx[i], a = Math.max(0, f.life / 0.2);
+    ctx.strokeStyle = f.t === 'deny' ? 'rgba(255,80,80,' + a + ')' : 'rgba(255,255,255,' + a + ')';
+    ctx.lineWidth = 3;
+    var g = (1 - a) * 8;
+    ctx.strokeRect(f.x * CELL - g + 2, HUD + f.y * CELL - g + 2, CELL - 4 + 2 * g, CELL - 4 + 2 * g);
+  }
+  // imleç
+  ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 3;
+  ctx.strokeRect(s.cx * CELL + 2, HUD + s.cy * CELL + 2, CELL - 4, CELL - 4);
+
+  // HUD
+  ctx.fillStyle = '#0b1e2e'; ctx.fillRect(0, 0, W, HUD);
+  ctx.fillStyle = '#e8f0f6'; ctx.font = 'bold 17px system-ui, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('Kum: ' + Math.floor(s.sand), 12, 26);
+  ctx.fillText('Deniz: ' + s.level, 120, 26);
+  ctx.fillText('Gelgit: ' + s.tide + '/' + L.C.TIDES_TO_WIN, 230, 26);
+  ctx.fillText('Skor: ' + s.score, 370, 26);
+  ctx.font = '14px system-ui, sans-serif';
+  ctx.fillStyle = '#9fb7c9';
+  ctx.fillText('Kuru kare: ' + L.dryCount(s) + '   Rekor: ' + (view.best || 0) + (view.muted ? '   [ses kapalı]' : ''), 12, 48);
+  var frac = Math.max(0, Math.min(1, s.tideTimer / L.C.TIDE_T));
+  ctx.fillStyle = '#24425a'; ctx.fillRect(12, 56, W - 24, 8);
+  ctx.fillStyle = frac < 0.3 ? '#e0554a' : '#4aa3e0'; ctx.fillRect(12, 56, (W - 24) * (1 - frac), 8);
+
+  if (s.status === 'over' || s.status === 'won') {
+    ctx.fillStyle = 'rgba(5,15,25,0.78)'; ctx.fillRect(0, HUD + 150, W, 170);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = s.status === 'won' ? '#9be37a' : '#ff8a7a';
+    ctx.font = 'bold 26px system-ui, sans-serif';
+    ctx.fillText(s.status === 'won' ? 'Ada ayakta: 12 gelgit atlatıldı' : s.overReason, W / 2, HUD + 200);
+    ctx.fillStyle = '#e8f0f6'; ctx.font = '18px system-ui, sans-serif';
+    ctx.fillText('Skor: ' + s.score + '   Rekor: ' + (view.best || 0), W / 2, HUD + 240);
+    ctx.fillText('R / Boşluk / tıklama: yeniden başla', W / 2, HUD + 280);
+  }
+  ctx.restore();
+}
+
+if (typeof module !== 'undefined') module.exports = { draw: draw, HUD: HUD, CELL: CELL };
+if (typeof window !== 'undefined') window.GameRender = { draw: draw, HUD: HUD, CELL: CELL };
+
+</script>
+<script>
+/* main.js */
+// Set Adası — döngü, girdi, ses
+'use strict';
+function bootstrap() {
+  var L = window.GameLogic, R = window.GameRender;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var DT = 1 / 60;
+  var KEY = 'setadasi_best';
+  var best = 0;
+  try { best = parseInt(localStorage.getItem(KEY), 10) || 0; } catch (e) { best = 0; }
+  var state = L.createState((Date.now() & 0x7fffffff) || 1);
+  var pending = { moveX: 0, moveY: 0, action: false, tapX: null, tapY: null };
+  var fx = [], shake = 0, muted = false, audio = null, acc = 0, last = null, now = 0;
+
+  function initAudio() {
+    if (audio || muted) return;
+    try { var AC = window.AudioContext || window.webkitAudioContext; if (AC) audio = new AC(); } catch (e) { audio = null; }
+  }
+  function tone(freq, dur, type, vol) {
+    if (muted || !audio) return;
+    try {
+      var o = audio.createOscillator(), g = audio.createGain();
+      o.type = type || 'square'; o.frequency.value = freq;
+      g.gain.value = vol || 0.06;
+      o.connect(g); g.connect(audio.destination);
+      var t0 = audio.currentTime;
+      if (g.gain.exponentialRampToValueAtTime) g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.start(t0); o.stop(t0 + dur);
+    } catch (e) { /* sessiz devam */ }
+  }
+  function saveBest() {
+    if (state.score > best) { best = state.score; try { localStorage.setItem(KEY, String(best)); } catch (e) {} }
+  }
+  function restart() {
+    state = L.createState((Date.now() & 0x7fffffff) || 1);
+    fx = []; shake = 0; acc = 0;
+    tone(520, 0.08, 'triangle');
+  }
+
+  window.addEventListener('keydown', function (e) {
+    var k = e.key, c = e.code;
+    initAudio();
+    var game = true;
+    if (k === 'r' || k === 'R' || c === 'KeyR') { restart(); }
+    else if (k === 'm' || k === 'M' || c === 'KeyM') { muted = !muted; }
+    else if (state.status !== 'playing' && (k === ' ' || k === 'Enter')) { restart(); }
+    else if (k === 'ArrowLeft' || k === 'a' || k === 'A') pending.moveX = -1;
+    else if (k === 'ArrowRight' || k === 'd' || k === 'D') pending.moveX = 1;
+    else if (k === 'ArrowUp' || k === 'w' || k === 'W') pending.moveY = -1;
+    else if (k === 'ArrowDown' || k === 's' || k === 'S') pending.moveY = 1;
+    else if (k === ' ' || k === 'Enter') pending.action = true;
+    else game = false;
+    if (game && e.preventDefault) e.preventDefault();
+  });
+
+  canvas.addEventListener('pointerdown', function (e) {
+    initAudio();
+    if (state.status !== 'playing') { restart(); return; }
+    var r = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: canvas.width, height: canvas.height };
+    var sx = canvas.width / (r.width || canvas.width), sy = canvas.height / (r.height || canvas.height);
+    var x = Math.floor(((e.clientX - r.left) * sx) / R.CELL);
+    var y = Math.floor(((e.clientY - r.top) * sy - R.HUD) / R.CELL);
+    if (x >= 0 && y >= 0 && x < L.C.N && y < L.C.N) { pending.tapX = x; pending.tapY = y; }
+    if (e.preventDefault) e.preventDefault();
+  });
+
+  function handleEvents() {
+    for (var i = 0; i < state.events.length; i++) {
+      var ev = state.events[i];
+      if (ev.t === 'raise') { fx.push({ t: 'raise', x: ev.x, y: ev.y, life: 0.2 }); tone(300 + 30 * Math.min(12, state.h[L.idx(ev.x, ev.y)]), 0.06, 'square'); }
+      else if (ev.t === 'deny') { fx.push({ t: 'deny', x: ev.x, y: ev.y, life: 0.2 }); tone(120, 0.08, 'sawtooth', 0.04); }
+      else if (ev.t === 'tide') { if (ev.lost > 0) shake = 1; tone(160, 0.25, 'sine', 0.1); }
+      else if (ev.t === 'over') { tone(90, 0.4, 'sawtooth', 0.08); saveBest(); }
+      else if (ev.t === 'won') { tone(660, 0.15, 'triangle'); tone(880, 0.3, 'triangle'); saveBest(); }
+    }
+  }
+
+  function frame(ts) {
+    if (last === null) last = ts;
+    var el = Math.min(0.25, (ts - last) / 1000);
+    last = ts; acc += el; now += el;
+    var steps = 0;
+    while (acc >= DT && steps < 5) {
+      var input = { moveX: pending.moveX, moveY: pending.moveY, action: pending.action, tapX: pending.tapX, tapY: pending.tapY };
+      pending.moveX = 0; pending.moveY = 0; pending.action = false; pending.tapX = null; pending.tapY = null;
+      L.step(state, input, DT);
+      handleEvents();
+      acc -= DT; steps++;
+    }
+    if (steps === 5) acc = 0;
+    for (var i = fx.length - 1; i >= 0; i--) { fx[i].life -= el; if (fx[i].life <= 0) fx.splice(i, 1); }
+    shake = Math.max(0, shake - el / 0.2);
+    R.draw(ctx, state, { logic: L, now: now, fx: fx, shake: shake, best: best, muted: muted });
+    window.requestAnimationFrame(frame);
+  }
+  window.requestAnimationFrame(frame);
+  window.GameMain.getState = function () { return state; };
+}
+
+if (typeof window !== 'undefined') {
+  window.GameMain = { bootstrap: bootstrap };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrap);
+  else bootstrap();
+}
+if (typeof module !== 'undefined') module.exports = { bootstrap: bootstrap };
+
+</script>
+</body>
+</html>
