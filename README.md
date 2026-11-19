@@ -1,58 +1,64 @@
-# 🕹️ Oyun Rafı
+# Halka Dışı
 
-Gamer rutininin ürettiği küçük ama **bitmiş** tarayıcı oyunlarının rafı.
-Haftada iki oyun (pazartesi ve perşembe); her biri kurulumsuz, sunucusuz, derlemesiz — tek dosya HTML.
+**Kanat:** arcade/fizik
+**Tek cümle:** Dairesel bir platformda diskini sürüp kütleleri farklı rakip diskleri çarparak halkanın dışına itiyorsun; sen düşersen oyun biter.
 
-**→ [Rafı aç: `index.html`](index.html)**
+## Nasıl oynanır
+**Tarayıcıda oyna (kurulumsuz):**
+https://htmlpreview.github.io/?https://github.com/MuratKingdom/oyun-rafi/blob/oyun/halkadisi/index.html
+Bu, üçüncü taraf bir görüntüleyicidir; kurulum gerektirmez ama garanti edilmez ve bu link
+tarayıcıda elle denenmemiştir.
 
-GitHub Pages açıksa raf doğrudan `https://muratkingdom.github.io/oyun-rafi/`
-adresinde oynanır. Açık değilse: depoyu klonla, `index.html`'i tarayıcıda aç.
+**Yerelde oynamak istersen:** `oyun-rafi` deposunda `oyun/halkadisi` dalını seç → Code →
+Download ZIP (veya dalı klonla), `index.html` dosyasını herhangi bir modern tarayıcıda aç.
+Tek dosya isteyen için `oyun-tek-dosya.html` tek başına çalışır. Kurulum, derleme, sunucu,
+internet bağlantısı gerekmez.
 
-## Oyunlar
+## Kontroller
+- Ok tuşları / WASD: diski o yöne hızlandır (kayar, hemen durmaz)
+- Boşluk: hamle — o anki yönde ani hız patlaması (1 sn bekleme; diskin çevresindeki halka dolunca hazır)
+- Fare / dokunuş: basılı tuttuğun noktaya doğru hızlan
+- R: yeniden başla (bitiş ekranında Boşluk, Enter veya tıklama da başlatır)
+- M: ses aç/kapat
 
-| Oyun | Kanat | Ne | Oyna | Kaynak |
-|---|---|---|---|---|
-| Yerçekimi Tüneli | arcade/fizik | Tek tuşla yerçekimini ters çevirip dar bir tünelde engellerden kaçıyorsun. | [`oyunlar/gravtunel/`](oyunlar/gravtunel/index.html) | [`oyun/gravtunel`](../../tree/oyun/gravtunel) |
-| Son Kuyu | sandbox/inşa | 5×5 karede kolektör kurup kuyu inşa ederek tükenen suyu dengeliyorsun. | [`oyunlar/sonkuyu/`](oyunlar/sonkuyu/index.html) | [`oyun/sonkuyu`](../../tree/oyun/sonkuyu) |
-| Sekme Gücü (Bopgate) | arcade/fizik | Zıplayan topu tek tuşla havada tutup dar kapılardan geçiriyorsun; sonsuz mod, mağaza, günlük görevler, neon görünüm. | [`oyunlar/sekmeguc/`](oyunlar/sekmeguc/index.html) | [`oyun/sekmeguc`](../../tree/oyun/sekmeguc) |
-| Tohum Payı | sandbox/inşa | Altı tarlada tohum ayırıp her akşam artan yemek payını karşılıyorsun. | [`oyunlar/tohumpayi/`](oyunlar/tohumpayi/index.html) | [`oyun/tohumpayi`](../../tree/oyun/tohumpayi) |
+## Ana mekanik, amaç ve kurallar
+Mavi disk sensin. Rakip diskler sana doğru hızlanır ve seni itmeye çalışır. Çarpışmalar kütleye
+göre esnek hesaplanır: sarı (hafif) kolay savrulur, turuncu (orta), mor (ağır) zor kıpırdar ve seni
+geri iter. Sert darbe alan rakip 0,6 sn sersemler (çevresinde beyaz yay) ve o sürede itilmeye açıktır.
+Merkezi halkanın dışına çıkan rakip düşer: dalga numarası × 10 puan. Dalgadaki herkes düşünce
+dalga × 25 bonus ve sıradaki dalga gelir (2'den 7'ye kadar rakip, ağır rakip oranı artar).
+Senin merkezin kırmızı kenarı geçerse oyun biter ("Halkanın dışına düştün (dalga n)").
+8 dalgayı temizlersen kazanırsın. Rekor `localStorage`'da tutulur.
 
-Her oyunun ayrıntılı kaydı — ana mekanik, ne çalışıyor / ne eksik,
-geliştirmek için ilk adım, doğrulama durumu — katalog issue'sundadır.
+## NE ÇALIŞIYOR
+- Ataletli hareket, hamle, kütleye göre esnek çarpışma, rakip takibi ve kenardan kaçınması (kanıt: T1, T5c, tarayıcı)
+- Kayıp ve sebebi ekranda; sağa basılı tutan veya boşta bekleyen oyuncu dalga 1'de düşüyor (kanıt: T2, T2b, W4, tarayıcı)
+- Rakibi merkezin karşı tarafından iten bot 12 seed'in hepsinde puan topluyor, 2'sinde 8 dalgayı bitirip kazanıyor (kanıt: T3, T3b)
+- Tek tuşla temiz yeniden başlatma (kanıt: T4, T4b, T5d, tarayıcı)
+- Canvas çizimi, skor/dalga/rekor göstergesi, hamle bekleme halkası, sersemleme yayı, parçacık ve ekran sarsıntısı (kanıt: T5b, W3, headless Chromium ekran görüntüsü)
 
-## Bu depo nasıl düzenlenmiş
+## NE EKSİK / İSKELE
+- İnsan oynanışına göre denge ayarlanmadı; rakip ivmeleri ve sersemleme süresi yalnızca bot simülasyonuyla seçildi (bot 30 seed'de ortalama 7. dalgaya ulaşıyor, 6'sında kazanıyor).
+- Dokunmatik kontrolde hamle (dash) yok; dokunuş yalnızca hareket ettirir. Gerçek dokunmatik cihazda denenmedi.
+- Platform küçülmüyor, engel/güçlendirme yok; tek arena.
+- Görsel çeşitlilik minimal (düz renkli diskler).
 
-- **`main`** — rafın kendisi. `index.html` (vitrin), `oyunlar/<ad>/index.html`
-  (oynanabilir kopyalar), `tools/`, `.github/`.
-- **`oyun/<ad>`** — her oyunun kendi dalı: kaynak dosyalar, testler, kendi
-  README'si, LICENSE ve `oyun-tek-dosya.html` (tek dosya derlemesi).
-- **[issue #2 — 🕹️ Katalog](../../issues/2)** — rutinin okuduğu kalıcı katalog.
-  Aynı fikri iki kez kurmamak ve üst üste aynı türden oyun yapmamak için var.
-- **[issue #1 — 🎮 Koşu raporları](../../issues/1)** — her koşunun arşivi.
+## Doğrulama durumu
+Koşulan kontroller: `node --check` (tüm JS, çıkış 0), `node test.js` (T1–T4 + T2b, T3b, T4b PASS, çıkış 0),
+`node test-dom.js` (T5a–T5d PASS, çıkış 0), ağ/`file://` taraması, telif taraması, referans bütünlüğü,
+`node build-single.js`. Ayrıca headless Chromium (Playwright) ile `index.html` ve `oyun-tek-dosya.html`
+`file://` üzerinden açıldı; otomatik girdiyle ok tuşu + Boşluk hareket/hamle yaptı, sağa basılı tutunca
+kayıp ekranı çıktı, R ile yeniden başladı, fare basılı tutunca disk imlece hareket etti; konsol hatası 0, dış istek 0.
+Oynanabilirliği tarayıcıda elle doğrulanmadı; headless mantık ve yükleme testleri geçti.
 
-`main`'deki oynanabilir kopyalar, oyun dallarındaki `oyun-tek-dosya.html`
-dosyalarının birebir kopyalarıdır. Rutin yalnız dallara ve issue'lara yazar,
-`main`'i hiç bilmez — bu yüzden kopyaların eskimesi gerçek bir risk.
-`tools/raf-tazelik.sh` bunu denetler ve `.github/workflows/raf-tazelik.yml`
-her `main` push'unda, ayrıca rutin koşularının ertesi günü (salı ve cuma)
-otomatik çalıştırır. Eskime sessiz kalmaz, CI'ı kırar.
+## Varlıklar ve telif
+Tüm görseller Canvas ile, sesler WebAudio ile kod içinde üretilmiştir. Dış varlık, dış font,
+CDN bağımlılığı yoktur. Bu oyun hiçbir tescilli oyunun klonu değildir; genel "halkadan dışarı itme"
+güreş fikrinden ve kütleli esnek çarpışma fiziğinden esinlenilmiştir.
 
-Yeni bir oyun dalı eklendiğinde rafı güncellemek için:
+## Bilinen sınır
+`file://` altında en yüksek skor kaydı bazı tarayıcılarda çalışmayabilir; oyun yine oynanır.
 
-```bash
-git fetch origin '+refs/heads/oyun/*:refs/remotes/origin/oyun/*'
-git show origin/oyun/<ad>:oyun-tek-dosya.html > oyunlar/<ad>/index.html
-# sonra index.html'e oyunun kartını ekle
-./tools/raf-tazelik.sh   # yeşil olmalı
-```
-
-## Dürüstlük notu
-
-Oyunların hiçbiri bir insan tarafından uzun süre elle oynanarak test
-edilmedi. Doğrulama, her oyunun kendi dalındaki mantık ve DOM testleriyle
-(hepsi PASS, çıkış kodu 0) ve headless tarayıcıda açılış + girdi + ekran
-görüntüsü kontrolleriyle yapıldı. Her oyunun README'si ve katalog satırı
-"NE ÇALIŞIYOR" ile "NE EKSİK" bölümlerini ayrı ayrı listeler.
-
-Tüm görseller Canvas ile, sesler WebAudio ile kod içinde üretilir. Dış varlık,
-dış font, dış kütüphane yoktur.
+## Geliştirmek isteyen için ilk adım
+`logic.js` içindeki `KINDS` ivmelerini ve `C.STUN_T`/`C.DASH_CD` değerlerini insan oynanışına göre dengele,
+ya da `startWave()`'e her dalgada `C.R`'yi birkaç piksel küçülten bir halka daraltması ekle.
