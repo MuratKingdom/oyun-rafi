@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halka Dışı</title>
+<style>
+  html, body { margin: 0; background: #141821; color: #e8ecf3; font-family: system-ui, sans-serif; }
+  main { display: flex; flex-direction: column; align-items: center; padding: 12px; }
+  canvas { width: 100%; max-width: 480px; aspect-ratio: 1 / 1; touch-action: none; border-radius: 8px; }
+  p { margin: 8px 0 0; font-size: 14px; color: #8a94a8; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <canvas id="game" width="480" height="480"></canvas>
+  <p>Oklar/WASD: hareket · Boşluk: hamle · Rakipleri halkanın dışına it, sen düşme · R: yeniden · M: ses</p>
+</main>
+<script>/* logic.js */
+'use strict';
+// Halka Dışı — saf oyun mantığı. DOM yok, canvas yok.
+var C = {
+  W: 480, H: 480, CX: 240, CY: 252, R: 200,
+  P_R: 14, P_ACC: 560, DRAG: 1.8, DASH_V: 330, DASH_CD: 1.0,
+  REST: 0.95, STUN_V: 110, STUN_T: 0.6, SPAWN_T: 1.2, WAVE_GAP: 1.0, WIN_WAVE: 8, DIE_T: 0.4, FALL_T: 0.4
+};
+var KINDS = {
+  light:  { r: 11, m: 0.7, acc: 270 },
+  normal: { r: 15, m: 1.2, acc: 240 },
+  heavy:  { r: 21, m: 2.6, acc: 190 }
+};
+
+function rnd(s) { // mulberry32, durum state içinde
+  s.rng = (s.rng + 0x6D2B79F5) | 0;
+  var t = s.rng;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+function ev(s, type, data) { var e = data || {}; e.type = type; s.events.push(e); }
+
+function createState(seed) {
+  seed = (seed >>> 0) || 1;
+  var s = {
+    seed: seed, rng: seed | 0, status: 'playing', overReason: '', score: 0,
+    wave: 0, time: 0, clearT: -1, dieT: 0, knocked: 0, nextId: 1,
+    player: { x: C.CX, y: C.CY, vx: 0, vy: 0, r: C.P_R, m: 1, dashCd: 0, dashT: 0 },
+    enemies: [], falling: [], events: []
+  };
+  startWave(s);
+  return s;
+}
+
+function pickKind(s) {
+  var w = s.wave, x = rnd(s);
+  var pHeavy = Math.min(0.45, 0.06 * (w - 1));
+  var pLight = Math.max(0.2, 0.5 - 0.04 * w);
+  if (x < pHeavy) return 'heavy';
+  if (x < pHeavy + pLight) return 'light';
+  return 'normal';
+}
+
+function startWave(s) {
+  s.wave += 1;
+  s.clearT = -1;
+  var n = Math.min(1 + s.wave, 7);
+  for (var i = 0; i < n; i++) {
+    var kind = pickKind(s), k = KINDS[kind], x = C.CX, y = C.CY;
+    for (var tries = 0; tries < 30; tries++) {
+      var a = rnd(s) * Math.PI * 2, rr = C.R * (0.5 + rnd(s) * 0.3);
+      x = C.CX + Math.cos(a) * rr; y = C.CY + Math.sin(a) * rr;
+      var ok = Math.hypot(x - s.player.x, y - s.player.y) > 90;
+      for (var j = 0; ok && j < s.enemies.length; j++) {
+        var o = s.enemies[j];
+        if (Math.hypot(x - o.x, y - o.y) < k.r + o.r + 8) ok = false;
+      }
+      if (ok) break;
+    }
+    s.enemies.push({ id: s.nextId++, kind: kind, x: x, y: y, vx: 0, vy: 0,
+      r: k.r, m: k.m, acc: k.acc, spawn: C.SPAWN_T, stun: 0 });
+  }
+  ev(s, 'wave', { wave: s.wave });
+}
+
+function damp(b, dt) { var f = Math.max(0, 1 - C.DRAG * dt); b.vx *= f; b.vy *= f; }
+
+function collide(s, a, b) {
+  var dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = a.r + b.r;
+  if (d >= min || d === 0) return;
+  var nx = dx / d, ny = dy / d, ov = min - d, ia = 1 / a.m, ib = 1 / b.m, tot = ia + ib;
+  a.x -= nx * ov * ia / tot; a.y -= ny * ov * ia / tot;
+  b.x += nx * ov * ib / tot; b.y += ny * ov * ib / tot;
+  var rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+  if (rv >= 0) return;
+  var j = -(1 + C.REST) * rv / tot;
+  a.vx -= j * ia * nx; a.vy -= j * ia * ny;
+  b.vx += j * ib * nx; b.vy += j * ib * ny;
+  if (-rv > C.STUN_V) { // sert darbe rakibi kısa süre sersemletir
+    if (a.stun !== undefined) a.stun = C.STUN_T;
+    if (b.stun !== undefined) b.stun = C.STUN_T;
+  }
+  if (-rv > 40) ev(s, 'hit', { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, power: -rv });
+}
+
+function distC(b) { return Math.hypot(b.x - C.CX, b.y - C.CY); }
+
+function step(s, input, dt) {
+  input = input || {};
+  s.events = [];
+  if (input.restart) return createState((Math.imul(s.seed, 1664525) + 1013904223) >>> 0);
+  for (var f = s.falling.length - 1; f >= 0; f--) {
+    var fb = s.falling[f]; fb.t += dt; fb.x += fb.vx * dt; fb.y += fb.vy * dt;
+    if (fb.t >= C.FALL_T) s.falling.splice(f, 1);
+  }
+  if (s.status !== 'playing') { s.dieT = Math.min(C.DIE_T, s.dieT + dt); return s; }
+  s.time += dt;
+  var p = s.player;
+
+  // oyuncu girdisi
+  var ax = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+  var ay = (input.down ? 1 : 0) - (input.up ? 1 : 0);
+  if (input.target) {
+    var tx = input.target.x - p.x, ty = input.target.y - p.y, td = Math.hypot(tx, ty);
+    if (td > 6) { ax = tx / td; ay = ty / td; }
+  }
+  var al = Math.hypot(ax, ay);
+  if (al > 0) { ax /= al; ay /= al; }
+  p.vx += ax * C.P_ACC * dt; p.vy += ay * C.P_ACC * dt;
+  p.dashCd = Math.max(0, p.dashCd - dt); p.dashT = Math.max(0, p.dashT - dt);
+  if (input.action && p.dashCd === 0) {
+    var dx = ax, dy = ay;
+    if (!al) {
+      var sp = Math.hypot(p.vx, p.vy);
+      if (sp > 1) { dx = p.vx / sp; dy = p.vy / sp; } else { dx = 0; dy = -1; }
+    }
+    p.vx += dx * C.DASH_V; p.vy += dy * C.DASH_V;
+    p.dashCd = C.DASH_CD; p.dashT = 0.15;
+    ev(s, 'dash');
+  }
+  damp(p, dt); p.x += p.vx * dt; p.y += p.vy * dt;
+
+  // rakipler: oyuncuya doğru hızlanır, kenara yaklaşınca merkeze döner
+  var active = [p], i, e;
+  for (i = 0; i < s.enemies.length; i++) {
+    e = s.enemies[i];
+    if (e.spawn > 0) { e.spawn = Math.max(0, e.spawn - dt); continue; }
+    if (e.stun > 0) { e.stun = Math.max(0, e.stun - dt); damp(e, dt); e.x += e.vx * dt; e.y += e.vy * dt; active.push(e); continue; }
+    var ex = p.x - e.x, ey = p.y - e.y, ed = Math.hypot(ex, ey) || 1;
+    ex /= ed; ey /= ed;
+    var dc = distC(e);
+    if (dc > C.R * 0.8) {
+      var wgt = (dc - C.R * 0.8) / (C.R * 0.2) * 1.5;
+      ex += (C.CX - e.x) / dc * wgt; ey += (C.CY - e.y) / dc * wgt;
+      var el = Math.hypot(ex, ey) || 1; ex /= el; ey /= el;
+    }
+    e.vx += ex * e.acc * dt; e.vy += ey * e.acc * dt;
+    damp(e, dt); e.x += e.vx * dt; e.y += e.vy * dt;
+    active.push(e);
+  }
+  for (i = 0; i < active.length; i++)
+    for (var k = i + 1; k < active.length; k++) collide(s, active[i], active[k]);
+
+  // halka dışı kontrolü
+  for (i = s.enemies.length - 1; i >= 0; i--) {
+    e = s.enemies[i];
+    if (distC(e) > C.R) {
+      s.enemies.splice(i, 1);
+      s.falling.push({ x: e.x, y: e.y, vx: e.vx, vy: e.vy, r: e.r, kind: e.kind, t: 0 });
+      var pts = 10 * s.wave;
+      s.score += pts; s.knocked += 1;
+      ev(s, 'out', { x: e.x, y: e.y, pts: pts });
+    }
+  }
+  if (distC(p) > C.R) {
+    s.status = 'over';
+    s.overReason = 'Halkanın dışına düştün (dalga ' + s.wave + ')';
+    s.falling.push({ x: p.x, y: p.y, vx: p.vx, vy: p.vy, r: p.r, kind: 'player', t: 0 });
+    ev(s, 'lose');
+    return s;
+  }
+
+  // dalga temizlendi mi
+  if (s.enemies.length === 0) {
+    if (s.clearT < 0) {
+      s.clearT = 0;
+      s.score += 25 * s.wave;
+      ev(s, 'clear', { wave: s.wave });
+      if (s.wave >= C.WIN_WAVE) { s.status = 'won'; ev(s, 'win'); return s; }
+    }
+    s.clearT += dt;
+    if (s.clearT >= C.WAVE_GAP) startWave(s);
+  }
+  return s;
+}
+
+var GameConst = C;
+if (typeof module !== 'undefined') module.exports = { createState, step, C: GameConst };
+if (typeof window !== 'undefined') window.GameLogic = { createState, step, C: GameConst };
+</script>
+<script>/* render.js */
+'use strict';
+// Halka Dışı — yalnızca çizim. State değiştirmez.
+var COLORS = {
+  bg: '#141821', ring: '#2a3346', ringEdge: '#e0564f', floor: '#1d2433',
+  player: '#4fb3ff', light: '#f2c14e', normal: '#f08a4b', heavy: '#c4527a', text: '#e8ecf3', dim: '#8a94a8'
+};
+
+function disc(ctx, x, y, r, color, alpha) {
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.4, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function draw(ctx, s, view) {
+  view = view || {};
+  var C = view.C, W = C.W, H = C.H;
+  var sh = view.shake || { x: 0, y: 0 };
+  ctx.save();
+  ctx.fillStyle = COLORS.bg; ctx.fillRect(0, 0, W, H);
+  ctx.translate(sh.x, sh.y);
+
+  // halka
+  ctx.fillStyle = COLORS.floor;
+  ctx.beginPath(); ctx.arc(C.CX, C.CY, C.R, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = COLORS.ring; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(C.CX, C.CY, C.R * 0.5, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = COLORS.ringEdge; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(C.CX, C.CY, C.R, 0, Math.PI * 2); ctx.stroke();
+
+  // düşenler (küçülerek kaybolur)
+  for (var f = 0; f < s.falling.length; f++) {
+    var fb = s.falling[f], k = 1 - fb.t / C.FALL_T;
+    disc(ctx, fb.x, fb.y, Math.max(1, fb.r * k), fb.kind === 'player' ? COLORS.player : COLORS[fb.kind], Math.max(0, k));
+  }
+
+  // rakipler
+  for (var i = 0; i < s.enemies.length; i++) {
+    var e = s.enemies[i];
+    var a = e.spawn > 0 ? 0.3 + 0.3 * Math.abs(Math.sin(e.spawn * 12)) : 1;
+    disc(ctx, e.x, e.y, e.r, COLORS[e.kind], a);
+    if (e.stun > 0) {
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 4, 0, Math.PI * 2 * (e.stun / 0.6)); ctx.stroke();
+    }
+  }
+
+  // oyuncu
+  var p = s.player;
+  if (s.status === 'playing' || s.status === 'won') {
+    disc(ctx, p.x, p.y, p.r, p.dashT > 0 ? '#bfe6ff' : COLORS.player, 1);
+    ctx.strokeStyle = p.dashCd === 0 ? '#bfe6ff' : 'rgba(191,230,255,0.35)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 4, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - p.dashCd / C.DASH_CD)); ctx.stroke();
+  }
+
+  // parçacıklar (main'den)
+  var parts = view.particles || [];
+  for (var q = 0; q < parts.length; q++) {
+    var pt = parts[q];
+    ctx.globalAlpha = Math.max(0, pt.life / pt.max);
+    ctx.fillStyle = pt.color; ctx.fillRect(pt.x - 2, pt.y - 2, 4, 4);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // gösterge: skor, dalga, rekor
+  ctx.fillStyle = COLORS.text; ctx.font = 'bold 18px system-ui, sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('Skor: ' + s.score, 12, 26);
+  ctx.textAlign = 'center';
+  ctx.fillText('Dalga ' + s.wave + '/' + C.WIN_WAVE, W / 2, 26);
+  ctx.textAlign = 'right'; ctx.fillStyle = COLORS.dim;
+  ctx.fillText('Rekor: ' + (view.best || 0) + (view.muted ? ' (ses kapalı)' : ''), W - 12, 26);
+
+  if (s.status === 'playing' && s.clearT >= 0) {
+    ctx.textAlign = 'center'; ctx.fillStyle = COLORS.text; ctx.font = 'bold 22px system-ui, sans-serif';
+    ctx.fillText('Dalga temizlendi!', W / 2, C.CY);
+  }
+  if (s.status === 'over' || s.status === 'won') {
+    ctx.fillStyle = 'rgba(10,12,18,' + (0.7 * Math.min(1, s.dieT / C.DIE_T + 0.3)) + ')';
+    ctx.fillRect(0, H / 2 - 60, W, 120);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = s.status === 'won' ? '#7ee08a' : COLORS.ringEdge;
+    ctx.font = 'bold 24px system-ui, sans-serif';
+    ctx.fillText(s.status === 'won' ? 'Kazandın! 8 dalga temizlendi' : s.overReason, W / 2, H / 2 - 18);
+    ctx.fillStyle = COLORS.text; ctx.font = '16px system-ui, sans-serif';
+    ctx.fillText('Skor ' + s.score + ' · Yeniden: R / Boşluk / tıkla', W / 2, H / 2 + 22);
+  }
+}
+
+if (typeof module !== 'undefined') module.exports = { draw };
+if (typeof window !== 'undefined') window.GameRender = { draw };
+</script>
+<script>/* main.js */
+'use strict';
+// Halka Dışı — döngü, girdi, ses. logic + render'ı bağlar.
+var ctrl = null;
+
+function bootstrap() {
+  if (ctrl) return ctrl;
+  var L = window.GameLogic, R = window.GameRender, C = L.C;
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var DT = 1 / 60;
+  var state = L.createState(newSeed());
+  var input = { left: false, right: false, up: false, down: false, action: false, restart: false, target: null };
+  var pressed = { action: false, restart: false }; // aynı karede bas-bırak kaybolmasın
+  var acc = 0, last = null, muted = false, audio = null;
+  var shakeT = 0, particles = [], best = loadBest();
+
+  function newSeed() { return (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0; }
+  function loadBest() { try { return parseInt(localStorage.getItem('halkadisi.best') || '0', 10) || 0; } catch (e) { return 0; } }
+  function saveBest(v) { try { localStorage.setItem('halkadisi.best', String(v)); } catch (e) { /* yok say */ } }
+
+  function ensureAudio() {
+    if (audio || muted) return;
+    try { var AC = window.AudioContext || window.webkitAudioContext; if (AC) audio = new AC(); } catch (e) { audio = null; }
+  }
+  function tone(freq, dur, type, vol) {
+    if (!audio || muted) return;
+    try {
+      var o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime;
+      o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(vol || 0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g); g.connect(audio.destination); o.start(t); o.stop(t + dur);
+    } catch (e) { /* sessiz devam */ }
+  }
+  function burst(x, y, color, n) {
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 140;
+      particles.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.4, max: 0.4, color: color });
+    }
+  }
+  function handleEvents(s) {
+    for (var i = 0; i < s.events.length; i++) {
+      var e = s.events[i];
+      if (e.type === 'hit') { tone(180 + Math.min(400, e.power), 0.06, 'square', 0.08); burst(e.x, e.y, '#ffffff', 4); if (e.power > 150) shakeT = 0.12; }
+      else if (e.type === 'out') { tone(660, 0.12, 'triangle', 0.15); burst(e.x, e.y, '#f2c14e', 14); shakeT = 0.15; }
+      else if (e.type === 'dash') tone(320, 0.05, 'sawtooth', 0.06);
+      else if (e.type === 'clear') { tone(523, 0.1, 'triangle'); tone(784, 0.18, 'triangle'); }
+      else if (e.type === 'lose') { tone(140, 0.35, 'sawtooth', 0.18); shakeT = 0.2; burst(s.player.x, s.player.y, '#4fb3ff', 18); }
+      else if (e.type === 'win') tone(988, 0.3, 'triangle');
+    }
+    if (s.status !== 'playing' && s.score > best) { best = s.score; saveBest(best); }
+  }
+
+  var KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
+    ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', Space: 'action' };
+  function codeOf(ev) {
+    if (ev.code) return ev.code;
+    var k = ev.key;
+    if (k === ' ') return 'Space';
+    if (k === 'r' || k === 'R') return 'KeyR';
+    if (k === 'm' || k === 'M') return 'KeyM';
+    return k;
+  }
+  window.addEventListener('keydown', function (ev) {
+    var code = codeOf(ev);
+    ensureAudio();
+    if (code === 'KeyR' || ((code === 'Space' || code === 'Enter') && state.status !== 'playing')) {
+      pressed.restart = true; if (ev.preventDefault) ev.preventDefault(); return;
+    }
+    if (code === 'KeyM') { muted = !muted; return; }
+    var k = KEYS[code];
+    if (k) { input[k] = true; if (k === 'action') pressed.action = true; if (ev.preventDefault) ev.preventDefault(); }
+  });
+  window.addEventListener('keyup', function (ev) {
+    var k = KEYS[codeOf(ev)];
+    if (k) { input[k] = false; if (ev.preventDefault) ev.preventDefault(); }
+  });
+
+  function toCanvas(ev) {
+    var r = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: C.W, height: C.H };
+    return { x: (ev.clientX - r.left) * C.W / (r.width || C.W), y: (ev.clientY - r.top) * C.H / (r.height || C.H) };
+  }
+  var pointerDown = false;
+  canvas.addEventListener('pointerdown', function (ev) {
+    ensureAudio();
+    if (state.status !== 'playing') { pressed.restart = true; return; }
+    pointerDown = true; input.target = toCanvas(ev);
+    if (ev.preventDefault) ev.preventDefault();
+  });
+  canvas.addEventListener('pointermove', function (ev) { if (pointerDown) input.target = toCanvas(ev); });
+  function up() { pointerDown = false; input.target = null; }
+  canvas.addEventListener('pointerup', up);
+  canvas.addEventListener('pointercancel', up);
+
+  function frame(ts) {
+    if (last === null) last = ts;
+    acc += Math.min(0.25, (ts - last) / 1000); last = ts;
+    var n = 0;
+    while (acc >= DT && n < 5) {
+      var inp = { left: input.left, right: input.right, up: input.up, down: input.down,
+        action: input.action || pressed.action, restart: pressed.restart, target: input.target };
+      pressed.action = false; pressed.restart = false;
+      state = L.step(state, inp, DT);
+      handleEvents(state);
+      acc -= DT; n++;
+    }
+    if (n === 5) acc = 0;
+    shakeT = Math.max(0, shakeT - n * DT);
+    for (var i = particles.length - 1; i >= 0; i--) {
+      var p = particles[i]; p.life -= n * DT; p.x += p.vx * n * DT; p.y += p.vy * n * DT;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    var sh = shakeT > 0 ? { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 8 } : { x: 0, y: 0 };
+    R.draw(ctx, state, { C: C, best: best, muted: muted, shake: sh, particles: particles });
+    window.requestAnimationFrame(frame);
+  }
+  window.requestAnimationFrame(frame);
+
+  ctrl = { getState: function () { return state; } };
+  return ctrl;
+}
+
+if (typeof window !== 'undefined') {
+  window.GameMain = { bootstrap: bootstrap };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrap); else bootstrap();
+}
+if (typeof module !== 'undefined') module.exports = { bootstrap };
+</script>
+</body>
+</html>
