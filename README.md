@@ -1,58 +1,65 @@
-# 🕹️ Oyun Rafı
+# Ambar Hesabı
 
-Gamer rutininin ürettiği küçük ama **bitmiş** tarayıcı oyunlarının rafı.
-Haftada iki oyun (pazartesi ve perşembe); her biri kurulumsuz, sunucusuz, derlemesiz — tek dosya HTML.
+**Kanat:** sandbox/inşa
+**Tek cümle:** Tek kaynaklı bir köyde, hasat mevsiminde taşan tahılı saklayacak kadar ambar kurup kışın aç kalmadan altı yıl dayanıyorsun.
 
-**→ [Rafı aç: `index.html`](index.html)**
+## Nasıl oynanır
+**Tarayıcıda oyna (kurulumsuz):**
+https://htmlpreview.github.io/?https://github.com/MuratKingdom/oyun-rafi/blob/oyun/ambarhesabi/index.html
+Bu, üçüncü taraf bir görüntüleyicidir; kurulum gerektirmez ama garanti edilmez ve bu link
+tarayıcıda elle denenmemiştir.
 
-GitHub Pages açıksa raf doğrudan `https://muratkingdom.github.io/oyun-rafi/`
-adresinde oynanır. Açık değilse: depoyu klonla, `index.html`'i tarayıcıda aç.
+**Yerelde oynamak istersen:** `oyun-rafi` deposunda `oyun/ambarhesabi` dalını seç → Code →
+Download ZIP (veya dalı klonla), `index.html` dosyasını herhangi bir modern tarayıcıda aç.
+Tek dosya isteyen için `oyun-tek-dosya.html` tek başına çalışır. Kurulum, derleme, sunucu,
+internet bağlantısı gerekmez.
 
-## Oyunlar
+## Kontroller
+- **Boşluk / B / Yukarı / W / Enter** → yeni ambar kur (14 tahıl)
+- **X / Aşağı / S / Backspace** → son ambarı yık (4 tahıl geri gelir; yeni kapasiteye sığmayan tahıl kaybolur)
+- **Fare / dokunuş** → boş yuvaya tıkla: ambar kur · kurulu ambara tıkla: ambar yık
+- **R** → yeniden başla (oyun sırasında da) · kayıp/kazanç ekranında **Boşluk** veya **tıklama** da yeniden başlatır
+- **M** → sesi aç/kapat
 
-| Oyun | Kanat | Ne | Oyna | Kaynak |
-|---|---|---|---|---|
-| Yerçekimi Tüneli | arcade/fizik | Tek tuşla yerçekimini ters çevirip dar bir tünelde engellerden kaçıyorsun. | [`oyunlar/gravtunel/`](oyunlar/gravtunel/index.html) | [`oyun/gravtunel`](../../tree/oyun/gravtunel) |
-| Son Kuyu | sandbox/inşa | 5×5 karede kolektör kurup kuyu inşa ederek tükenen suyu dengeliyorsun. | [`oyunlar/sonkuyu/`](oyunlar/sonkuyu/index.html) | [`oyun/sonkuyu`](../../tree/oyun/sonkuyu) |
-| Sekme Gücü (Bopgate) | arcade/fizik | Zıplayan topu tek tuşla havada tutup dar kapılardan geçiriyorsun; sonsuz mod, mağaza, günlük görevler, neon görünüm. | [`oyunlar/sekmeguc/`](oyunlar/sekmeguc/index.html) | [`oyun/sekmeguc`](../../tree/oyun/sekmeguc) |
-| Tohum Payı | sandbox/inşa | Altı tarlada tohum ayırıp her akşam artan yemek payını karşılıyorsun. | [`oyunlar/tohumpayi/`](oyunlar/tohumpayi/index.html) | [`oyun/tohumpayi`](../../tree/oyun/tohumpayi) |
+## Ana mekanik, amaç ve kurallar
+- Tek kaynak tahıldır. Yıl 4 mevsimdir, her mevsim 12 saniye. Tarla ilkbaharda 4, yazda 9, sonbaharda 2,5 tahıl/sn verir (o yılın hasat yüzdesiyle çarpılır, %80–%120); **kışın gelir yoktur**.
+- Köy sürekli tahıl yer: 3/sn, her yıl +0,15/sn.
+- Her ambar 30 tahıl yer açar ama 0,1 tahıl/sn bakım ister. Başlangıçta 1 ambar ve 20 tahıl var; en fazla 10 ambar.
+- Tahıl kapasiteyi aşarsa fazlası **taşar ve kaybolur** (sayaçta "taşan").
+- Tahıl sıfırın altına inerse oyun biter ("Ambar boşaldı: köy kış mevsiminde aç kaldı (yıl n)").
+- 6 yıl (288 sn) dayanırsan kazanırsın. Skor = dayanılan saniye; kazanırsan kalan tahıl eklenir.
+- İkilem: az ambar = yazın tahıl taşar, kışa yetmez; çok ambar = kurulum maliyeti + bakım stoku eritir. Ekranda bu yılın ve gelecek yılın hasat yüzdesi görünür.
 
-Her oyunun ayrıntılı kaydı — ana mekanik, ne çalışıyor / ne eksik,
-geliştirmek için ilk adım, doğrulama durumu — katalog issue'sundadır.
+## NE ÇALIŞIYOR
+- Mevsim döngüsü, gelir/tüketim, kapasite sınırı ve taşma (kanıt: T1, T6)
+- Boşta kalan oyuncu 1. yıl kışında kaybediyor, sebep ekranda yazıyor (kanıt: T2, W4, tarayıcı)
+- Erken aşırı ambar kurmak da kaybettiriyor (kanıt: T2b)
+- 4 ambara kadar yalnızca ilkbahar/yazda ve ambar doluyken kuran bot 10 seed'in 6'sında kazanıyor; kazanınca skor = süre + kalan tahıl (kanıt: T3, T3b)
+- Boşluk ile kurma, X ile yıkma, boş yuvaya tıklama ile kurma bağlı (kanıt: T5c, T5c2, T5c3, tarayıcı)
+- Tek tuşla temiz yeniden başlatma (kanıt: T4, T4b, T5d, tarayıcı)
+- Canvas çizim + tahıl/kapasite/skor/rekor/taşan göstergesi (kanıt: T5b, W3, headless Chromium ekran görüntüsü)
 
-## Bu depo nasıl düzenlenmiş
+## NE EKSİK / İSKELE
+- İnsan oynanışına göre denge ayarlanmadı (sabitler bot simülasyonuyla seçildi)
+- Kışa kadar gereken tahılın tahmini ekranda gösterilmiyor; oyuncu net hızdan kendisi hesaplıyor
+- Dokunuşla kur/yık kodda var, gerçek dokunmatik cihazda denenmedi; ayrı mobil buton düzeni yok
+- Yıkma her zaman son ambarı kaldırır; tek kaynak, olay/afet yok; görsel çeşitlilik minimal
 
-- **`main`** — rafın kendisi. `index.html` (vitrin), `oyunlar/<ad>/index.html`
-  (oynanabilir kopyalar), `tools/`, `.github/`.
-- **`oyun/<ad>`** — her oyunun kendi dalı: kaynak dosyalar, testler, kendi
-  README'si, LICENSE ve `oyun-tek-dosya.html` (tek dosya derlemesi).
-- **[issue #2 — 🕹️ Katalog](../../issues/2)** — rutinin okuduğu kalıcı katalog.
-  Aynı fikri iki kez kurmamak ve üst üste aynı türden oyun yapmamak için var.
-- **[issue #1 — 🎮 Koşu raporları](../../issues/1)** — her koşunun arşivi.
+## Doğrulama durumu
+- `node --check` altı JS dosyasında çıkış 0
+- `node test.js`: T1, T2, T2b, T3, T3b, T4, T4b, T6 PASS (çıkış 0)
+- `node test-dom.js`: T5a, T5b, T5c, T5c2, T5c3, T5d PASS (çıkış 0)
+- Headless Chromium (Playwright) ile `index.html` ve `oyun-tek-dosya.html` `file://` üzerinden açıldı: Boşluk ambar kurdu, X yıktı, tıklama kurdu, kış + boş ambar kayıp ekranını gösterdi, R yeniden başlattı; konsol hatası 0, dış istek 0. Girdiler otomatikti.
 
-`main`'deki oynanabilir kopyalar, oyun dallarındaki `oyun-tek-dosya.html`
-dosyalarının birebir kopyalarıdır. Rutin yalnız dallara ve issue'lara yazar,
-`main`'i hiç bilmez — bu yüzden kopyaların eskimesi gerçek bir risk.
-`tools/raf-tazelik.sh` bunu denetler ve `.github/workflows/raf-tazelik.yml`
-her `main` push'unda, ayrıca rutin koşularının ertesi günü (salı ve cuma)
-otomatik çalıştırır. Eskime sessiz kalmaz, CI'ı kırar.
+Oynanabilirliği tarayıcıda elle doğrulanmadı; headless mantık ve yükleme testleri geçti.
 
-Yeni bir oyun dalı eklendiğinde rafı güncellemek için:
+## Varlıklar ve telif
+Tüm görseller Canvas ile, sesler WebAudio ile kod içinde üretilmiştir. Dış varlık, dış font,
+CDN bağımlılığı yoktur. Bu oyun hiçbir tescilli oyunun klonu değildir; genel "mevsimlik stok ve
+depo kapasitesi" fikrinden esinlenilmiştir.
 
-```bash
-git fetch origin '+refs/heads/oyun/*:refs/remotes/origin/oyun/*'
-git show origin/oyun/<ad>:oyun-tek-dosya.html > oyunlar/<ad>/index.html
-# sonra index.html'e oyunun kartını ekle
-./tools/raf-tazelik.sh   # yeşil olmalı
-```
+## Bilinen sınır
+`file://` altında en yüksek skor kaydı bazı tarayıcılarda çalışmayabilir; oyun yine oynanır.
 
-## Dürüstlük notu
-
-Oyunların hiçbiri bir insan tarafından uzun süre elle oynanarak test
-edilmedi. Doğrulama, her oyunun kendi dalındaki mantık ve DOM testleriyle
-(hepsi PASS, çıkış kodu 0) ve headless tarayıcıda açılış + girdi + ekran
-görüntüsü kontrolleriyle yapıldı. Her oyunun README'si ve katalog satırı
-"NE ÇALIŞIYOR" ile "NE EKSİK" bölümlerini ayrı ayrı listeler.
-
-Tüm görseller Canvas ile, sesler WebAudio ile kod içinde üretilir. Dış varlık,
-dış font, dış kütüphane yoktur.
+## Geliştirmek için ilk adım
+`render.js` içindeki `draw()` fonksiyonuna, `L.eatRate(s)` ve ambar bakımından hesaplanan "kışa kadar gereken tahıl" çizgisini tahıl çubuğunun üzerine ekle; ardından `logic.js` içindeki `C.INCOME` / `C.EAT_STEP` değerlerini insan oynanışına göre dengele.
