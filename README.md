@@ -1,58 +1,63 @@
-# 🕹️ Oyun Rafı
+# Kanca Tırmanışı
 
-Gamer rutininin ürettiği küçük ama **bitmiş** tarayıcı oyunlarının rafı.
-Haftada iki oyun (pazartesi ve perşembe); her biri kurulumsuz, sunucusuz, derlemesiz — tek dosya HTML.
+**Kanat:** arcade/fizik
+**Tek cümle:** Aşağıdan yükselen sise yakalanmadan, kancanı yukarıdaki çapalara atıp kendini çekerek ve doğru anda bırakıp fırlayarak 1000 metreye tırmanıyorsun.
 
-**→ [Rafı aç: `index.html`](index.html)**
+## Nasıl oynanır
+**Tarayıcıda oyna (kurulumsuz):**
+https://htmlpreview.github.io/?https://github.com/MuratKingdom/oyun-rafi/blob/oyun/kancatirmanis/index.html
+Bu, üçüncü taraf bir görüntüleyicidir; kurulum gerektirmez ama garanti edilmez ve bu link
+tarayıcıda elle denenmemiştir.
 
-GitHub Pages açıksa raf doğrudan `https://muratkingdom.github.io/oyun-rafi/`
-adresinde oynanır. Açık değilse: depoyu klonla, `index.html`'i tarayıcıda aç.
+**Yerelde oynamak istersen:** `oyun-rafi` deposunda `oyun/kancatirmanis` dalını seç → Code →
+Download ZIP (veya dalı klonla), `index.html` dosyasını herhangi bir modern tarayıcıda aç.
+Tek dosya isteyen için `oyun-tek-dosya.html` tek başına çalışır. Kurulum, derleme, sunucu,
+internet bağlantısı gerekmez.
 
-## Oyunlar
+## Kontroller
+- **Boşluk / Yukarı / W** → bas: kancayı menzildeki çapaya at · basılı tut: kendini çapaya çek / asılı kal · bırak: ipi kopar, hızınla fırla
+- **← / → (A / D)** → havada yatay kontrol; kanca atarken o yöndeki çapayı tercih eder
+- **Fare / dokunuş** → canvas'a basılı tut = Boşluk; ekranın sol/sağ üçte birine basmak o yönü tercih eder
+- **R** → yeniden başla (her an) · kayıp/kazanç ekranında **Boşluk** veya **tıklama** da yeniden başlatır
+- **M** → sesi aç/kapat
 
-| Oyun | Kanat | Ne | Oyna | Kaynak |
-|---|---|---|---|---|
-| Yerçekimi Tüneli | arcade/fizik | Tek tuşla yerçekimini ters çevirip dar bir tünelde engellerden kaçıyorsun. | [`oyunlar/gravtunel/`](oyunlar/gravtunel/index.html) | [`oyun/gravtunel`](../../tree/oyun/gravtunel) |
-| Son Kuyu | sandbox/inşa | 5×5 karede kolektör kurup kuyu inşa ederek tükenen suyu dengeliyorsun. | [`oyunlar/sonkuyu/`](oyunlar/sonkuyu/index.html) | [`oyun/sonkuyu`](../../tree/oyun/sonkuyu) |
-| Sekme Gücü (Bopgate) | arcade/fizik | Zıplayan topu tek tuşla havada tutup dar kapılardan geçiriyorsun; sonsuz mod, mağaza, günlük görevler, neon görünüm. | [`oyunlar/sekmeguc/`](oyunlar/sekmeguc/index.html) | [`oyun/sekmeguc`](../../tree/oyun/sekmeguc) |
-| Tohum Payı | sandbox/inşa | Altı tarlada tohum ayırıp her akşam artan yemek payını karşılıyorsun. | [`oyunlar/tohumpayi/`](oyunlar/tohumpayi/index.html) | [`oyun/tohumpayi`](../../tree/oyun/tohumpayi) |
+## Ana mekanik, amaç ve kurallar
+- Kanca bir **çekme** aracıdır, salınım değil: takıldığı çapaya doğru 1500 px/s² ivmeyle çeker. Çapaya varınca asılı kalırsın.
+- Her çapa toplam 1,1 sn yük taşıyınca **kırılır** (renk sarıdan kırmızıya döner) ve düşmeye başlarsın.
+- Çekilirken Boşluğu bırakırsan biriken hızla yukarı fırlarsın: çapaya varmadan bırakmak daha yükseğe götürür ama bir sonraki çapayı menzilde yakalaman gerekir.
+- Menzil 240 px'tir (yarım halka olarak çizilir); hedeflenecek çapa beyaz halkayla gösterilir. Kanca yalnızca oyuncunun üstündeki çapalara atılır.
+- İlk girdiyle birlikte aşağıdan sis yükselmeye başlar; tırmandıkça hızlanır (26 → 150 px/s). Sise değersen ya da ekranın altına düşersen oyun biter: "Sis seni yuttu (n m)".
+- Skor = ulaşılan en yüksek nokta (m). 1000 m'ye ulaşırsan kazanırsın. Çapa sıraları yükseldikçe seyrekleşir. En yüksek skor tarayıcıda saklanır.
 
-Her oyunun ayrıntılı kaydı — ana mekanik, ne çalışıyor / ne eksik,
-geliştirmek için ilk adım, doğrulama durumu — katalog issue'sundadır.
+## NE ÇALIŞIYOR
+- Kanca atma, çapaya çekme, asılı kalma, çapanın kırılması, bırakıp fırlama (kanıt: T1, T3b, T5c, tarayıcı)
+- Başlattıktan sonra boşta kalan oyuncu ~10 sn'de sise yakalanıyor, sebep ekranda yazıyor (kanıt: T2, W4, tarayıcı)
+- İlk girdi gelmeden sis yükselmiyor (kanıt: T2b)
+- Basit bot 10 seed'in hepsinde 160 m+ tırmanıyor, 1'inde 1000 m'ye ulaşıp kazanıyor (kanıt: T3)
+- R, Boşluk ve tıklama ile tek adımda temiz yeniden başlatma (kanıt: T4, T5d, T5e, tarayıcı)
+- Canvas çizim + yükseklik/rekor göstergesi, parçacık ve kısa ekran sarsıntısı (kanıt: T5b, W3, headless Chromium ekran görüntüsü)
 
-## Bu depo nasıl düzenlenmiş
+## NE EKSİK / İSKELE
+- İnsan oynanışına göre denge ayarlanmadı (sis hızı, çapa aralığı ve kırılma süresi bot simülasyonuyla seçildi)
+- Dokunuşla kontrol kodda var ve fare tıklamasıyla denendi; gerçek dokunmatik cihazda denenmedi, ayrı mobil buton düzeni yok
+- Ekranın altına düşen oyuncu görünmeden ölür (kamera aşağı inmez); sebep yine ekranda yazar
+- Tek çapa türü; hareketli çapa, engel veya güçlendirme yok; görsel çeşitlilik minimal
 
-- **`main`** — rafın kendisi. `index.html` (vitrin), `oyunlar/<ad>/index.html`
-  (oynanabilir kopyalar), `tools/`, `.github/`.
-- **`oyun/<ad>`** — her oyunun kendi dalı: kaynak dosyalar, testler, kendi
-  README'si, LICENSE ve `oyun-tek-dosya.html` (tek dosya derlemesi).
-- **[issue #2 — 🕹️ Katalog](../../issues/2)** — rutinin okuduğu kalıcı katalog.
-  Aynı fikri iki kez kurmamak ve üst üste aynı türden oyun yapmamak için var.
-- **[issue #1 — 🎮 Koşu raporları](../../issues/1)** — her koşunun arşivi.
+## Doğrulama durumu
+- `node --check` altı JS dosyasında çıkış 0
+- `node test.js`: T1, T2, T2b, T3, T3b, T4 PASS (çıkış 0)
+- `node test-dom.js`: T5a, T5b, T5c, T5d, T5e PASS (çıkış 0)
+- Headless Chromium (Playwright) ile `index.html` ve `oyun-tek-dosya.html` `file://` üzerinden açıldı: Boşluk bas-bırak döngüsüyle ~195 m tırmanıldı, girdi kesilince sis kayıp ekranını gösterdi, R yeniden başlattı; konsol hatası 0, dış istek 0. Girdiler otomatikti.
 
-`main`'deki oynanabilir kopyalar, oyun dallarındaki `oyun-tek-dosya.html`
-dosyalarının birebir kopyalarıdır. Rutin yalnız dallara ve issue'lara yazar,
-`main`'i hiç bilmez — bu yüzden kopyaların eskimesi gerçek bir risk.
-`tools/raf-tazelik.sh` bunu denetler ve `.github/workflows/raf-tazelik.yml`
-her `main` push'unda, ayrıca rutin koşularının ertesi günü (salı ve cuma)
-otomatik çalıştırır. Eskime sessiz kalmaz, CI'ı kırar.
+Oynanabilirliği tarayıcıda elle doğrulanmadı; headless mantık ve yükleme testleri geçti.
 
-Yeni bir oyun dalı eklendiğinde rafı güncellemek için:
+## Varlıklar ve telif
+Tüm görseller Canvas ile, sesler WebAudio ile kod içinde üretilmiştir. Dış varlık, dış font,
+CDN bağımlılığı yoktur. Bu oyun hiçbir tescilli oyunun klonu değildir; genel "kancayla kendini
+çekerek dikey tırmanma" fikrinden esinlenilmiştir.
 
-```bash
-git fetch origin '+refs/heads/oyun/*:refs/remotes/origin/oyun/*'
-git show origin/oyun/<ad>:oyun-tek-dosya.html > oyunlar/<ad>/index.html
-# sonra index.html'e oyunun kartını ekle
-./tools/raf-tazelik.sh   # yeşil olmalı
-```
+## Bilinen sınır
+`file://` altında en yüksek skor kaydı bazı tarayıcılarda çalışmayabilir; oyun yine oynanır.
 
-## Dürüstlük notu
-
-Oyunların hiçbiri bir insan tarafından uzun süre elle oynanarak test
-edilmedi. Doğrulama, her oyunun kendi dalındaki mantık ve DOM testleriyle
-(hepsi PASS, çıkış kodu 0) ve headless tarayıcıda açılış + girdi + ekran
-görüntüsü kontrolleriyle yapıldı. Her oyunun README'si ve katalog satırı
-"NE ÇALIŞIYOR" ile "NE EKSİK" bölümlerini ayrı ayrı listeler.
-
-Tüm görseller Canvas ile, sesler WebAudio ile kod içinde üretilir. Dış varlık,
-dış font, dış kütüphane yoktur.
+## Geliştirmek isteyen için ilk adım
+`logic.js` içindeki `C.BREAK`, `C.FOG0`/`C.FOG_K` ve `rowGap()` değerlerini insan oynanışına göre dengele; ardından `genAnchors()`'a yatayda kayan ikinci bir çapa türü ekle.
